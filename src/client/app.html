@@ -663,6 +663,19 @@ body{
 }
 .mcp-tool-result.visible{display:block}
 .mcp-tool-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(124,106,239,.08)}
+.mcp-form-field{margin-bottom:8px}
+.mcp-form-field label{display:block;font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:3px}
+.mcp-form-field label .field-req{color:var(--error);margin-left:2px}
+.mcp-form-field label .field-type{font-weight:400;color:var(--text-muted);margin-left:4px}
+.mcp-form-input{
+  width:100%;padding:7px 10px;
+  background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;
+  color:var(--text-primary);font-size:12px;font-family:inherit;outline:none;
+}
+.mcp-form-input:focus{border-color:var(--accent)}
+.mcp-form-input[type="checkbox"]{width:auto;margin-right:6px}
+.mcp-form-hint{font-size:10px;color:var(--text-muted);margin-top:2px}
+.mcp-form-empty{font-size:12px;color:var(--text-muted);padding:8px 0}
 
 /* ─── Batch install ─── */
 .mp-batch-bar{
@@ -1247,7 +1260,7 @@ body{
       <div class="input-actions">
         <button class="icon-btn" id="mic-btn" data-i18n="input.voice" data-i18n-attr="title" title="语音输入" style="position:relative">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          <span class="mic-hold-hint" id="mic-hold-hint">长按说话，松开结束</span>
+          <span class="mic-hold-hint" id="mic-hold-hint" data-i18n="mic.holdHint">长按说话，松开结束</span>
         </button>
       </div>
     </div>
@@ -1333,20 +1346,21 @@ body{
         </label>
       </div>
       <div class="settings-row">
-        <span class="settings-label">情感感知</span>
+        <span class="settings-label" data-i18n="settings.emotionAware">情感感知</span>
         <label style="position:relative;width:48px;height:26px">
           <input type="checkbox" id="emotion-toggle" checked style="opacity:0;width:0;height:0">
           <span style="position:absolute;inset:0;background:var(--bg-surface);border-radius:13px;cursor:pointer;transition:.3s"></span>
           <span id="emotion-knob" style="position:absolute;width:20px;height:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s"></span>
         </label>
       </div>
-      <p style="font-size:11px;color:var(--text-muted);margin-top:4px">开启后 AI 会根据语音情绪自动调整回复语气和 TTS 风格</p>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:4px" data-i18n="settings.emotionHint">开启后 AI 会根据语音情绪自动调整回复语气和 TTS 风格</p>
     </div>
     <div class="settings-group">
       <h3 data-i18n="settings.display">显示</h3>
       <div class="settings-row">
-        <span class="settings-label">主题</span>
+        <span class="settings-label" data-i18n="settings.theme">主题</span>
         <select id="theme-select" style="padding:5px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
+          <option value="auto">🌗 自动</option>
           <option value="dark">🌙 深色</option>
           <option value="light">☀️ 浅色</option>
         </select>
@@ -1381,7 +1395,7 @@ body{
     <button class="icon-btn" id="mp-back">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     </button>
-    <h2>📦 模型管理</h2>
+    <h2 data-i18n="model.title">📦 模型管理</h2>
     <span id="mp-mode-badge" style="font-size:11px;padding:3px 10px;border-radius:10px;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border)">—</span>
   </div>
   <div class="mp-body">
@@ -1392,8 +1406,8 @@ body{
     </div>
     <div class="mp-batch-bar" id="mp-batch-bar">
       <span class="mp-batch-count" id="mp-batch-count">已选 0 个模型</span>
-      <button class="mp-btn mp-btn-install" id="mp-batch-install" style="padding:6px 16px;font-size:12px">批量安装</button>
-      <button class="mp-btn mp-btn-cancel" id="mp-batch-clear" style="padding:6px 12px;font-size:12px">取消</button>
+      <button class="mp-btn mp-btn-install" id="mp-batch-install" style="padding:6px 16px;font-size:12px" data-i18n="model.batchInstall">批量安装</button>
+      <button class="mp-btn mp-btn-cancel" id="mp-batch-clear" style="padding:6px 12px;font-size:12px" data-i18n="model.batchCancel">取消</button>
     </div>
     <div id="mp-models-list"></div>
     <div id="mp-queue-status" class="mp-queue-progress" style="display:none"></div>
@@ -1406,16 +1420,16 @@ body{
     <button class="icon-btn" id="mcp-back">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     </button>
-    <h2>🔌 MCP 工具</h2>
+    <h2 data-i18n="mcp.title">🔌 MCP 工具</h2>
     <span id="mcp-tools-count" style="font-size:12px;color:var(--text-muted)"></span>
   </div>
   <div class="mcp-body">
     <div class="mcp-section">
-      <div class="mcp-section-title">服务器</div>
+      <div class="mcp-section-title" data-i18n="mcp.servers">服务器</div>
       <div id="mcp-servers-list"></div>
-      <div class="mcp-empty hidden" id="mcp-no-servers">尚未注册 MCP 服务器</div>
+      <div class="mcp-empty hidden" id="mcp-no-servers" data-i18n="mcp.noServers">尚未注册 MCP 服务器</div>
       <details id="mcp-add-form" style="margin-top:12px">
-        <summary style="font-size:12px;color:var(--accent);cursor:pointer;user-select:none">+ 添加 MCP 服务器</summary>
+        <summary style="font-size:12px;color:var(--accent);cursor:pointer;user-select:none" data-i18n="mcp.addServer">+ 添加 MCP 服务器</summary>
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
           <input id="mcp-srv-name" placeholder="名称 (如 weather-server)" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
           <select id="mcp-srv-transport" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
@@ -1423,32 +1437,36 @@ body{
             <option value="http">HTTP / SSE (远程)</option>
           </select>
           <input id="mcp-srv-cmd" placeholder="命令 (stdio) 或 URL (http)" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
-          <button class="mp-btn mp-btn-install" id="mcp-add-srv-btn" style="padding:8px;width:100%">添加服务器</button>
+          <button class="mp-btn mp-btn-install" id="mcp-add-srv-btn" style="padding:8px;width:100%" data-i18n="mcp.addServerBtn">添加服务器</button>
         </div>
       </details>
     </div>
     <div class="mcp-section">
-      <div class="mcp-section-title">可用工具 <span style="font-size:11px;color:var(--text-muted)">— 点击工具可测试</span></div>
+      <div class="mcp-section-title"><span data-i18n="mcp.tools">可用工具</span> <span style="font-size:11px;color:var(--text-muted)" data-i18n="mcp.toolHint">— 点击工具可测试</span></div>
       <div id="mcp-tools-list" style="display:flex;flex-wrap:wrap;gap:4px"></div>
-      <div class="mcp-empty hidden" id="mcp-no-tools">连接服务器后将自动发现工具</div>
+      <div class="mcp-empty hidden" id="mcp-no-tools" data-i18n="mcp.noTools">连接服务器后将自动发现工具</div>
       <div class="mcp-tool-drawer" id="mcp-tool-drawer">
         <h4 id="mcp-drawer-title">—</h4>
         <p id="mcp-drawer-desc" style="font-size:11px;color:var(--text-muted);margin-bottom:8px"></p>
-        <textarea class="mcp-tool-params" id="mcp-tool-params" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+        <div id="mcp-tool-form"></div>
+        <details style="margin-top:6px">
+          <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none" data-i18n="mcp.rawJson">原始 JSON</summary>
+          <textarea class="mcp-tool-params" id="mcp-tool-params" placeholder='{"key": "value"}' spellcheck="false" style="margin-top:4px"></textarea>
+        </details>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="mp-btn mp-btn-install" id="mcp-tool-run" style="flex:1;padding:8px">▶ 调用</button>
-          <button class="mp-btn mp-btn-cancel" id="mcp-tool-close" style="padding:8px 14px">关闭</button>
+          <button class="mp-btn mp-btn-install" id="mcp-tool-run" style="flex:1;padding:8px" data-i18n="mcp.toolRun">▶ 调用</button>
+          <button class="mp-btn mp-btn-cancel" id="mcp-tool-close" style="padding:8px 14px" data-i18n="mcp.toolClose">关闭</button>
         </div>
         <div class="mcp-tool-result" id="mcp-tool-result"></div>
       </div>
     </div>
     <div class="mcp-section">
-      <div class="mcp-section-title">用户技能</div>
+      <div class="mcp-section-title" data-i18n="mcp.skills">用户技能</div>
       <div id="mcp-skills-list"></div>
-      <div class="mcp-empty hidden" id="mcp-no-skills">还没有自定义技能</div>
+      <div class="mcp-empty hidden" id="mcp-no-skills" data-i18n="mcp.noSkills">还没有自定义技能</div>
       <div style="margin-top:12px">
         <input id="mcp-skill-input" placeholder="描述你想要的技能，如：帮我翻译邮件" style="width:100%;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
-        <button class="mp-btn mp-btn-install" id="mcp-gen-skill-btn" style="margin-top:8px;width:100%;padding:10px">✨ 生成技能</button>
+        <button class="mp-btn mp-btn-install" id="mcp-gen-skill-btn" style="margin-top:8px;width:100%;padding:10px" data-i18n="mcp.genSkill">✨ 生成技能</button>
       </div>
     </div>
   </div>
@@ -1980,8 +1998,24 @@ const I18N = {
     'settings.gestureWake':'手势唤醒 (挥手)',
     'settings.display':'显示','settings.fullscreen':'全屏',
     'settings.enterFs':'进入全屏','settings.exitFs':'退出全屏',
+    'settings.theme':'主题','settings.themeDark':'🌙 深色','settings.themeLight':'☀️ 浅色','settings.themeAuto':'🌗 自动',
+    'settings.emotionAware':'情感感知','settings.emotionHint':'开启后 AI 会根据语音情绪自动调整回复语气和 TTS 风格',
     'settings.iosTip':'iOS 提示：在 Safari 中点击分享 → 添加到主屏幕，可实现永久全屏',
     'settings.disconnect':'断开连接','settings.back':'返回','settings.language':'语言',
+    'model.title':'📦 模型管理','model.loading':'加载中…','model.installed':'✓ 已安装','model.install':'安装',
+    'model.uninstall':'卸载','model.installing':'安装中…','model.cancelled':'已取消','model.failed':'安装失败',
+    'model.verifying':'验证中…','model.verifyFail':'⚠️ 安装完成但验证失败，模块可能无法导入',
+    'model.batchSelected':'已选 {n} 个模型','model.batchInstall':'批量安装','model.batchCancel':'取消',
+    'model.queueProgress':'队列进度: {i}/{n} — 正在安装 {id}…','model.queueDone':'✓ 队列完成: {n} 个模型',
+    'model.fullMode':'完整模式','model.minMode':'极简模式','model.noGpu':'无 GPU',
+    'mcp.title':'🔌 MCP 工具','mcp.servers':'服务器','mcp.tools':'可用工具','mcp.toolHint':'— 点击工具可测试',
+    'mcp.skills':'用户技能','mcp.noServers':'尚未注册 MCP 服务器','mcp.noTools':'连接服务器后将自动发现工具',
+    'mcp.noSkills':'还没有自定义技能','mcp.addServer':'+ 添加 MCP 服务器','mcp.addServerBtn':'添加服务器',
+    'mcp.addingServer':'添加中…','mcp.connect':'连接','mcp.connected':'已连接','mcp.disconnected':'未连接',
+    'mcp.genSkill':'✨ 生成技能','mcp.generating':'生成中…','mcp.deleteSkill':'删除',
+    'mcp.toolRun':'▶ 调用','mcp.toolRunning':'调用中…','mcp.toolClose':'关闭','mcp.rawJson':'原始 JSON',
+    'mcp.noParams':'此工具无需参数','mcp.jsonError':'⚠️ JSON 参数格式错误',
+    'mic.holdHint':'长按说话，松开结束',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
     'desktop.ai.clicking':'正在点击','desktop.ai.typing':'正在输入',
@@ -2082,8 +2116,24 @@ const I18N = {
     'settings.gestureWake':'Gesture wake-up (wave hand)',
     'settings.display':'Display','settings.fullscreen':'Fullscreen',
     'settings.enterFs':'Enter Fullscreen','settings.exitFs':'Exit Fullscreen',
+    'settings.theme':'Theme','settings.themeDark':'🌙 Dark','settings.themeLight':'☀️ Light','settings.themeAuto':'🌗 Auto',
+    'settings.emotionAware':'Emotion Awareness','settings.emotionHint':'When enabled, AI adapts tone and TTS style based on voice emotion',
     'settings.iosTip':'iOS tip: In Safari tap Share → Add to Home Screen for permanent fullscreen',
     'settings.disconnect':'Disconnect','settings.back':'Back','settings.language':'Language',
+    'model.title':'📦 Model Manager','model.loading':'Loading…','model.installed':'✓ Installed','model.install':'Install',
+    'model.uninstall':'Uninstall','model.installing':'Installing…','model.cancelled':'Cancelled','model.failed':'Install failed',
+    'model.verifying':'Verifying…','model.verifyFail':'⚠️ Installed but verification failed — module may not import',
+    'model.batchSelected':'{n} models selected','model.batchInstall':'Batch Install','model.batchCancel':'Cancel',
+    'model.queueProgress':'Queue: {i}/{n} — installing {id}…','model.queueDone':'✓ Queue done: {n} models',
+    'model.fullMode':'Full mode','model.minMode':'Minimal mode','model.noGpu':'No GPU',
+    'mcp.title':'🔌 MCP Tools','mcp.servers':'Servers','mcp.tools':'Available Tools','mcp.toolHint':'— click to test',
+    'mcp.skills':'User Skills','mcp.noServers':'No MCP servers registered','mcp.noTools':'Connect a server to discover tools',
+    'mcp.noSkills':'No custom skills yet','mcp.addServer':'+ Add MCP Server','mcp.addServerBtn':'Add Server',
+    'mcp.addingServer':'Adding…','mcp.connect':'Connect','mcp.connected':'Connected','mcp.disconnected':'Disconnected',
+    'mcp.genSkill':'✨ Generate Skill','mcp.generating':'Generating…','mcp.deleteSkill':'Delete',
+    'mcp.toolRun':'▶ Call','mcp.toolRunning':'Calling…','mcp.toolClose':'Close','mcp.rawJson':'Raw JSON',
+    'mcp.noParams':'No parameters needed','mcp.jsonError':'⚠️ Invalid JSON parameters',
+    'mic.holdHint':'Hold to talk, release to send',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
     'desktop.ai.placeholder':'Type desktop command (e.g. open WeChat, send message)...',
     'desktop.ai.clicking':'Clicking','desktop.ai.typing':'Typing',
@@ -6309,6 +6359,17 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
             if (ev.type === 'done') {
               cancelBtn.classList.add('hidden');
               if (ev.success) {
+                btnEl.textContent = '验证中…';
+                try {
+                  const chk = await fetch(getBaseUrl() + `/api/models/${id}/check`);
+                  const chkD = await chk.json();
+                  if (!chkD.installed) {
+                    const warn = document.createElement('div');
+                    warn.style.cssText = 'font-size:11px;color:var(--warning);margin-top:4px';
+                    warn.textContent = '⚠️ 安装完成但验证失败，模块可能无法导入';
+                    card.appendChild(warn);
+                  }
+                } catch {}
                 _modelsLoaded = false;
                 await loadModels();
               } else {
@@ -6433,16 +6494,75 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     }
   }
 
+  let _activeSchema = {};
+
+  function buildFormFromSchema(schema) {
+    const form = $('mcp-tool-form');
+    const props = schema.properties || {};
+    const required = new Set(schema.required || []);
+    const keys = Object.keys(props);
+    if (keys.length === 0) {
+      form.innerHTML = '<div class="mcp-form-empty">此工具无需参数</div>';
+      return;
+    }
+    form.innerHTML = keys.map(key => {
+      const p = props[key];
+      const type = p.type || 'string';
+      const req = required.has(key);
+      const desc = p.description || '';
+      const def = p.default ?? '';
+      let input;
+      if (type === 'boolean') {
+        input = `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary)"><input type="checkbox" class="mcp-form-input" data-key="${key}" ${def ? 'checked' : ''}> ${desc || key}</label>`;
+      } else if (p.enum && p.enum.length > 0) {
+        const opts = p.enum.map(v => `<option value="${v}" ${v === def ? 'selected' : ''}>${v}</option>`).join('');
+        input = `<select class="mcp-form-input" data-key="${key}">${opts}</select>`;
+      } else if (type === 'integer' || type === 'number') {
+        const min = p.minimum != null ? `min="${p.minimum}"` : '';
+        const max = p.maximum != null ? `max="${p.maximum}"` : '';
+        input = `<input type="number" class="mcp-form-input" data-key="${key}" value="${def}" ${min} ${max} placeholder="${desc || key}">`;
+      } else {
+        input = `<input type="text" class="mcp-form-input" data-key="${key}" value="${def}" placeholder="${desc || key}">`;
+      }
+      return `<div class="mcp-form-field">
+        <label>${key}${req ? '<span class="field-req">*</span>' : ''}<span class="field-type">${type}</span></label>
+        ${input}
+        ${desc && type !== 'boolean' ? `<div class="mcp-form-hint">${desc}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function collectFormParams() {
+    const params = {};
+    $('mcp-tool-form').querySelectorAll('.mcp-form-input').forEach(el => {
+      const key = el.dataset.key;
+      if (el.type === 'checkbox') params[key] = el.checked;
+      else if (el.type === 'number') params[key] = el.value === '' ? null : Number(el.value);
+      else params[key] = el.value;
+    });
+    return params;
+  }
+
+  function syncFormToJson() {
+    $('mcp-tool-params').value = JSON.stringify(collectFormParams(), null, 2);
+  }
+
   function openToolDrawer(name) {
     const tool = _toolsData.find(t => t.name === name);
     if (!tool) return;
     _activeToolName = name;
+    _activeSchema = tool.input_schema || tool.parameters || {};
     $('mcp-drawer-title').textContent = '⚙️ ' + name;
     $('mcp-drawer-desc').textContent = tool.description || '';
-    const schema = tool.input_schema || tool.parameters || {};
-    $('mcp-tool-params').value = Object.keys(schema).length
-      ? JSON.stringify(schema.properties ? Object.fromEntries(Object.entries(schema.properties).map(([k,v]) => [k, v.default ?? ''])) : {}, null, 2)
-      : '{}';
+    buildFormFromSchema(_activeSchema);
+    const defaultParams = {};
+    const props = _activeSchema.properties || {};
+    for (const [k, v] of Object.entries(props)) defaultParams[k] = v.default ?? '';
+    $('mcp-tool-params').value = Object.keys(props).length ? JSON.stringify(defaultParams, null, 2) : '{}';
+    $('mcp-tool-form').querySelectorAll('.mcp-form-input').forEach(el => {
+      el.addEventListener('input', syncFormToJson);
+      el.addEventListener('change', syncFormToJson);
+    });
     $('mcp-tool-result').textContent = '';
     $('mcp-tool-result').classList.remove('visible');
     $('mcp-tool-drawer').classList.add('open');
@@ -6460,8 +6580,14 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     const btn = $('mcp-tool-run');
     const resultEl = $('mcp-tool-result');
     btn.disabled = true; btn.textContent = '调用中…';
-    let params = {};
-    try { params = JSON.parse($('mcp-tool-params').value || '{}'); } catch { resultEl.textContent = '⚠️ JSON 参数格式错误'; resultEl.classList.add('visible'); btn.disabled = false; btn.textContent = '▶ 调用'; return; }
+    let params;
+    const hasFormFields = $('mcp-tool-form').querySelector('.mcp-form-input');
+    if (hasFormFields) {
+      params = collectFormParams();
+    } else {
+      try { params = JSON.parse($('mcp-tool-params').value || '{}'); }
+      catch { resultEl.textContent = '⚠️ JSON 参数格式错误'; resultEl.classList.add('visible'); btn.disabled = false; btn.textContent = '▶ 调用'; return; }
+    }
     try {
       const r = await fetch(getBaseUrl() + '/api/mcp/tool/call', {
         method: 'POST',
@@ -6645,26 +6771,35 @@ function showEmotionBadge(emotion, dominant) {
 })();
 
 // ══════════════════════════════════════════════════════════════
-// THEME SWITCHER
+// THEME SWITCHER (dark / light / auto)
 // ══════════════════════════════════════════════════════════════
 (function() {
   const sel = document.getElementById('theme-select');
   if (!sel) return;
+  const mq = window.matchMedia('(prefers-color-scheme: light)');
 
-  function applyTheme(t) {
-    document.documentElement.setAttribute('data-theme', t);
+  function resolveTheme(pref) {
+    if (pref === 'auto') return mq.matches ? 'light' : 'dark';
+    return pref;
+  }
+
+  function applyTheme(resolved) {
+    document.documentElement.setAttribute('data-theme', resolved);
     const mc = document.querySelector('meta[name="theme-color"]');
-    if (mc) mc.content = t === 'light' ? '#f5f5fa' : '#0a0a14';
+    if (mc) mc.content = resolved === 'light' ? '#f5f5fa' : '#0a0a14';
   }
 
   const saved = localStorage.getItem('oc-theme') || 'dark';
   sel.value = saved;
-  if (saved !== 'dark') applyTheme(saved);
+  applyTheme(resolveTheme(saved));
 
   sel.addEventListener('change', () => {
-    const v = sel.value;
-    applyTheme(v);
-    localStorage.setItem('oc-theme', v);
+    localStorage.setItem('oc-theme', sel.value);
+    applyTheme(resolveTheme(sel.value));
+  });
+
+  mq.addEventListener('change', () => {
+    if (sel.value === 'auto') applyTheme(resolveTheme('auto'));
   });
 })();
 
