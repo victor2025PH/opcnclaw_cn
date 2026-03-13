@@ -883,6 +883,87 @@ body{
 .msg-translation.loading{color:var(--text-muted);font-style:italic}
 @keyframes fadeSlideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
+/* ─── Message edit/resend ─── */
+.msg .msg-edit-btn{
+  position:absolute;top:4px;right:52px;
+  background:none;border:none;font-size:13px;cursor:pointer;
+  opacity:0;transition:opacity .15s;padding:2px 4px;z-index:2;
+}
+.msg.user:hover .msg-edit-btn{opacity:.6}
+.msg .msg-edit-btn:hover{opacity:1}
+.msg.editing{border:2px dashed var(--accent);border-radius:var(--radius-md);background:color-mix(in srgb, var(--accent) 5%, transparent)}
+.msg-edit-area{width:100%;margin-top:6px}
+.msg-edit-area textarea{
+  width:100%;min-height:60px;padding:8px;border:1px solid var(--border-strong);border-radius:6px;
+  background:var(--bg-surface);color:var(--text-primary);font-size:13px;font-family:inherit;resize:vertical;
+}
+.msg-edit-actions{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
+.msg-edit-actions button{
+  padding:5px 14px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer;border:1px solid var(--border);
+}
+.msg-edit-actions .edit-resend{background:var(--accent);color:#fff;border-color:var(--accent)}
+.msg-edit-actions .edit-cancel{background:var(--bg-surface);color:var(--text-primary)}
+
+/* ─── Drag upload overlay ─── */
+.drag-overlay{
+  position:fixed;inset:0;z-index:400;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  opacity:0;pointer-events:none;transition:opacity .15s;
+}
+.drag-overlay.active{opacity:1;pointer-events:auto}
+.drag-overlay-icon{font-size:48px;animation:float 1.5s ease-in-out infinite}
+.drag-overlay-text{font-size:16px;color:#fff;font-weight:600}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.upload-preview{
+  margin:8px 0;padding:10px;border-radius:8px;background:var(--bg-surface);border:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;font-size:12px;
+}
+.upload-preview img{width:48px;height:48px;border-radius:6px;object-fit:cover}
+.upload-progress{height:3px;border-radius:2px;background:var(--border);overflow:hidden;margin-top:4px}
+.upload-progress-bar{height:100%;background:var(--accent);transition:width .2s;width:0}
+
+/* ─── Chat summary card ─── */
+.summary-card{
+  margin:8px 12px;padding:12px 16px;border-radius:12px;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--bg-surface)), var(--bg-surface));
+  border:1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  position:relative;cursor:pointer;
+}
+.summary-card-header{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text-primary)}
+.summary-card-body{margin-top:8px;font-size:12px;color:var(--text-secondary);line-height:1.6;white-space:pre-wrap}
+.summary-card-body.collapsed{max-height:60px;overflow:hidden;mask-image:linear-gradient(to bottom, black 60%, transparent)}
+.summary-card .summary-copy{
+  position:absolute;top:10px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;opacity:.5;transition:opacity .15s;
+}
+.summary-card .summary-copy:hover{opacity:1}
+.summary-card.loading .summary-card-body{color:var(--text-muted);font-style:italic}
+
+/* ─── Pinned messages ─── */
+.pinned-zone{
+  background:color-mix(in srgb, var(--accent) 6%, var(--bg-secondary));
+  border-bottom:1px solid var(--border);
+  max-height:0;overflow:hidden;transition:max-height .25s ease;
+}
+.pinned-zone.has-pins{max-height:200px;overflow-y:auto}
+.pinned-item{
+  display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;
+  font-size:11px;transition:background .1s;border-bottom:1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+.pinned-item:hover{background:color-mix(in srgb, var(--accent) 10%, transparent)}
+.pinned-item-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary)}
+.pinned-item-unpin{background:none;border:none;font-size:12px;cursor:pointer;opacity:.5;transition:opacity .15s;padding:2px}
+.pinned-item-unpin:hover{opacity:1}
+.pinned-more{padding:4px 12px;font-size:10px;color:var(--text-muted);cursor:pointer;text-align:center}
+.msg .msg-pin-btn{
+  position:absolute;top:4px;right:76px;
+  background:none;border:none;font-size:13px;cursor:pointer;
+  opacity:0;transition:opacity .15s;padding:2px 4px;z-index:2;
+}
+.msg:hover .msg-pin-btn{opacity:.6}
+.msg .msg-pin-btn:hover{opacity:1}
+.msg .msg-pin-btn.pinned{opacity:1;color:var(--accent)}
+
 /* ─── Keyboard shortcut map ─── */
 #keymap-panel{
   position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);
@@ -1678,6 +1759,12 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <button class="pwa-dismiss" id="pwa-dismiss-btn">&times;</button>
 </div>
 
+<!-- Drag upload overlay -->
+<div class="drag-overlay" id="drag-overlay">
+  <div class="drag-overlay-icon">📂</div>
+  <div class="drag-overlay-text" data-i18n="upload.dropHint">释放以上传文件</div>
+</div>
+
 <!-- ═══════════════ SETUP PAGE ═══════════════ -->
 <div id="setup-page" class="page">
   <div class="setup-card">
@@ -1740,6 +1827,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </button>
+      <button class="icon-btn" id="summary-btn" title="对话摘要">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </button>
       <button class="icon-btn" id="export-toggle" title="导出" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <div class="export-menu" id="export-menu">
@@ -1787,6 +1877,8 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
     <button class="msg-search-close" id="msg-search-close">✕</button>
   </div>
+  <!-- Pinned Messages Zone -->
+  <div class="pinned-zone" id="pinned-zone"></div>
   <!-- Messages Area -->
   <div class="messages-area" id="messages-area">
     <div class="welcome" id="welcome-screen">
@@ -2932,6 +3024,10 @@ const I18N = {
     'keymap.title':'⌨️ 快捷键','keymap.searchPlaceholder':'搜索快捷键…',
     'keymap.general':'通用','keymap.voice':'语音','keymap.navigation':'导航','keymap.command':'命令','keymap.panels':'面板',
     'sc.templates':'📦 模板','sc.tplTitle':'技能链模板','sc.tplUse':'使用',
+    'edit.resend':'重新发送','edit.cancel':'取消',
+    'upload.dropHint':'释放以上传文件','upload.confirm':'发送','upload.cancel':'取消','upload.uploading':'上传中…','upload.done':'上传完成','upload.error':'上传失败',
+    'summary.title':'📋 对话摘要','summary.generating':'正在生成摘要…','summary.noMsg':'暂无消息','summary.copied':'已复制到剪贴板','summary.collapse':'折叠','summary.expand':'展开',
+    'pin.title':'📌 置顶消息','pin.max':'最多固定 3 条消息','pin.more':'展开更多','pin.unpin':'取消固定',
     'settings.plugins':'插件','settings.noPlugins':'暂无已注册插件','settings.pluginHint':'通过 window.ocPlugins.register() 注册插件',
     'settings.advTheme':'高级主题','settings.accentColor':'强调色','settings.fontSize':'字体大小','settings.resetTheme':'重置为默认',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
@@ -3096,6 +3192,10 @@ const I18N = {
     'keymap.title':'⌨️ Shortcuts','keymap.searchPlaceholder':'Search shortcuts…',
     'keymap.general':'General','keymap.voice':'Voice','keymap.navigation':'Navigation','keymap.command':'Command','keymap.panels':'Panels',
     'sc.templates':'📦 Templates','sc.tplTitle':'Skill Chain Templates','sc.tplUse':'Use',
+    'edit.resend':'Resend','edit.cancel':'Cancel',
+    'upload.dropHint':'Drop to upload files','upload.confirm':'Send','upload.cancel':'Cancel','upload.uploading':'Uploading…','upload.done':'Upload complete','upload.error':'Upload failed',
+    'summary.title':'📋 Chat Summary','summary.generating':'Generating summary…','summary.noMsg':'No messages','summary.copied':'Copied to clipboard','summary.collapse':'Collapse','summary.expand':'Expand',
+    'pin.title':'📌 Pinned','pin.max':'Max 3 pinned messages','pin.more':'Show more','pin.unpin':'Unpin',
     'settings.plugins':'Plugins','settings.noPlugins':'No registered plugins','settings.pluginHint':'Register via window.ocPlugins.register()',
     'settings.advTheme':'Advanced Theme','settings.accentColor':'Accent Color','settings.fontSize':'Font Size','settings.resetTheme':'Reset to Default',
     'shortcuts.perf':'Performance',
@@ -10511,6 +10611,399 @@ const ocAudioViz = (function() {
   $('sc-open')?.addEventListener('click', open);
   $('sc-back')?.addEventListener('click', close);
   window.addEventListener('resize', () => { if (!panel.classList.contains('hidden')) resizeCanvas(); });
+})();
+
+// MESSAGE EDIT / RESEND
+// ══════════════════════════════════════════════════════════════
+(function() {
+  function attachEditBtn(msgEl) {
+    if (msgEl.querySelector('.msg-edit-btn')) return;
+    if (!msgEl.classList.contains('user')) return;
+    const btn = document.createElement('button');
+    btn.className = 'msg-edit-btn';
+    btn.textContent = '✏️';
+    btn.title = t('edit.resend');
+    btn.addEventListener('click', () => enterEdit(msgEl));
+    msgEl.appendChild(btn);
+  }
+
+  function enterEdit(msgEl) {
+    if (msgEl.classList.contains('editing')) return;
+    msgEl.classList.add('editing');
+    const textEl = msgEl.querySelector('.msg-text');
+    if (!textEl) return;
+    const original = textEl.textContent.replace(/🎙$/, '').trim();
+    textEl.style.display = 'none';
+    const area = document.createElement('div');
+    area.className = 'msg-edit-area';
+    area.innerHTML = `<textarea>${escapeHtml(original)}</textarea>
+      <div class="msg-edit-actions">
+        <button class="edit-cancel">${t('edit.cancel')}</button>
+        <button class="edit-resend">${t('edit.resend')}</button>
+      </div>`;
+    textEl.after(area);
+    const ta = area.querySelector('textarea');
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    area.querySelector('.edit-cancel').addEventListener('click', () => cancelEdit(msgEl, textEl, area));
+    area.querySelector('.edit-resend').addEventListener('click', () => resend(msgEl, textEl, area, ta.value));
+  }
+
+  function cancelEdit(msgEl, textEl, area) {
+    msgEl.classList.remove('editing');
+    area.remove();
+    textEl.style.display = '';
+  }
+
+  async function resend(msgEl, textEl, area, newText) {
+    if (!newText.trim()) return;
+    msgEl.classList.remove('editing');
+    area.remove();
+    textEl.style.display = '';
+    textEl.innerHTML = renderMarkdown(newText);
+
+    const msgs = $('messages');
+    if (!msgs) return;
+    const allMsgs = Array.from(msgs.querySelectorAll('.msg'));
+    const idx = allMsgs.indexOf(msgEl);
+    if (idx < 0) return;
+
+    for (let i = allMsgs.length - 1; i > idx; i--) allMsgs[i].remove();
+
+    const sIdx = S.messages.findIndex((m, mi) => mi >= idx && m.role === 'user');
+    if (sIdx >= 0) {
+      S.messages[sIdx].content = newText;
+      S.messages.splice(sIdx + 1);
+    }
+
+    const aiMsg = { role: 'assistant', content: '' };
+    S.messages.push(aiMsg);
+    const aiEl = appendMessage(aiMsg, true);
+
+    try {
+      const body = { messages: buildMessages(), model: 'deepseek-chat', stream: true };
+      const resp = await fetch(`${getBaseUrl()}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '', buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const data = trimmed.slice(5).trim();
+          if (data === '[DONE]') continue;
+          try { const p = JSON.parse(data); const d = p.choices?.[0]?.delta?.content; if (d) { fullText += d; updateStreamingEl(aiEl, fullText); } } catch {}
+        }
+      }
+      aiMsg.content = fullText;
+      finalizeStreamingEl(aiEl, fullText);
+    } catch (e) {
+      aiMsg.content = t('error.prefix', { msg: e.message });
+      finalizeStreamingEl(aiEl, aiMsg.content);
+    }
+    S.isSending = false;
+    updateSendBtn();
+  }
+
+  const area = $('messages');
+  if (area) {
+    area.querySelectorAll('.msg').forEach(attachEditBtn);
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (n.nodeType === 1 && n.classList?.contains('msg')) attachEditBtn(n);
+      }));
+    }).observe(area, { childList: true });
+  }
+})();
+
+// DRAG UPLOAD
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const overlay = $('drag-overlay');
+  const chatPage = $('chat-page');
+  if (!overlay || !chatPage) return;
+  let _dragCounter = 0;
+
+  chatPage.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    _dragCounter++;
+    overlay.classList.add('active');
+  });
+  chatPage.addEventListener('dragleave', (e) => {
+    _dragCounter--;
+    if (_dragCounter <= 0) { _dragCounter = 0; overlay.classList.remove('active'); }
+  });
+  chatPage.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  chatPage.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    _dragCounter = 0;
+    overlay.classList.remove('active');
+    const files = Array.from(e.dataTransfer.files);
+    if (!files.length) return;
+    for (const file of files) { await handleDropFile(file); }
+  });
+
+  async function handleDropFile(file) {
+    hideWelcome();
+    const preview = document.createElement('div');
+    preview.className = 'upload-preview';
+    const isImage = file.type.startsWith('image/');
+    if (isImage) {
+      const thumb = document.createElement('img');
+      thumb.src = URL.createObjectURL(file);
+      preview.appendChild(thumb);
+    } else {
+      const icon = document.createElement('span');
+      icon.textContent = '📎';
+      icon.style.fontSize = '24px';
+      preview.appendChild(icon);
+    }
+    const info = document.createElement('div');
+    info.style.flex = '1';
+    info.innerHTML = `<div style="font-weight:600">${escapeHtml(file.name)}</div><div style="color:var(--text-muted);font-size:10px">${(file.size / 1024).toFixed(1)} KB</div>
+      <div class="upload-progress"><div class="upload-progress-bar" id="up-bar-${Date.now()}"></div></div>`;
+    preview.appendChild(info);
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:4px';
+    actions.innerHTML = `<button class="mp-btn mp-btn-install up-confirm" style="font-size:10px;padding:4px 10px">${t('upload.confirm')}</button>
+      <button class="mp-btn up-cancel" style="font-size:10px;padding:4px 10px;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border)">${t('upload.cancel')}</button>`;
+    preview.appendChild(actions);
+    dom.messages.appendChild(preview);
+    scrollToBottom();
+
+    const confirmBtn = actions.querySelector('.up-confirm');
+    const cancelBtn = actions.querySelector('.up-cancel');
+    cancelBtn.addEventListener('click', () => preview.remove());
+
+    confirmBtn.addEventListener('click', async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = t('upload.uploading');
+      const bar = preview.querySelector('[class*="upload-progress-bar"]');
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', getBaseUrl() + '/api/upload');
+        xhr.upload.addEventListener('progress', (pe) => {
+          if (pe.lengthComputable && bar) bar.style.width = Math.round(pe.loaded / pe.total * 100) + '%';
+        });
+        await new Promise((resolve, reject) => {
+          xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText); else reject(new Error(xhr.statusText)); };
+          xhr.onerror = () => reject(new Error('Network error'));
+          xhr.send(fd);
+        });
+        preview.remove();
+        if (typeof ocToast !== 'undefined') ocToast.success(t('upload.done'));
+        const userMsg = { role: 'user', content: `📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)` };
+        if (isImage) userMsg.imageData = [URL.createObjectURL(file)];
+        S.messages.push(userMsg);
+        appendMessage(userMsg);
+      } catch (err) {
+        confirmBtn.textContent = t('upload.error');
+        if (typeof ocToast !== 'undefined') ocToast.error(t('upload.error'));
+      }
+    });
+  }
+})();
+
+// CHAT SUMMARY
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const btn = $('summary-btn');
+  if (!btn) return;
+  let _collapsed = true;
+
+  btn.addEventListener('click', generateSummary);
+
+  async function generateSummary() {
+    if (!S.messages.length) {
+      if (typeof ocToast !== 'undefined') ocToast.info(t('summary.noMsg'));
+      return;
+    }
+
+    const existing = dom.messages?.parentElement?.querySelector('.summary-card');
+    if (existing) existing.remove();
+
+    const card = document.createElement('div');
+    card.className = 'summary-card loading';
+    card.innerHTML = `<div class="summary-card-header">📋 ${t('summary.title')}</div>
+      <div class="summary-card-body">${t('summary.generating')}</div>
+      <button class="summary-copy" title="Copy">📋</button>`;
+    const area = $('messages-area');
+    if (area) area.insertBefore(card, area.firstChild);
+
+    const bodyEl = card.querySelector('.summary-card-body');
+    try {
+      const allText = S.messages.map(m => `${m.role}: ${m.content}`).join('\n');
+      const r = await fetch(getBaseUrl() + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'Summarize the following conversation concisely in the same language as the conversation. Use bullet points. 3-5 sentences max.' },
+            { role: 'user', content: allText }
+          ],
+          stream: false
+        })
+      });
+      if (!r.ok) throw new Error('API error');
+      const data = await r.json();
+      const summary = data.response || data.content || data.text || '';
+      card.classList.remove('loading');
+      bodyEl.textContent = summary;
+      _collapsed = true;
+      bodyEl.classList.add('collapsed');
+
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('summary-copy')) return;
+        _collapsed = !_collapsed;
+        bodyEl.classList.toggle('collapsed', _collapsed);
+      });
+
+      card.querySelector('.summary-copy').addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(summary).then(() => {
+          if (typeof ocToast !== 'undefined') ocToast.success(t('summary.copied'));
+        });
+      });
+    } catch (e) {
+      card.classList.remove('loading');
+      bodyEl.textContent = t('translate.error');
+    }
+  }
+})();
+
+// PINNED MESSAGES
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const PKEY = 'oc-pinned';
+  const zone = $('pinned-zone');
+  if (!zone) return;
+  let _pinned = JSON.parse(localStorage.getItem(PKEY) || '[]');
+  const MAX_VISIBLE = 3;
+
+  function savePins() { localStorage.setItem(PKEY, JSON.stringify(_pinned)); }
+
+  function renderZone() {
+    if (!_pinned.length) { zone.classList.remove('has-pins'); zone.innerHTML = ''; return; }
+    zone.classList.add('has-pins');
+    const visible = _pinned.slice(0, MAX_VISIBLE);
+    zone.innerHTML = visible.map((p, i) =>
+      `<div class="pinned-item" data-idx="${p.idx}">
+        <span style="font-size:11px;opacity:.6">📌</span>
+        <span class="pinned-item-text">${escapeHtml(p.text.slice(0, 80))}</span>
+        <button class="pinned-item-unpin" data-pi="${i}" title="${t('pin.unpin')}">✕</button>
+      </div>`
+    ).join('');
+    if (_pinned.length > MAX_VISIBLE) {
+      zone.innerHTML += `<div class="pinned-more" id="pinned-show-more">${t('pin.more')} (${_pinned.length - MAX_VISIBLE})</div>`;
+      $('pinned-show-more')?.addEventListener('click', () => {
+        zone.innerHTML = _pinned.map((p, i) =>
+          `<div class="pinned-item" data-idx="${p.idx}">
+            <span style="font-size:11px;opacity:.6">📌</span>
+            <span class="pinned-item-text">${escapeHtml(p.text.slice(0, 80))}</span>
+            <button class="pinned-item-unpin" data-pi="${i}" title="${t('pin.unpin')}">✕</button>
+          </div>`
+        ).join('');
+        bindZoneEvents();
+      });
+    }
+    bindZoneEvents();
+  }
+
+  function bindZoneEvents() {
+    zone.querySelectorAll('.pinned-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('pinned-item-unpin')) return;
+        const idx = parseInt(item.dataset.idx);
+        const msgs = $('messages');
+        if (!msgs) return;
+        const all = msgs.querySelectorAll('.msg');
+        if (all[idx]) { all[idx].scrollIntoView({ behavior: 'smooth', block: 'center' }); all[idx].style.animation = 'fadeSlideIn .4s'; }
+      });
+    });
+    zone.querySelectorAll('.pinned-item-unpin').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pi = parseInt(btn.dataset.pi);
+        const removed = _pinned.splice(pi, 1)[0];
+        savePins();
+        renderZone();
+        updatePinBtns();
+      });
+    });
+  }
+
+  function getMsgIndex(el) {
+    const msgs = $('messages');
+    if (!msgs) return -1;
+    return Array.from(msgs.querySelectorAll('.msg')).indexOf(el);
+  }
+
+  function attachPinBtn(msgEl) {
+    if (msgEl.querySelector('.msg-pin-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'msg-pin-btn';
+    const idx = getMsgIndex(msgEl);
+    const isPinned = _pinned.some(p => p.idx === idx);
+    btn.textContent = '📌';
+    if (isPinned) btn.classList.add('pinned');
+    btn.addEventListener('click', () => togglePin(msgEl, btn));
+    msgEl.appendChild(btn);
+  }
+
+  function togglePin(msgEl, btn) {
+    const idx = getMsgIndex(msgEl);
+    if (idx < 0) return;
+    const existing = _pinned.findIndex(p => p.idx === idx);
+    if (existing >= 0) {
+      _pinned.splice(existing, 1);
+      btn.classList.remove('pinned');
+    } else {
+      if (_pinned.length >= MAX_VISIBLE) {
+        if (typeof ocToast !== 'undefined') ocToast.warning(t('pin.max'));
+      }
+      const textEl = msgEl.querySelector('.msg-text');
+      _pinned.push({ idx, text: textEl?.textContent?.slice(0, 100) || '', role: msgEl.classList.contains('user') ? 'user' : 'ai' });
+      btn.classList.add('pinned');
+    }
+    savePins();
+    renderZone();
+  }
+
+  function updatePinBtns() {
+    const msgs = $('messages');
+    if (!msgs) return;
+    msgs.querySelectorAll('.msg-pin-btn').forEach(btn => {
+      const msgEl = btn.closest('.msg');
+      const idx = getMsgIndex(msgEl);
+      btn.classList.toggle('pinned', _pinned.some(p => p.idx === idx));
+    });
+  }
+
+  const area = $('messages');
+  if (area) {
+    area.querySelectorAll('.msg').forEach(attachPinBtn);
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (n.nodeType === 1 && n.classList?.contains('msg')) attachPinBtn(n);
+      }));
+    }).observe(area, { childList: true });
+  }
+  renderZone();
 })();
 
 // MESSAGE REACTIONS
