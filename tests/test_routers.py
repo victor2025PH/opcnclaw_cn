@@ -204,5 +204,180 @@ class TestHealthSSLPaths:
         assert hc.check_ssl().ok is True
 
 
+# ═══════════════════════════════════════════════════════════════
+# FastAPI Router Integration Tests (TestClient)
+# ═══════════════════════════════════════════════════════════════
+
+class TestModelsRouter:
+    """Integration tests for /api/models endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.TestClient = TestClient
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def _make_app(self):
+        from fastapi import FastAPI
+        from src.server.routers.models import router
+        app = FastAPI()
+        app.include_router(router)
+        return app
+
+    def test_list_models(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/models")
+        assert r.status_code == 200
+        data = r.json()
+        assert "models" in data
+        assert "mode" in data
+        assert len(data["models"]) >= 5
+        for m in data["models"]:
+            assert "id" in m
+            assert "name" in m
+            assert "installed" in m
+
+    def test_models_summary(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/models/summary")
+        assert r.status_code == 200
+        data = r.json()
+        assert "installed_count" in data
+        assert "mode" in data
+
+    def test_gpu_info(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/system/gpu")
+        assert r.status_code == 200
+        data = r.json()
+        assert "available" in data
+
+    def test_disk_info(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/system/disk")
+        assert r.status_code == 200
+        data = r.json()
+        assert "free_gb" in data
+
+    def test_health_check(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/system/health")
+        assert r.status_code == 200
+        data = r.json()
+        assert "healthy" in data
+        assert "checks" in data
+        assert isinstance(data["checks"], list)
+
+    def test_check_model_installed(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/models/sensevoice/check")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["model_id"] == "sensevoice"
+        assert isinstance(data["installed"], bool)
+
+    def test_s2s_status(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/s2s/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert "available" in data
+        assert "backend" in data
+
+
+class TestMCPRouter:
+    """Integration tests for /api/mcp endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.TestClient = TestClient
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def _make_app(self):
+        from fastapi import FastAPI
+        from src.server.routers.mcp import router
+        app = FastAPI()
+        app.include_router(router)
+        return app
+
+    def test_list_servers_empty(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/mcp/servers")
+        assert r.status_code == 200
+        data = r.json()
+        assert "servers" in data
+        assert "count" in data
+
+    def test_list_tools_empty(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/mcp/tools")
+        assert r.status_code == 200
+        data = r.json()
+        assert "tools" in data
+        assert data["count"] == 0
+
+    def test_list_skills(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/mcp/skills")
+        assert r.status_code == 200
+        data = r.json()
+        assert "skills" in data
+
+    def test_generate_and_delete_skill(self, tmp_path, monkeypatch):
+        import src.mcp.skill_generator as sg
+        monkeypatch.setattr(sg, "USER_SKILLS_DIR", tmp_path / "user_skills")
+        monkeypatch.setattr(sg, "SKILLS_ROOT", tmp_path)
+
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/mcp/skills/generate", json={
+            "description": "帮我整理会议纪要",
+            "name": "会议助手",
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["ok"] is True
+        skill_id = data["skill"]["id"]
+
+        r2 = client.delete(f"/api/mcp/skills/{skill_id}")
+        assert r2.status_code == 200
+        assert r2.json()["ok"] is True
+
+
+class TestVisionControlRouter:
+    """Integration tests for /api/vision-control endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.TestClient = TestClient
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def _make_app(self):
+        from fastapi import FastAPI
+        from src.server.routers.desktop import router
+        app = FastAPI()
+        app.include_router(router)
+        return app
+
+    def test_describe_screen(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/vision-control/describe")
+        assert r.status_code in (200, 503)
+        if r.status_code == 200:
+            assert "text" in r.json()
+
+    def test_screen_state(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/vision-control/screen")
+        assert r.status_code in (200, 503)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

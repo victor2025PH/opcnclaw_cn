@@ -429,3 +429,101 @@ async def desktop_ws(websocket: WebSocket):
     finally:
         streaming = False
         frame_task.cancel()
+
+
+# ── Vision Control (structured UI element access) ──
+
+_vision_ctrl = None
+_vision_init = False
+
+
+def _get_vision():
+    global _vision_ctrl, _vision_init
+    if _vision_init:
+        return _vision_ctrl
+    _vision_init = True
+    try:
+        from ..vision_control import VisionController
+        _vision_ctrl = VisionController()
+        _vision_ctrl.enable()
+        logger.info("VisionController initialized")
+    except Exception as e:
+        logger.info(f"VisionController not available: {e}")
+    return _vision_ctrl
+
+
+@router.get("/api/vision-control/screen")
+async def get_screen_state():
+    """Structured screen state: UI elements with pixel bboxes."""
+    vc = _get_vision()
+    if not vc:
+        return Response(
+            content=json.dumps({"error": "VisionController not available"}),
+            status_code=503,
+        )
+    loop = asyncio.get_running_loop()
+    state = await loop.run_in_executor(None, vc.get_screen_state)
+    if not state:
+        return {"elements": [], "app": "", "error": "capture failed"}
+    return {
+        "app": state.foreground_app,
+        "element_count": len(state.elements),
+        "elements": [
+            {
+                "id": el.id,
+                "label": el.label,
+                "bbox": list(el.bbox),
+                "type": el.element_type,
+            }
+            for el in state.elements[:100]
+        ],
+    }
+
+
+@router.get("/api/vision-control/describe")
+async def describe_screen():
+    """Human-readable screen description."""
+    vc = _get_vision()
+    if not vc:
+        return {"text": "VisionController not available"}
+    loop = asyncio.get_running_loop()
+    desc = await loop.run_in_executor(None, vc.describe_screen)
+    return {"text": desc}
+
+
+@router.post("/api/vision-control/execute")
+async def execute_vision_action(request: Request):
+    """Execute a UI action by type + target/coordinates.
+
+    Body: { "type": "click"|"type"|"hotkey"|"scroll",
+            "x": int, "y": int, "text": str, "key": str,
+            "element_id": int }
+    """
+    vc = _get_vision()
+    if not vc:
+        return Response(
+            content=json.dumps({"error": "VisionController not available"}),
+            status_code=503,
+        )
+    body = await request.json()
+    from ..vision_control import Action, UIElement
+
+    action = Action(
+        type=body.get("type", "click"),
+        text=body.get("text", ""),
+        key=body.get("key", ""),
+        x=int(body.get("x", 0)),
+        y=int(body.get("y", 0)),
+    )
+
+    elem_id = body.get("element_id")
+    if elem_id is not None:
+        state = vc.get_screen_state()
+        if state:
+            target = next((e for e in state.elements if e.id == elem_id), None)
+            if target:
+                action.target = target
+
+    loop = asyncio.get_running_loop()
+    ok = await loop.run_in_executor(None, vc.execute_action, action)
+    return {"ok": ok, "action": body.get("type", "click")}
