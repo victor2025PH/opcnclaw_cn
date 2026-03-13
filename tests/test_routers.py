@@ -378,6 +378,162 @@ class TestVisionControlRouter:
         r = client.get("/api/vision-control/screen")
         assert r.status_code in (200, 503)
 
+    def test_execute_unknown_action(self):
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/vision-control/execute", json={
+            "type": "unknown_action", "x": 0, "y": 0,
+        })
+        assert r.status_code in (200, 503)
+
+    def test_execute_click_action(self):
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/vision-control/execute", json={
+            "type": "click", "x": 100, "y": 200,
+        })
+        assert r.status_code in (200, 503)
+        if r.status_code == 200:
+            data = r.json()
+            assert "ok" in data
+            assert data["action"] == "click"
+
+
+class TestEmotionToggle:
+    """Integration tests for /api/emotion endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.TestClient = TestClient
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def _make_app(self):
+        from fastapi import FastAPI
+        from src.server.routers.voice import router
+        app = FastAPI()
+        app.include_router(router)
+        return app
+
+    def test_get_emotion_state(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/emotion/state")
+        assert r.status_code == 200
+        data = r.json()
+        assert "current" in data
+        assert "dominant" in data
+        assert "enabled" in data
+        assert data["current"] == "neutral"
+
+    def test_toggle_emotion_off_and_on(self):
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/emotion/toggle", json={"enabled": False})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        assert r.json()["enabled"] is False
+
+        r2 = client.get("/api/emotion/state")
+        assert r2.json()["enabled"] is False
+
+        r3 = client.post("/api/emotion/toggle", json={"enabled": True})
+        assert r3.json()["enabled"] is True
+
+
+class TestModelsBoundary:
+    """Boundary tests for model endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.TestClient = TestClient
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def _make_app(self):
+        from fastapi import FastAPI
+        from src.server.routers.models import router
+        app = FastAPI()
+        app.include_router(router)
+        return app
+
+    def test_check_nonexistent_model(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/models/nonexistent_model_xyz/check")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["model_id"] == "nonexistent_model_xyz"
+        assert data["installed"] is False
+
+    def test_uninstall_nonexistent_model(self):
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/models/nonexistent_model_xyz/uninstall")
+        assert r.status_code == 200
+        assert r.json()["ok"] is False
+
+    def test_models_list_structure(self):
+        client = self.TestClient(self._make_app())
+        r = client.get("/api/models")
+        data = r.json()
+        categories = set(m["category"] for m in data["models"])
+        assert "stt" in categories
+        assert "runtime" in categories
+        for m in data["models"]:
+            assert isinstance(m["size_mb"], int)
+            assert m["size_mb"] > 0
+
+
+class TestMCPBoundary:
+    """Boundary tests for MCP endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.TestClient = TestClient
+        except ImportError:
+            pytest.skip("fastapi not installed")
+
+    def _make_app(self):
+        from fastapi import FastAPI
+        from src.server.routers.mcp import router
+        app = FastAPI()
+        app.include_router(router)
+        return app
+
+    def test_connect_nonexistent_server(self):
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/mcp/connect/nonexistent_server_xyz")
+        assert r.status_code == 200
+        assert r.json()["ok"] is False
+
+    def test_delete_nonexistent_skill(self, tmp_path, monkeypatch):
+        import src.mcp.skill_generator as sg
+        monkeypatch.setattr(sg, "USER_SKILLS_DIR", tmp_path / "user_skills")
+        monkeypatch.setattr(sg, "SKILLS_ROOT", tmp_path)
+
+        client = self.TestClient(self._make_app())
+        r = client.delete("/api/mcp/skills/nonexistent_id")
+        assert r.status_code == 200
+        assert r.json()["ok"] is False
+
+    def test_add_and_remove_server(self):
+        client = self.TestClient(self._make_app())
+        r = client.post("/api/mcp/servers/add", json={
+            "id": "test-srv", "name": "Test Server",
+            "transport": "http", "url": "http://localhost:9999",
+        })
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+
+        r2 = client.get("/api/mcp/servers")
+        srvs = [s for s in r2.json()["servers"] if s["id"] == "test-srv"]
+        assert len(srvs) == 1
+        assert srvs[0]["name"] == "Test Server"
+
+        r3 = client.delete("/api/mcp/servers/test-srv")
+        assert r3.json()["ok"] is True
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
