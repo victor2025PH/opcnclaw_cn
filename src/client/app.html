@@ -841,6 +841,69 @@ body{
   font-size:11px;cursor:pointer;flex-shrink:0;
 }
 
+/* ─── Message bookmarks ─── */
+.msg{position:relative}
+.msg .msg-bookmark-btn{
+  position:absolute;top:4px;right:4px;
+  background:none;border:none;font-size:14px;cursor:pointer;
+  opacity:0;transition:opacity .15s;padding:2px 4px;z-index:2;
+}
+.msg:hover .msg-bookmark-btn{opacity:.6}
+.msg .msg-bookmark-btn:hover{opacity:1}
+.msg .msg-bookmark-btn.starred{opacity:1;color:#fbbf24}
+.msg.bookmarked{border-left:3px solid #fbbf24}
+#bookmark-panel{
+  position:fixed;top:0;right:0;bottom:0;width:min(360px,88vw);z-index:255;
+  background:var(--bg-secondary);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .25s;
+}
+#bookmark-panel.open{transform:translateX(0)}
+.bm-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.bm-header h3{flex:1;font-size:15px;font-weight:700;margin:0}
+.bm-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.bm-item{
+  padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;
+  transition:background .15s;font-size:12px;
+}
+.bm-item:hover{background:var(--bg-surface-hover)}
+.bm-item .bm-text{color:var(--text-primary);line-height:1.4;max-height:60px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.bm-item .bm-meta{display:flex;justify-content:space-between;margin-top:4px}
+.bm-item .bm-time{font-size:10px;color:var(--text-muted)}
+.bm-item .bm-remove{background:none;border:none;color:var(--error);font-size:11px;cursor:pointer;opacity:.6}
+.bm-item .bm-remove:hover{opacity:1}
+.bm-empty{padding:40px 20px;text-align:center;color:var(--text-muted);font-size:13px}
+
+/* ─── Audio visualizer ─── */
+#audio-viz-canvas{
+  display:block;width:100%;height:60px;
+  margin-top:-60px;position:relative;z-index:1;pointer-events:none;
+}
+#audio-viz-canvas.hidden{display:none}
+
+/* ─── TTS preview ─── */
+.tts-preview-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.tts-preview-btn{
+  padding:5px 14px;font-size:11px;border-radius:6px;cursor:pointer;
+  background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);
+  transition:all .15s;
+}
+.tts-preview-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tts-preview-btn.playing{background:var(--error);border-color:var(--error);color:#fff}
+
+/* ─── Plugin system ─── */
+.plugin-item{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;font-size:12px;
+}
+.plugin-item .plugin-icon{font-size:16px;width:24px;text-align:center}
+.plugin-item .plugin-name{flex:1;font-weight:500}
+.plugin-item .plugin-toggle{width:36px;height:20px;border-radius:10px;background:var(--bg-surface);border:1px solid var(--border);cursor:pointer;position:relative;transition:.3s}
+.plugin-item .plugin-toggle.active{background:var(--accent);border-color:var(--accent)}
+.plugin-item .plugin-toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.3s}
+.plugin-item .plugin-toggle.active::after{left:18px}
+.plugin-empty{padding:16px;text-align:center;font-size:12px;color:var(--text-muted)}
+
 /* ─── Wake word config ─── */
 .wakeword-config{margin-top:8px;padding:8px 0}
 .wakeword-input{
@@ -1537,6 +1600,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </button>
+      <button class="icon-btn" id="bookmark-toggle" title="收藏">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
       <button class="icon-btn notif-bell" id="notif-toggle" title="通知">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span class="notif-badge hidden" id="notif-badge">0</span>
@@ -1630,6 +1696,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <div class="voice-level" id="voice-level"></div>
       <div class="voice-icon">🎙️</div>
     </div>
+    <canvas id="audio-viz-canvas" class="hidden" width="320" height="60"></canvas>
     <p id="voice-status" data-i18n="voice.listening">正在聆听...</p>
     <p id="voice-transcript"></p>
     <p id="voice-continuous-label" data-i18n="voice.continuous" style="color:var(--accent);font-size:12px;margin-top:4px;opacity:0">连续模式</p>
@@ -1783,6 +1850,24 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         </label>
       </div>
       <p style="font-size:11px;color:var(--text-muted);margin-top:4px" data-i18n="settings.emotionHint">开启后 AI 会根据语音情绪自动调整回复语气和 TTS 风格</p>
+      <div class="tts-preview-row">
+        <button class="tts-preview-btn" id="tts-preview-btn" data-i18n="settings.ttsPreview">🔊 试听 TTS</button>
+        <span id="tts-preview-status" style="font-size:11px;color:var(--text-muted)"></span>
+      </div>
+      <div class="settings-row" style="margin-top:8px">
+        <span class="settings-label" data-i18n="settings.vizMode">音频可视化</span>
+        <select id="viz-mode-select" style="padding:4px 10px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;color:var(--text-primary);font-size:12px;font-family:inherit">
+          <option value="waveform" data-i18n="settings.vizWave">波形</option>
+          <option value="bars" data-i18n="settings.vizBars">频谱条</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3 data-i18n="settings.plugins">插件</h3>
+      <div id="plugin-list">
+        <div class="plugin-empty" data-i18n="settings.noPlugins">暂无已注册插件</div>
+      </div>
+      <p style="font-size:10px;color:var(--text-muted);margin-top:6px" data-i18n="settings.pluginHint">通过 window.ocPlugins.register() 注册插件</p>
     </div>
     <div class="settings-group">
       <h3 data-i18n="settings.display">显示</h3>
@@ -2422,6 +2507,17 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   </div>
 </div>
 
+<!-- ═══════════════ BOOKMARK PANEL ═══════════════ -->
+<div id="bookmark-panel" role="dialog" aria-label="Bookmarks">
+  <div class="bm-header">
+    <h3 data-i18n="bm.title">⭐ 收藏</h3>
+    <button class="icon-btn" id="bookmark-close" aria-label="Close bookmarks" style="font-size:14px">✕</button>
+  </div>
+  <div class="bm-list" id="bm-list">
+    <div class="bm-empty" data-i18n="bm.empty">暂无收藏消息</div>
+  </div>
+</div>
+
 <!-- ═══════════════ WS RECONNECT BAR ═══════════════ -->
 <div class="ws-reconnect-bar" id="ws-reconnect-bar"></div>
 
@@ -2631,6 +2727,10 @@ const I18N = {
     'search.placeholder':'搜索消息…','search.count':'{x}/{y}','search.noResults':'无结果',
     'settings.qaEditor':'快捷操作','settings.qaNamePlaceholder':'名称','settings.qaSkillPlaceholder':'技能 ID','settings.qaAdd':'添加',
     'settings.qaPreset':'预设','settings.qaDeleteConfirm':'删除此快捷操作？',
+    'bm.title':'⭐ 收藏','bm.empty':'暂无收藏消息','bm.remove':'取消收藏','bm.added':'已收藏','bm.removed':'已取消收藏',
+    'settings.ttsPreview':'🔊 试听 TTS','settings.ttsPlaying':'⏹ 停止','settings.ttsPreviewing':'播放中…',
+    'settings.vizMode':'音频可视化','settings.vizWave':'波形','settings.vizBars':'频谱条',
+    'settings.plugins':'插件','settings.noPlugins':'暂无已注册插件','settings.pluginHint':'通过 window.ocPlugins.register() 注册插件',
     'settings.advTheme':'高级主题','settings.accentColor':'强调色','settings.fontSize':'字体大小','settings.resetTheme':'重置为默认',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
@@ -2780,6 +2880,10 @@ const I18N = {
     'search.placeholder':'Search messages…','search.count':'{x}/{y}','search.noResults':'No results',
     'settings.qaEditor':'Quick Actions','settings.qaNamePlaceholder':'Name','settings.qaSkillPlaceholder':'Skill ID','settings.qaAdd':'Add',
     'settings.qaPreset':'Preset','settings.qaDeleteConfirm':'Delete this quick action?',
+    'bm.title':'⭐ Bookmarks','bm.empty':'No bookmarked messages','bm.remove':'Remove','bm.added':'Bookmarked','bm.removed':'Bookmark removed',
+    'settings.ttsPreview':'🔊 Preview TTS','settings.ttsPlaying':'⏹ Stop','settings.ttsPreviewing':'Playing…',
+    'settings.vizMode':'Audio Visualization','settings.vizWave':'Waveform','settings.vizBars':'Frequency Bars',
+    'settings.plugins':'Plugins','settings.noPlugins':'No registered plugins','settings.pluginHint':'Register via window.ocPlugins.register()',
     'settings.advTheme':'Advanced Theme','settings.accentColor':'Accent Color','settings.fontSize':'Font Size','settings.resetTheme':'Reset to Default',
     'shortcuts.perf':'Performance',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
@@ -3898,6 +4002,11 @@ async function startVoiceRecording() {
 
     const source = audioCtx.createMediaStreamSource(S.mediaStream);
     const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+    // Connect audio visualizer
+    if (typeof ocAudioViz !== 'undefined' && ocAudioViz.start) {
+      try { ocAudioViz.start(audioCtx, source); } catch(e) { console.warn('Audio viz error:', e); }
+    }
 
     let silentChunkCount = 0;
     let totalChunkCount = 0;
@@ -9510,6 +9619,372 @@ const ocMsgSearch = (function() {
   if (sm) observer.observe(sm, { attributes: true, attributeFilter: ['class'] });
   render();
 })();
+
+// ══════════════════════════════════════════════════════════════
+// MESSAGE BOOKMARKS
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  const BKEY = 'oc-bookmarks';
+  let _bookmarks = JSON.parse(localStorage.getItem(BKEY) || '[]');
+  let _msgCounter = 0;
+
+  function save() { localStorage.setItem(BKEY, JSON.stringify(_bookmarks)); }
+
+  function attachBookmarkBtn(msgEl) {
+    const id = 'msg-' + (++_msgCounter);
+    msgEl.dataset.msgId = id;
+    const btn = document.createElement('button');
+    btn.className = 'msg-bookmark-btn';
+    btn.textContent = '☆';
+    btn.title = t('bm.title') || 'Bookmark';
+    const existing = _bookmarks.find(b => b.text === getTextContent(msgEl));
+    if (existing) { btn.classList.add('starred'); btn.textContent = '★'; msgEl.classList.add('bookmarked'); }
+    btn.addEventListener('click', (e) => { e.stopPropagation(); toggleBookmark(msgEl, btn); });
+    msgEl.appendChild(btn);
+  }
+
+  function getTextContent(msgEl) {
+    const textEl = msgEl.querySelector('.msg-text');
+    return textEl ? textEl.textContent.trim().slice(0, 200) : '';
+  }
+
+  function toggleBookmark(msgEl, btn) {
+    const text = getTextContent(msgEl);
+    const idx = _bookmarks.findIndex(b => b.text === text);
+    if (idx >= 0) {
+      _bookmarks.splice(idx, 1);
+      btn.classList.remove('starred'); btn.textContent = '☆';
+      msgEl.classList.remove('bookmarked');
+      if (typeof ocToast !== 'undefined') ocToast.info(t('bm.removed'));
+    } else {
+      const role = msgEl.classList.contains('user') ? 'user' : 'ai';
+      _bookmarks.push({ text, role, time: Date.now(), msgId: msgEl.dataset.msgId });
+      btn.classList.add('starred'); btn.textContent = '★';
+      msgEl.classList.add('bookmarked');
+      if (typeof ocToast !== 'undefined') ocToast.success(t('bm.added'));
+    }
+    save();
+    if ($('bookmark-panel')?.classList.contains('open')) renderPanel();
+  }
+
+  function renderPanel() {
+    const list = $('bm-list');
+    if (_bookmarks.length === 0) {
+      list.innerHTML = `<div class="bm-empty" data-i18n="bm.empty">${t('bm.empty')}</div>`;
+      return;
+    }
+    list.innerHTML = _bookmarks.slice().reverse().map((b, ri) => {
+      const idx = _bookmarks.length - 1 - ri;
+      const d = new Date(b.time);
+      const ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const icon = b.role === 'user' ? '👤' : '🦞';
+      return `<div class="bm-item" data-idx="${idx}">
+        <div class="bm-text">${icon} ${b.text}</div>
+        <div class="bm-meta">
+          <span class="bm-time">${ts}</span>
+          <button class="bm-remove" data-idx="${idx}">${t('bm.remove')}</button>
+        </div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.bm-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('bm-remove')) return;
+        const b = _bookmarks[+el.dataset.idx];
+        if (!b) return;
+        $('bookmark-panel').classList.remove('open');
+        // Find and scroll to the message
+        const msgs = document.querySelectorAll('#messages-area .msg');
+        for (const m of msgs) {
+          if (getTextContent(m) === b.text) { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); m.style.outline = '2px solid var(--accent)'; setTimeout(() => m.style.outline = '', 2000); break; }
+        }
+      });
+    });
+    list.querySelectorAll('.bm-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = +btn.dataset.idx;
+        const removed = _bookmarks[idx];
+        _bookmarks.splice(idx, 1); save(); renderPanel();
+        // Remove visual mark from message
+        if (removed) {
+          const msgs = document.querySelectorAll('#messages-area .msg');
+          for (const m of msgs) {
+            if (getTextContent(m) === removed.text) {
+              m.classList.remove('bookmarked');
+              const b = m.querySelector('.msg-bookmark-btn');
+              if (b) { b.classList.remove('starred'); b.textContent = '☆'; }
+              break;
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // Observe new messages to attach bookmark buttons
+  const area = $('messages-area');
+  if (area) {
+    const observer = new MutationObserver((muts) => {
+      for (const m of muts) {
+        m.addedNodes.forEach(n => {
+          if (n.nodeType === 1 && n.classList.contains('msg')) attachBookmarkBtn(n);
+        });
+      }
+    });
+    observer.observe(area, { childList: true });
+    // Attach to existing messages
+    area.querySelectorAll('.msg').forEach(m => attachBookmarkBtn(m));
+  }
+
+  $('bookmark-toggle')?.addEventListener('click', () => {
+    const p = $('bookmark-panel');
+    p.classList.toggle('open');
+    if (p.classList.contains('open')) renderPanel();
+  });
+  $('bookmark-close')?.addEventListener('click', () => $('bookmark-panel').classList.remove('open'));
+})();
+
+// ══════════════════════════════════════════════════════════════
+// AUDIO VISUALIZER
+// ══════════════════════════════════════════════════════════════
+const ocAudioViz = (function() {
+  const canvas = document.getElementById('audio-viz-canvas');
+  if (!canvas) return {};
+  const ctx = canvas.getContext('2d');
+  const VKEY = 'oc-viz-mode';
+  let _mode = localStorage.getItem(VKEY) || 'waveform';
+  let _analyser = null;
+  let _animId = null;
+  let _running = false;
+
+  const sel = document.getElementById('viz-mode-select');
+  if (sel) { sel.value = _mode; sel.addEventListener('change', () => { _mode = sel.value; localStorage.setItem(VKEY, _mode); }); }
+
+  function start(audioCtx, source) {
+    if (_analyser) stop();
+    _analyser = audioCtx.createAnalyser();
+    _analyser.fftSize = 256;
+    source.connect(_analyser);
+    canvas.classList.remove('hidden');
+    _running = true;
+    draw();
+  }
+
+  function stop() {
+    _running = false;
+    if (_animId) { cancelAnimationFrame(_animId); _animId = null; }
+    canvas.classList.add('hidden');
+    _analyser = null;
+  }
+
+  function draw() {
+    if (!_running || !_analyser) return;
+    _animId = requestAnimationFrame(draw);
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    if (_mode === 'bars') {
+      const bufLen = _analyser.frequencyBinCount;
+      const data = new Uint8Array(bufLen);
+      _analyser.getByteFrequencyData(data);
+      const barW = w / bufLen * 2;
+      const half = Math.floor(bufLen / 2);
+      for (let i = 0; i < half; i++) {
+        const v = data[i] / 255;
+        const barH = v * h * 0.9;
+        const hue = (i / half) * 260 + 180;
+        ctx.fillStyle = `hsla(${hue},80%,60%,.8)`;
+        ctx.fillRect(i * barW, h - barH, barW - 1, barH);
+      }
+    } else {
+      const bufLen = _analyser.fftSize;
+      const data = new Uint8Array(bufLen);
+      _analyser.getByteTimeDomainData(data);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(99,102,241,.8)';
+      ctx.beginPath();
+      const sliceW = w / bufLen;
+      for (let i = 0; i < bufLen; i++) {
+        const v = data[i] / 128.0;
+        const y = (v * h) / 2;
+        i === 0 ? ctx.moveTo(0, y) : ctx.lineTo(i * sliceW, y);
+      }
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+    }
+  }
+
+  return { start, stop };
+})();
+
+// Hook visualizer into recording start/stop
+(function() {
+  const origStart = window.startVoiceRecording;
+  if (!origStart || !ocAudioViz.start) return;
+  // We'll hook the visualizer via the audioCtx that's already created in startVoiceRecording
+  // Use a MutationObserver on voice-overlay to detect recording state
+  const overlay = document.getElementById('voice-overlay');
+  if (!overlay) return;
+  const obs = new MutationObserver(() => {
+    if (!overlay.classList.contains('hidden')) {
+      // Recording started — try to connect if there's an active audio context
+      // The analyser will be connected via the ocAudioViz.start call injected below
+    } else {
+      ocAudioViz.stop();
+    }
+  });
+  obs.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// TTS PREVIEW
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  let _audio = null;
+  let _playing = false;
+
+  const sampleTexts = {
+    zh: '你好，我是你的 AI 语音助手，很高兴为你服务。',
+    en: 'Hello, I am your AI voice assistant. Nice to meet you!',
+    ja: 'こんにちは、私はあなたのAI音声アシスタントです。',
+  };
+
+  $('tts-preview-btn')?.addEventListener('click', async () => {
+    const btn = $('tts-preview-btn');
+    const status = $('tts-preview-status');
+    if (_playing) {
+      if (_audio) { _audio.pause(); _audio.currentTime = 0; }
+      _playing = false;
+      btn.textContent = t('settings.ttsPreview');
+      btn.classList.remove('playing');
+      status.textContent = '';
+      return;
+    }
+    _playing = true;
+    btn.textContent = t('settings.ttsPlaying');
+    btn.classList.add('playing');
+    status.textContent = t('settings.ttsPreviewing');
+    try {
+      const lang = document.documentElement.lang?.startsWith('en') ? 'en' : 'zh';
+      const text = sampleTexts[lang] || sampleTexts.zh;
+      const r = await fetch(getBaseUrl() + '/api/tts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text, format: 'mp3' }),
+      });
+      if (!r.ok) throw new Error('TTS failed: ' + r.status);
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      _audio = new Audio(url);
+      _audio.onended = () => {
+        _playing = false;
+        btn.textContent = t('settings.ttsPreview');
+        btn.classList.remove('playing');
+        status.textContent = '';
+        URL.revokeObjectURL(url);
+      };
+      _audio.onerror = () => {
+        _playing = false;
+        btn.textContent = t('settings.ttsPreview');
+        btn.classList.remove('playing');
+        status.textContent = '';
+      };
+      await _audio.play();
+    } catch(e) {
+      _playing = false;
+      btn.textContent = t('settings.ttsPreview');
+      btn.classList.remove('playing');
+      status.textContent = '';
+      if (typeof ocToast !== 'undefined') ocToast.error('TTS preview failed: ' + e.message);
+    }
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// PLUGIN SYSTEM
+// ══════════════════════════════════════════════════════════════
+const ocPlugins = (function() {
+  const PKEY = 'oc-plugins-state';
+  const _registry = [];
+  let _states = JSON.parse(localStorage.getItem(PKEY) || '{}');
+
+  function saveStates() { localStorage.setItem(PKEY, JSON.stringify(_states)); }
+
+  function getAPI() {
+    return {
+      toast: typeof ocToast !== 'undefined' ? ocToast : { show(){}, success(){}, error(){}, warning(){}, info(){} },
+      addQuickAction: window.addQuickAction || function(){},
+      t: typeof t === 'function' ? t : (k) => k,
+      getBaseUrl: typeof getBaseUrl === 'function' ? getBaseUrl : () => '',
+    };
+  }
+
+  function register(plugin) {
+    if (!plugin || !plugin.id || !plugin.name) { console.warn('Plugin registration requires id and name'); return; }
+    if (_registry.find(p => p.id === plugin.id)) { console.warn('Plugin already registered:', plugin.id); return; }
+    _registry.push(plugin);
+    if (_states[plugin.id] === undefined) _states[plugin.id] = false;
+    if (_states[plugin.id] && typeof plugin.init === 'function') {
+      try { plugin.init(getAPI()); } catch(e) { console.error('Plugin init error:', plugin.id, e); }
+    }
+    renderPluginList();
+  }
+
+  function setEnabled(id, enabled) {
+    _states[id] = enabled;
+    saveStates();
+    const plugin = _registry.find(p => p.id === id);
+    if (!plugin) return;
+    if (enabled && typeof plugin.init === 'function') {
+      try { plugin.init(getAPI()); } catch(e) { console.error('Plugin init error:', id, e); }
+    } else if (!enabled && typeof plugin.destroy === 'function') {
+      try { plugin.destroy(); } catch(e) { console.error('Plugin destroy error:', id, e); }
+    }
+  }
+
+  function renderPluginList() {
+    const list = document.getElementById('plugin-list');
+    if (!list) return;
+    if (_registry.length === 0) {
+      list.innerHTML = `<div class="plugin-empty" data-i18n="settings.noPlugins">${t('settings.noPlugins')}</div>`;
+      return;
+    }
+    list.innerHTML = _registry.map(p => {
+      const on = _states[p.id];
+      return `<div class="plugin-item">
+        <span class="plugin-icon">${p.icon || '🔌'}</span>
+        <span class="plugin-name">${p.name}</span>
+        <div class="plugin-toggle${on ? ' active' : ''}" data-id="${p.id}"></div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.plugin-toggle').forEach(tog => {
+      tog.addEventListener('click', () => {
+        const id = tog.dataset.id;
+        const newState = !_states[id];
+        setEnabled(id, newState);
+        tog.classList.toggle('active', newState);
+      });
+    });
+  }
+
+  // Init enabled plugins on load
+  setTimeout(() => {
+    _registry.forEach(p => {
+      if (_states[p.id] && typeof p.init === 'function') {
+        try { p.init(getAPI()); } catch(e) { console.error('Plugin init error:', p.id, e); }
+      }
+    });
+  }, 500);
+
+  return { register, getAPI, list: () => [..._registry], setEnabled };
+})();
+window.ocPlugins = ocPlugins;
 </script>
 </body>
 </html>
