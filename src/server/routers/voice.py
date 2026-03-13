@@ -15,9 +15,12 @@ from starlette.responses import StreamingResponse
 from ..text_utils import clean_for_speech
 from .. import memory as mem_store
 from ..auth import token_manager, APIKey
-from ..stt import WhisperSTT
+from ..stt import WhisperSTT, STTResult
+from ..emotion import EmotionEngine
 
 router = APIRouter()
+
+_emotion = EmotionEngine()
 
 
 def _get_globals():
@@ -85,8 +88,15 @@ async def voice_http(request: Request):
 
     async def voice_stream():
         # 1. STT
-        transcript = await stt.transcribe(audio_np)
+        stt_result = await stt.transcribe(audio_np)
+        transcript = stt_result.text if isinstance(stt_result, STTResult) else str(stt_result)
+        _emotion.process_stt_result(
+            getattr(stt_result, "emotion", "neutral"),
+            getattr(stt_result, "events", None),
+        )
         yield f"data: {json.dumps({'type': 'transcript', 'text': transcript})}\n\n"
+        if stt_result.emotion != "neutral" if isinstance(stt_result, STTResult) else False:
+            yield f"data: {json.dumps({'type': 'emotion', 'emotion': stt_result.emotion})}\n\n"
         if image_b64:
             yield f"data: {json.dumps({'type': 'vision_used', 'value': True})}\n\n"
 
@@ -95,12 +105,18 @@ async def voice_http(request: Request):
             yield "data: [DONE]\n\n"
             return
 
-        # 2. AI response (streaming)
+        # 2. AI response (streaming) with emotion-aware prompt
         full_response = ""
         sentence_buffer = ""
+        emo_tts = _emotion.get_tts_emotion()
+        if tts and emo_tts != "neutral":
+            tts.set_emotion(emo_tts)
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
                 sys_prompt = "你是 OpenClaw AI 助手，用中文简洁回答。"
+                emotion_addon = _emotion.get_system_prompt_addon()
+                if emotion_addon:
+                    sys_prompt += f"\n\n【情感提示】{emotion_addon}"
                 if image_b64:
                     sys_prompt += "\n\n用户发送了摄像头画面，请结合图像内容来回答，说明你看到了什么。"
                 user_content = transcript if not image_b64 else [
@@ -384,6 +400,27 @@ async def get_skill_stats():
         return {"top": [], "recent": [], "summary": {}, "error": str(e)}
 
 
+# ===== GET /api/emotion/state =====
+
+@router.get("/api/emotion/state")
+async def get_emotion_state():
+    """Return current detected emotion state."""
+    return {
+        "current": _emotion.state.current,
+        "dominant": _emotion.state.dominant,
+        "history": _emotion.state.history[-5:],
+        "enabled": _emotion.enabled,
+    }
+
+
+@router.post("/api/emotion/toggle")
+async def toggle_emotion(request: Request):
+    """Enable/disable emotion-aware mode."""
+    body = await request.json()
+    _emotion.enabled = bool(body.get("enabled", True))
+    return {"ok": True, "enabled": _emotion.enabled}
+
+
 # ===== WEBSOCKET /ws and /voice/ws =====
 
 @router.websocket("/ws")
@@ -452,17 +489,30 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Stream transcription — send partial results as segments arrive
                     logger.debug("Transcribing audio (streaming)...")
                     transcript_parts = []
+                    last_emotion = "neutral"
+                    last_events = []
                     async for partial in stt.transcribe_stream(audio_data):
-                        transcript_parts.append(partial)
-                        # Send each segment to the client in real-time
+                        text = partial.text if isinstance(partial, STTResult) else str(partial)
+                        if isinstance(partial, STTResult):
+                            last_emotion = partial.emotion
+                            last_events = partial.events
+                        transcript_parts.append(text)
                         await websocket.send_json({
                             "type": "transcript",
-                            "text": partial,
+                            "text": text,
                             "partial": True,
                             "accumulated": " ".join(transcript_parts),
                         })
 
                     transcript = " ".join(transcript_parts).strip()
+
+                    _emotion.process_stt_result(last_emotion, last_events)
+                    if last_emotion != "neutral":
+                        await websocket.send_json({
+                            "type": "emotion",
+                            "emotion": last_emotion,
+                            "dominant": _emotion.state.dominant,
+                        })
 
                     # Send final complete transcript
                     await websocket.send_json({
@@ -482,17 +532,27 @@ async def websocket_endpoint(websocket: WebSocket):
                     if transcript.strip():
                         # Stream AI response with progressive TTS
                         has_image = bool(pending_image)
-                        logger.debug(f"Streaming AI response (vision={has_image})...")
+                        logger.debug(f"Streaming AI response (vision={has_image}, emotion={_emotion.state.dominant})...")
 
                         full_response = ""
                         sentence_buffer = ""
                         audio_chunks = []
 
-                        # Send vision indicator to client
+                        emo_tts = _emotion.get_tts_emotion()
+                        if tts and emo_tts != "neutral":
+                            tts.set_emotion(emo_tts)
+
+                        event_resp = _emotion.get_event_response()
+                        if event_resp:
+                            await websocket.send_json({
+                                "type": "response_chunk",
+                                "text": event_resp + "\n",
+                            })
+                            full_response += event_resp + "\n"
+
                         if has_image:
                             await websocket.send_json({"type": "vision_used", "value": True})
 
-                        # Stream response and synthesize sentences as they complete
                         async for chunk in backend.chat_stream(transcript, image_b64=pending_image):
                             full_response += chunk
                             sentence_buffer += chunk
@@ -598,7 +658,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 max_amp = float(np.abs(audio_np).max()) if len(audio_np) > 0 else 0.0
                 if max_amp > 0.005:  # skip silent chunks
                     try:
-                        transcript = await stt.transcribe(audio_np)
+                        stt_r = await stt.transcribe(audio_np)
+                        transcript = stt_r.text if isinstance(stt_r, STTResult) else str(stt_r)
                         if transcript.strip():
                             lower = transcript.lower()
                             wake_words = [

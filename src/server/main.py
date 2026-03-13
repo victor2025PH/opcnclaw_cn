@@ -173,12 +173,16 @@ from .routers.desktop import router as desktop_router
 from .routers.wechat import router as wechat_router
 from .routers.workflow import router as workflow_router
 from .routers.admin import router as admin_router
+from .routers.models import router as models_router
+from .routers.mcp import router as mcp_router
 
 app.include_router(voice_router)
 app.include_router(desktop_router)
 app.include_router(wechat_router)
 app.include_router(workflow_router)
 app.include_router(admin_router)
+app.include_router(models_router)
+app.include_router(mcp_router)
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -90,13 +90,23 @@ class HealthChecker:
         )
 
     def check_ssl(self) -> ComponentStatus:
-        cert = self._base / "ssl" / "cert.pem"
-        key = self._base / "ssl" / "key.pem"
-        ok = cert.exists() and key.exists()
+        for cert_dir, cert_name, key_name in [
+            ("certs", "server.crt", "server.key"),
+            ("ssl", "server.crt", "server.key"),
+            ("ssl", "cert.pem", "key.pem"),
+        ]:
+            cert = self._base / cert_dir / cert_name
+            key = self._base / cert_dir / key_name
+            if cert.exists() and key.exists():
+                return ComponentStatus(
+                    name="SSL 证书",
+                    ok=True,
+                    detail=f"就绪 ({cert_dir}/{cert_name})",
+                )
         return ComponentStatus(
             name="SSL 证书",
-            ok=ok,
-            detail="就绪" if ok else "缺失 — HTTPS 不可用，运行 install_full.bat 生成",
+            ok=False,
+            detail="缺失 — HTTPS 不可用，运行 install_full.bat 生成",
         )
 
     def check_config(self) -> ComponentStatus:
