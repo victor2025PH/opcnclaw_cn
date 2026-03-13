@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a14">
+<title>OpenClaw AI - Setup</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a14;--bg2:#12121f;--bg3:#1a1a2e;
+  --accent:#7c6aef;--accent2:#9484f7;
+  --text:#eeeef5;--text2:#9090a8;--text3:#5a5a72;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --success:#4ade80;--error:#f87171;--warning:#fbbf24;
+  --r:12px;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'SF Pro','PingFang SC',sans-serif}
+body{display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px;padding-top:calc(24px + env(safe-area-inset-top,0px))}
+
+.logo{font-size:48px;margin-bottom:4px}
+h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--accent),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px}
+.sub{color:var(--text2);font-size:14px;margin-bottom:28px;text-align:center}
+
+.card{width:100%;max-width:440px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:16px}
+.card h2{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;flex-shrink:0}
+
+.qr-wrap{display:flex;justify-content:center;margin:16px 0}
+.qr-box{background:#fff;border-radius:8px;padding:12px;display:inline-flex}
+.qr-box canvas{display:block}
+
+.desc{color:var(--text2);font-size:13px;line-height:1.7;margin-bottom:12px}
+.desc strong{color:var(--text);font-weight:600}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.6;color:var(--text2)}
+.steps li:last-child{border-bottom:none}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--bg3);color:var(--accent);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{flex:1}
+.step-text code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-family:inherit;color:var(--text);font-size:12px}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:none;border-radius:var(--r);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:.2s;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:active{transform:scale(.98)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2);margin-top:8px}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-success{background:var(--success);color:#000}
+
+.status-bar{width:100%;max-width:440px;padding:12px 16px;border-radius:var(--r);font-size:13px;font-weight:500;text-align:center;margin-bottom:16px;display:none}
+.status-bar.checking{display:block;background:rgba(251,191,36,.1);color:var(--warning);border:1px solid rgba(251,191,36,.2)}
+.status-bar.ok{display:block;background:rgba(74,222,128,.1);color:var(--success);border:1px solid rgba(74,222,128,.2)}
+.status-bar.fail{display:block;background:rgba(248,113,113,.1);color:var(--error);border:1px solid rgba(248,113,113,.2)}
+
+.desktop-qr{display:none}
+.lang-toggle{position:fixed;top:12px;right:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:4px 10px;color:var(--text2);font-size:12px;cursor:pointer;z-index:10}
+.lang-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+.note{color:var(--text3);font-size:12px;text-align:center;margin-top:12px;line-height:1.6}
+
+@media(min-width:768px){
+  body{padding:48px 24px 64px}
+  .card{padding:28px}
+  .desktop-qr{display:block}
+}
+</style>
+</head>
+<body>
+
+<button class="lang-toggle" id="lang-btn" onclick="toggleLang()">EN</button>
+
+<div class="logo">🦞</div>
+<h1>OpenClaw AI</h1>
+<p class="sub" id="t-sub">iPhone / iPad 设置向导</p>
+
+<div id="status" class="status-bar"></div>
+
+<!-- ── Desktop: Show QR ── -->
+<div class="card desktop-qr" id="qr-card">
+  <h2><span class="badge">0</span> <span id="t-qr-title">用 iPhone 扫描二维码</span></h2>
+  <p class="desc" id="t-qr-desc">打开 iPhone 摄像头，扫描下方二维码开始设置。</p>
+  <div class="qr-wrap"><div class="qr-box" id="qr-target"></div></div>
+  <p class="desc" style="text-align:center;margin-bottom:0" id="qr-url"></p>
+</div>
+
+<!-- ── Step 1: Download Certificate ── -->
+<div class="card">
+  <h2><span class="badge">1</span> <span id="t-s1-title">下载安全证书</span></h2>
+  <p class="desc" id="t-s1-desc">iPhone 需要信任此证书才能安全地使用语音、摄像头和手势功能。</p>
+  <a class="btn btn-primary" href="/ca.mobileconfig" id="download-btn">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span id="t-s1-btn">下载证书配置文件</span>
+  </a>
+  <a class="btn btn-outline" href="/ca.crt" id="t-s1-alt">下载 .crt 文件 (备选)</a>
+</div>
+
+<!-- ── Step 2: Install ── -->
+<div class="card">
+  <h2><span class="badge">2</span> <span id="t-s2-title">安装证书</span></h2>
+  <p class="desc" id="t-s2-desc">下载后，在 iPhone 上按以下步骤操作：</p>
+  <ul class="steps">
+    <li>
+      <span class="step-num">a</span>
+      <span class="step-text" id="t-s2a">会出现通知：<strong>"已下载描述文件"</strong>。点击它，或打开 <code>设置</code> App。</span>
+    </li>
+    <li>
+      <span class="step-num">b</span>
+      <span class="step-text" id="t-s2b">前往 <code>设置</code> → <code>通用</code> → <code>VPN与设备管理</code>（或 <code>描述文件与设备管理</code>）</span>
+    </li>
+    <li>
+      <span class="step-num">c</span>
+      <span class="step-text" id="t-s2c">点击 <strong>"OpenClaw AI - Secure Connection"</strong> → 点击 <strong>安装</strong> → 输入密码 → 再次点击 <strong>安装</strong>。</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ── Step 3: Trust CA ── -->
+<div class="card">
+  <h2><span class="badge">3</span> <span id="t-s3-title">启用完全信任</span></h2>
+  <p class="desc" id="t-s3-desc">此步骤让 iPhone 完全信任该证书以建立 HTTPS 连接：</p>
+  <ul class="steps">
+    <li>
+      <span class="step-num">a</span>
+      <span class="step-text" id="t-s3a">前往 <code>设置</code> → <code>通用</code> → <code>关于本机</code> → 下滑到 <code>证书信任设置</code></span>
+    </li>
+    <li>
+      <span class="step-num">b</span>
+      <span class="step-text" id="t-s3b">找到 <strong>"OpenClaw Local CA"</strong> 并打开开关</span>
+    </li>
+    <li>
+      <span class="step-num">c</span>
+      <span class="step-text" id="t-s3c">在弹出的警告对话框中点击 <strong>继续</strong>。</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ── Step 4: Open App ── -->
+<div class="card">
+  <h2><span class="badge">4</span> <span id="t-s4-title">启动应用</span></h2>
+  <p class="desc" id="t-s4-desc">设置完成！点击下方按钮，开始使用语音、摄像头和手势功能。</p>
+  <button class="btn btn-success" id="open-app-btn" onclick="checkAndOpen()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <span id="t-s4-btn">打开 OpenClaw AI</span>
+  </button>
+  <button class="btn btn-outline" id="test-btn" onclick="testCert()"><span id="t-s4-test">测试证书连接</span></button>
+</div>
+
+<p class="note" id="t-note">证书仅在本地网络有效。<br>此设置只需进行一次。</p>
+
+<script type="module">
+const L = {
+  zh: {
+    sub:'iPhone / iPad 设置向导', qrTitle:'用 iPhone 扫描二维码',
+    qrDesc:'打开 iPhone 摄像头，扫描下方二维码开始设置。',
+    s1Title:'下载安全证书', s1Desc:'iPhone 需要信任此证书才能安全地使用语音、摄像头和手势功能。',
+    s1Btn:'下载证书配置文件', s1Alt:'下载 .crt 文件 (备选)',
+    s2Title:'安装证书', s2Desc:'下载后，在 iPhone 上按以下步骤操作：',
+    s2a:'会出现通知：<strong>"已下载描述文件"</strong>。点击它，或打开 <code>设置</code> App。',
+    s2b:'前往 <code>设置</code> → <code>通用</code> → <code>VPN与设备管理</code>（或 <code>描述文件与设备管理</code>）',
+    s2c:'点击 <strong>"OpenClaw AI - Secure Connection"</strong> → 点击 <strong>安装</strong> → 输入密码 → 再次点击 <strong>安装</strong>。',
+    s3Title:'启用完全信任', s3Desc:'此步骤让 iPhone 完全信任该证书以建立 HTTPS 连接：',
+    s3a:'前往 <code>设置</code> → <code>通用</code> → <code>关于本机</code> → 下滑到 <code>证书信任设置</code>',
+    s3b:'找到 <strong>"OpenClaw Local CA"</strong> 并打开开关',
+    s3c:'在弹出的警告对话框中点击 <strong>继续</strong>。',
+    s4Title:'启动应用', s4Desc:'设置完成！点击下方按钮，开始使用语音、摄像头和手势功能。',
+    s4Btn:'打开 OpenClaw AI', s4Test:'测试证书连接',
+    note:'证书仅在本地网络有效。<br>此设置只需进行一次。',
+    testing:'正在测试 HTTPS 连接...', testOk:'证书已信任！现在可以打开应用了。',
+    testFail:'证书尚未信任。请先完成上方步骤 1-3，然后重试。',
+    langBtn:'EN',
+  },
+  en: {
+    sub:'iPhone / iPad Setup Guide', qrTitle:'Scan QR Code from iPhone',
+    qrDesc:'Open your iPhone camera and scan the QR code below to begin setup.',
+    s1Title:'Download Security Certificate', s1Desc:'Your iPhone needs a trusted certificate to access voice, camera, and gesture features securely over your local network.',
+    s1Btn:'Download Certificate Profile', s1Alt:'Download .crt file (alternative)',
+    s2Title:'Install Certificate', s2Desc:'After downloading, follow these steps on your iPhone:',
+    s2a:'A notification will appear: <strong>"Profile Downloaded"</strong>. Tap it, or go to <code>Settings</code> app.',
+    s2b:'Go to <code>Settings</code> → <code>General</code> → <code>VPN & Device Management</code> (or <code>Profile & Device Management</code>)',
+    s2c:'Tap <strong>"OpenClaw AI - Secure Connection"</strong> → tap <strong>Install</strong> → enter your passcode → tap <strong>Install</strong> again.',
+    s3Title:'Enable Full Trust', s3Desc:'This step allows your iPhone to fully trust the certificate for HTTPS connections:',
+    s3a:'Go to <code>Settings</code> → <code>General</code> → <code>About</code> → scroll down to <code>Certificate Trust Settings</code>',
+    s3b:'Find <strong>"OpenClaw Local CA"</strong> and toggle the switch <strong>ON</strong>',
+    s3c:'Tap <strong>Continue</strong> in the warning dialog.',
+    s4Title:'Launch App', s4Desc:'All set! Tap the button below to open OpenClaw AI with full voice, camera, and gesture support.',
+    s4Btn:'Open OpenClaw AI', s4Test:'Test Certificate Connection',
+    note:'Certificate is only valid on your local network.<br>You only need to do this setup once.',
+    testing:'Testing HTTPS connection...', testOk:'Certificate is trusted! You can open the app now.',
+    testFail:'Certificate not yet trusted. Please complete steps 1-3 above, then try again.',
+    langBtn:'中文',
+  }
+};
+
+let lang = localStorage.getItem('oc_lang') || 'zh';
+const ids = ['t-sub','t-qr-title','t-qr-desc','t-s1-title','t-s1-desc','t-s1-btn','t-s1-alt',
+  't-s2-title','t-s2-desc','t-s2a','t-s2b','t-s2c','t-s3-title','t-s3-desc','t-s3a','t-s3b','t-s3c',
+  't-s4-title','t-s4-desc','t-s4-btn','t-s4-test','t-note'];
+const keys = ['sub','qrTitle','qrDesc','s1Title','s1Desc','s1Btn','s1Alt',
+  's2Title','s2Desc','s2a','s2b','s2c','s3Title','s3Desc','s3a','s3b','s3c',
+  's4Title','s4Desc','s4Btn','s4Test','note'];
+
+function apply() {
+  for (let i = 0; i < ids.length; i++) {
+    const el = document.getElementById(ids[i]);
+    if (el) el.innerHTML = L[lang][keys[i]];
+  }
+  document.getElementById('lang-btn').textContent = L[lang].langBtn;
+}
+
+window.toggleLang = function() {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('oc_lang', lang);
+  apply();
+};
+
+apply();
+
+const statusEl = document.getElementById('status');
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isMobile = /Mobi|Android/i.test(navigator.userAgent) || isIOS;
+
+if (!isMobile) {
+  document.getElementById('qr-card').style.display = 'block';
+  loadQR();
+}
+
+async function loadQR() {
+  try {
+    const QRCode = (await import('https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm')).default;
+    const url = window.location.origin + '/setup';
+    document.getElementById('qr-url').textContent = url;
+    const canvas = await QRCode.toCanvas(url, { width: 200, margin: 2, color: { dark: '#000', light: '#fff' } });
+    document.getElementById('qr-target').appendChild(canvas);
+  } catch(e) {
+    document.getElementById('qr-target').innerHTML = '<span style="color:#666;font-size:13px">QR unavailable</span>';
+  }
+}
+
+window.testCert = async function() {
+  statusEl.className = 'status-bar checking';
+  statusEl.textContent = L[lang].testing;
+  try {
+    const r = await fetch('/api/server-info', { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      statusEl.className = 'status-bar ok';
+      statusEl.textContent = L[lang].testOk;
+    } else {
+      throw new Error('Not OK');
+    }
+  } catch {
+    statusEl.className = 'status-bar fail';
+    statusEl.textContent = L[lang].testFail;
+  }
+};
+
+window.checkAndOpen = function() {
+  window.location.href = '/app';
+};
+
+if (isIOS) {
+  setTimeout(() => window.testCert(), 500);
+}
+</script>
+</body>
+</html>

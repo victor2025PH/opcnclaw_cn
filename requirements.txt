@@ -41,3 +41,21 @@ pytest-asyncio>=0.23.0
 black>=23.12.0
 ruff>=0.1.0
 elevenlabs>=1.0.0
+
+# Desktop AI Agent (OCR + automation)
+rapidocr-onnxruntime>=1.2.0
+pyperclip>=1.8.0
+
+# QR code generation
+qrcode[pil]>=7.4.2
+
+# AI Router + GUI + Skills (v2.0)
+pystray>=0.19.5        # 系统托盘图标
+customtkinter>=5.2.0   # 现代设置界面
+pillow>=10.0.0         # 图像处理（托盘图标动态生成）
+jieba>=0.42.1          # 中文分词（技能意图匹配）
+uiautomation>=2.0.18  # 微信自动回复 UIAutomation（仅Windows）
+wxauto>=3.9.0          # 微信自动化（后台监听+发送，仅Windows）
+pycryptodome>=3.20.0   # 微信数据库 AES 解密（DB直读轨道）
+watchdog>=4.0.0        # 文件变化监听（WAL实时监控）
+psutil>=5.9.0          # 系统资源监控（性能仪表盘）

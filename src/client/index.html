@@ -399,8 +399,7 @@
                     setStatus('Speaking...', true);
                     break;
                 case 'audio_chunk':
-                    // Queue audio chunk for playback
-                    queueAudioChunk(msg.data, msg.sample_rate);
+                    queueAudioChunk(msg.data, msg.sample_rate, msg.format || 'pcm');
                     break;
                 case 'response_complete':
                     // Finalize the response
@@ -428,8 +427,8 @@
             transcriptEl.scrollTop = transcriptEl.scrollHeight;
         }
         
-        function queueAudioChunk(base64Data, sampleRate) {
-            audioQueue.push({ data: base64Data, sampleRate });
+        function queueAudioChunk(base64Data, sampleRate, format) {
+            audioQueue.push({ data: base64Data, sampleRate, format });
             if (!isPlayingQueue) {
                 playNextInQueue();
             }
@@ -443,36 +442,38 @@
             }
             
             isPlayingQueue = true;
-            const { data, sampleRate } = audioQueue.shift();
+            const { data, sampleRate, format } = audioQueue.shift();
             
             try {
-                // Decode base64 to PCM
                 const binaryString = atob(data);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
-                
-                // Convert to Int16 then Float32
-                const int16 = new Int16Array(bytes.buffer);
-                const float32 = new Float32Array(int16.length);
-                for (let i = 0; i < int16.length; i++) {
-                    float32[i] = int16[i] / 32768.0;
+
+                if (format === 'mp3') {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioCtx.destination);
+                    source.onended = () => { audioCtx.close(); playNextInQueue(); };
+                    source.start(0);
+                } else {
+                    const int16 = new Int16Array(bytes.buffer);
+                    const float32 = new Float32Array(int16.length);
+                    for (let i = 0; i < int16.length; i++) {
+                        float32[i] = int16[i] / 32768.0;
+                    }
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+                    const buffer = audioCtx.createBuffer(1, float32.length, sampleRate);
+                    buffer.copyToChannel(float32, 0);
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioCtx.destination);
+                    source.onended = () => { audioCtx.close(); playNextInQueue(); };
+                    source.start(0);
                 }
-                
-                // Create audio buffer and play
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
-                const buffer = audioCtx.createBuffer(1, float32.length, sampleRate);
-                buffer.copyToChannel(float32, 0);
-                
-                const source = audioCtx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioCtx.destination);
-                source.onended = () => {
-                    audioCtx.close();
-                    playNextInQueue();
-                };
-                source.start(0);
             } catch (e) {
                 console.error('Audio playback error:', e);
                 playNextInQueue();

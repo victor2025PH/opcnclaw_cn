@@ -1,0 +1,58 @@
+{
+  "category": "11_tech_help",
+  "name": "💻 科技助手",
+  "description": "电脑技巧、手机使用、网络问题、AI工具",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "windows_tips", "name_zh": "Windows使用技巧", "type": "prompt",
+      "category": "11_tech_help", "subcategory": "电脑",
+      "description": "Windows系统使用技巧和常见问题解决",
+      "trigger_words": ["电脑","Windows","系统","快捷键","文件","桌面","任务栏","蓝屏","卡顿","开机","关机","U盘","格式化","硬盘","内存"],
+      "examples": ["电脑开机很慢怎么办", "Windows常用快捷键", "怎么清理电脑垃圾"],
+      "system_injection": "你是Windows电脑技术专家。解答电脑问题时：①给出具体操作步骤（从哪里点、点什么）②列出快捷键（如果有）③说明预防方法。面向普通用户，语言通俗，手把手教学。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "phone_tips", "name_zh": "手机使用技巧", "type": "prompt",
+      "category": "11_tech_help", "subcategory": "手机",
+      "description": "iOS/Android手机使用技巧和设置",
+      "trigger_words": ["手机","苹果","安卓","微信","抖音","支付宝","APP","省电","流量","存储空间","手机慢","拍照","二维码"],
+      "examples": ["手机存储空间不够了怎么办", "怎么让手机省电", "微信清空缓存方法"],
+      "system_injection": "你是手机技术专家，熟悉iOS和Android系统。给出建议时：①说明适用的系统版本②给出具体操作路径③提供小技巧让操作更简单。语言口语化，适合各年龄段用户。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "network_help", "name_zh": "网络问题排查", "type": "prompt",
+      "category": "11_tech_help", "subcategory": "网络",
+      "description": "WiFi断线、网速慢、上网问题解决",
+      "trigger_words": ["WiFi","网络","断网","上不了网","网速慢","连不上","信号差","宽带","路由器","IP","DNS"],
+      "examples": ["WiFi连上了但上不了网怎么办", "网速很慢怎么解决", "路由器重置方法"],
+      "system_injection": "你是网络工程师。解决网络问题时按步骤排查：①检查物理连接②重启设备③排查软件问题。给出每步具体操作，从简单到复杂，适合普通用户自行解决。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "ai_tools_guide", "name_zh": "AI工具使用指南", "type": "prompt",
+      "category": "11_tech_help", "subcategory": "AI",
+      "description": "ChatGPT、Midjourney等AI工具的使用方法",
+      "trigger_words": ["ChatGPT","AI工具","Midjourney","文心一言","讯飞","画图AI","AI绘画","提示词","prompt","AI写作","AI使用"],
+      "examples": ["ChatGPT怎么用", "AI绘画提示词怎么写", "AI工具推荐"],
+      "system_injection": "你是AI工具使用专家，了解主流AI产品。介绍AI工具时：①说明功能特点②给出新手快速上手方法③提供1-2个实用技巧④说明免费/付费情况。重点推荐中国用户可访问的工具。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "scam_alert", "name_zh": "防诈骗指南", "type": "prompt",
+      "category": "11_tech_help", "subcategory": "安全",
+      "description": "识别常见诈骗手段，保护个人信息和财产",
+      "trigger_words": ["诈骗","骗局","可疑","钓鱼","假网站","短信验证码","转账","刷单","兼职","中奖","贷款诈骗","冒充","公安"],
+      "examples": ["收到陌生短信说中奖了是骗局吗", "接到自称公安的电话怎么办", "刷单兼职可靠吗"],
+      "system_injection": "你是反诈专家，了解各类诈骗手段。分析诈骗风险时：①明确指出这是否为已知诈骗手段②解释诈骗的具体套路③给出保护建议④告知报警方式（96110反诈热线）。用肯定直接的语气，帮助用户避免上当。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

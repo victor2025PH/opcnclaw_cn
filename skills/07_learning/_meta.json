@@ -1,0 +1,68 @@
+{
+  "category": "07_learning",
+  "name": "📚 学习助手",
+  "description": "英语翻译、数学公式、历史知识、学习技巧",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "translate_en", "name_zh": "中英互译", "type": "prompt",
+      "category": "07_learning", "subcategory": "翻译",
+      "description": "中英文互相翻译，提供例句和发音提示",
+      "trigger_words": ["翻译","英语怎么说","中文是什么","英文","英语","translate","怎么翻译","什么意思","怎么读"],
+      "examples": ["\"努力\"用英语怎么说", "翻译：I'll do my best", "computer中文是什么"],
+      "system_injection": "你是专业英语翻译和教师。翻译时：①给出准确翻译②提供发音（重要单词用括号标注音标）③给出1个常用例句④提示1个近义词或相关表达。简洁高效，适合语音播报。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "math_formula", "name_zh": "数学公式解释", "type": "prompt",
+      "category": "07_learning", "subcategory": "数学",
+      "description": "解释数学公式的含义和使用方法",
+      "trigger_words": ["公式","定理","勾股定理","二次方程","面积公式","体积","圆的","三角形","微积分","概率","统计"],
+      "examples": ["勾股定理怎么用", "圆的面积公式", "二次方程求根公式"],
+      "system_injection": "你是数学老师，善于用通俗语言解释数学公式。解释时：①说明公式用途②用简单语言解释各变量含义③给出一个具体数字例子④提示常见错误。语言简单易懂，像对初中生讲解。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "history_fact", "name_zh": "历史知识", "type": "prompt",
+      "category": "07_learning", "subcategory": "历史",
+      "description": "中外历史知识、历史事件解答",
+      "trigger_words": ["历史","朝代","什么时候","哪年","皇帝","战争","古代","近代","历史事件","历史人物"],
+      "examples": ["秦朝什么时候灭亡的", "第一次世界大战是哪年", "诸葛亮是什么朝代的人"],
+      "system_injection": "你是历史教师，对中外历史知识渊博。回答历史问题时：①给出核心答案（年代/人物/事件）②补充1-2个有趣细节③如果有现实意义可以简短点评。控制在3-4句话，适合语音播报。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "science_explain", "name_zh": "科学知识解释", "type": "prompt",
+      "category": "07_learning", "subcategory": "科学",
+      "description": "日常科学现象解释，物理化学生物常识",
+      "trigger_words": ["为什么","原理","科学","物理","化学","生物","怎么回事","什么原理","光速","引力","声音","电"],
+      "examples": ["为什么天空是蓝色的", "彩虹是怎么形成的", "为什么盐能腌制食物"],
+      "system_injection": "你是科普达人，擅长用生活语言解释科学现象。解释时：①给出简洁答案②用生活中的比喻说明原理③如有必要提供1个相关有趣知识。控制在4句话内，语言生动，适合语音播报。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "poem_explain", "name_zh": "古诗词解析", "type": "prompt",
+      "category": "07_learning", "subcategory": "语文",
+      "description": "古诗词背景、注释和白话文翻译",
+      "trigger_words": ["古诗","诗词","唐诗","宋词","李白","杜甫","苏轼","屈原","诗经","解释","翻译古文","什么意思"],
+      "examples": ["静夜思是什么意思", "李白是哪个朝代的诗人", "床前明月光下一句是什么"],
+      "system_injection": "你是语文老师，精通古诗词。分析古诗词时：①说明作者朝代背景②用白话文翻译②解释1-2个关键字词③点评意境或情感。控制在100字内，适合语音播报。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "study_method", "name_zh": "学习方法技巧", "type": "prompt",
+      "category": "07_learning", "subcategory": "方法论",
+      "description": "高效学习方法、记忆技巧、专注力提升",
+      "trigger_words": ["学习方法","记忆","背单词","考试技巧","专注力","效率","怎么学","学不进去","拖延","番茄钟","碎片学习"],
+      "examples": ["怎么提高记忆力", "背单词有什么好方法", "学习不专注怎么办"],
+      "system_injection": "你是教育心理学专家，了解高效学习科学。给出学习建议时：①基于科学研究的方法②具体可操作的步骤③推荐1-2个工具或APP（如番茄钟）。建议实用接地气，适合中国学生。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

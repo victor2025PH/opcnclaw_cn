@@ -1,0 +1,12 @@
+{
+  "category": "17_creative",
+  "name": "🎨 创意写作",
+  "description": "文案、祝福语、取名、对联、藏头诗",
+  "preinstalled": true,
+  "skills": [
+    {"id":"blessing_birthday","name_zh":"生日祝福语","name_en":"blessing_birthday","category":"17_creative","subcategory":"祝福语","description":"生成温暖的生日祝福语","trigger_words":["生日祝福","生日快乐","生日","寿星","生日文案","给TA送祝福"],"examples":["帮我写个生日祝福","给朋友写生日祝福语"],"handler":"creative.birthday_blessing","params":[{"name":"name","type":"string","default":""},{"name":"style","type":"string","default":"温馨"}],"preinstalled":true,"safe":true,"needs_network":false},
+    {"id":"blessing_newyear","name_zh":"新年祝福","name_en":"blessing_newyear","category":"17_creative","subcategory":"祝福语","description":"生成新年/春节祝福短信","trigger_words":["新年祝福","春节祝福","新年快乐","过年","拜年","新春","祝福语","祝福短信"],"examples":["帮我写个春节祝福短信","新年祝福语"],"handler":"creative.newyear_blessing","params":[{"name":"recipient","type":"string","default":"朋友"},{"name":"style","type":"string","default":"正式"}],"preinstalled":true,"safe":true,"needs_network":false},
+    {"id":"naming","name_zh":"取名字","name_en":"naming","category":"17_creative","subcategory":"取名","description":"给宝宝、网名、品牌取好名字","trigger_words":["取名","起名","取个名","帮我命名","网名","昵称","宝宝取名","品牌名","店名"],"examples":["帮我取个网名","给宝宝取名姓王","给我的店铺取名"],"handler":"creative.generate_names","params":[{"name":"purpose","type":"string","default":"网名"},{"name":"surname","type":"string","default":""},{"name":"style","type":"string","default":"现代"}],"preinstalled":true,"safe":true,"needs_network":false},
+    {"id":"moments_copy","name_zh":"朋友圈文案","name_en":"moments_copy","category":"17_creative","subcategory":"文案","description":"生成朋友圈发圈文案","trigger_words":["朋友圈","文案","发圈","晒","配文","怎么发","小红书"],"examples":["帮我写个旅游的朋友圈文案","美食配什么文案","发自拍配什么"],"handler":"creative.moments_copy","params":[{"name":"scene","type":"string","default":"旅游"},{"name":"mood","type":"string","default":"开心"}],"preinstalled":true,"safe":true,"needs_network":false}
+  ]
+}

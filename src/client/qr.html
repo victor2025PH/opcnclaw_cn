@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenClaw AI — 扫码聊天</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a14;--card:#111122;--border:#2a2a4a;
+  --accent:#7c6aef;--accent2:#22d3ee;--text:#e8e8f0;--muted:#666688;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+
+/* Animated background */
+.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.25;animation:drift 12s ease-in-out infinite}
+.orb1{width:400px;height:400px;background:var(--accent);top:-100px;left:-100px;animation-delay:0s}
+.orb2{width:300px;height:300px;background:var(--accent2);bottom:-80px;right:-80px;animation-delay:-5s}
+.orb3{width:200px;height:200px;background:#f59e0b;top:50%;left:50%;animation-delay:-3s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-20px,30px) scale(.95)}}
+
+.container{
+  position:relative;z-index:1;
+  display:flex;gap:64px;align-items:center;justify-content:center;
+  padding:32px;
+}
+
+/* Left side — QR */
+.qr-card{
+  background:rgba(17,17,34,.8);backdrop-filter:blur(24px);
+  border:1px solid var(--border);border-radius:28px;
+  padding:32px;display:flex;flex-direction:column;align-items:center;gap:20px;
+  min-width:300px;
+}
+.qr-title{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.qr-box{
+  position:relative;padding:12px;border-radius:16px;
+  background:#fff;
+}
+.qr-box canvas{display:block;border-radius:8px}
+.qr-box img{display:block;border-radius:8px;width:220px;height:220px}
+.qr-corner{position:absolute;width:20px;height:20px;border-color:var(--accent);border-style:solid}
+.qr-corner.tl{top:4px;left:4px;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
+.qr-corner.tr{top:4px;right:4px;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
+.qr-corner.bl{bottom:4px;left:4px;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
+.qr-corner.br{bottom:4px;right:4px;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
+
+.qr-url{
+  font-size:13px;color:var(--accent2);word-break:break-all;text-align:center;
+  background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);
+  border-radius:8px;padding:8px 14px;max-width:260px;font-family:monospace;
+}
+.scan-hint{font-size:14px;color:var(--text);display:flex;align-items:center;gap:6px}
+.scan-hint .icon{font-size:20px}
+
+/* Right side — info */
+.info-panel{max-width:340px;display:flex;flex-direction:column;gap:24px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{
+  width:56px;height:56px;border-radius:18px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:28px;
+  box-shadow:0 8px 32px rgba(124,106,239,.4);
+}
+.brand-name{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.brand-sub{font-size:14px;color:var(--muted)}
+
+.features{display:flex;flex-direction:column;gap:12px}
+.feature{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-radius:14px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+}
+.feature-icon{font-size:22px;width:32px;text-align:center;flex-shrink:0}
+.feature-text{font-size:14px;line-height:1.5}
+.feature-text strong{color:var(--text);display:block;font-size:13px}
+.feature-text span{color:var(--muted);font-size:12px}
+
+.steps{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.step-num{
+  width:22px;height:22px;border-radius:50%;border:1px solid var(--accent);
+  color:var(--accent);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;
+}
+
+.ips{display:flex;flex-direction:column;gap:6px}
+.ip-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.03);
+  border:1px solid var(--border);font-size:12px;font-family:monospace;
+}
+.ip-label{color:var(--muted)}
+.ip-val{color:var(--accent2)}
+
+/* Refresh timer */
+.refresh{font-size:11px;color:var(--muted);text-align:center;margin-top:4px}
+.refresh-bar{height:2px;background:var(--border);border-radius:1px;margin-top:4px;overflow:hidden}
+.refresh-fill{height:100%;background:var(--accent);border-radius:1px;width:100%;transition:width 1s linear}
+
+@media (max-width:700px){
+  .container{flex-direction:column;gap:32px;padding:20px}
+  .info-panel{max-width:100%;order:-1}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div class="container">
+
+  <!-- QR Code Card -->
+  <div class="qr-card">
+    <div class="qr-title">扫码即刻对话</div>
+    <div class="qr-box" id="qr-wrap">
+      <img id="qrImg" src="" alt="QR Code" style="width:220px;height:220px;border-radius:8px;display:block">
+      <div class="qr-corner tl"></div>
+      <div class="qr-corner tr"></div>
+      <div class="qr-corner bl"></div>
+      <div class="qr-corner br"></div>
+    </div>
+    <div class="qr-url" id="qrUrl">正在获取地址...</div>
+    <div class="scan-hint"><span class="icon">📱</span>无需安装任何 App</div>
+    <div class="refresh">
+      <span id="refreshHint">30 秒后刷新</span>
+      <div class="refresh-bar"><div class="refresh-fill" id="rfill"></div></div>
+    </div>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="info-panel">
+    <div class="brand">
+      <div class="brand-logo">🤖</div>
+      <div>
+        <div class="brand-name">OpenClaw AI</div>
+        <div class="brand-sub">本地 AI 语音助手</div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">💬</div>
+        <div class="feature-text">
+          <strong>文字聊天</strong>
+          <span>打字或语音输入，流式响应</span>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔊</div>
+        <div class="feature-text">
+          <strong>AI 语音回复</strong>
+          <span>自动朗读 AI 的回答</span>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎤</div>
+        <div class="feature-text">
+          <strong>语音输入</strong>
+          <span>Android Chrome 直接说话；iOS 键盘输入</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:1px">使用步骤</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div>手机相机扫描左侧二维码</div>
+        <div class="step"><div class="step-num">2</div>点击链接，在浏览器中打开</div>
+        <div class="step"><div class="step-num">3</div>允许麦克风权限（可选）</div>
+        <div class="step"><div class="step-num">4</div>开始和 AI 对话！</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:1px">本机 IP 地址</div>
+      <div class="ips" id="ips">
+        <div class="ip-item"><span class="ip-label">正在获取...</span></div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted);padding:10px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)">
+      💡 想要<strong style="color:var(--text)">摄像头 + 语音唤醒</strong>等完整功能，
+      请访问 <span style="color:var(--accent2);font-family:monospace" id="fullUrl">https://IP:8765/setup</span> 安装证书
+    </div>
+  </div>
+
+</div>
+
+<script>
+let chatUrl = '';
+
+function pickLanIp(ips) {
+  // Prefer typical local WiFi / LAN ranges over VPN / other
+  const order = [
+    ip => /^192\.168\./.test(ip),   // home / office WiFi
+    ip => /^10\./.test(ip),          // enterprise LAN
+    ip => /^172\.(1[6-9]|2\d|3[01])\./.test(ip), // RFC1918 class B
+  ];
+  for (const test of order) {
+    const found = ips.find(test);
+    if (found) return found;
+  }
+  return ips[0] || '127.0.0.1';
+}
+
+async function loadInfo() {
+  try {
+    const r = await fetch('/api/server-info');
+    const info = await r.json();
+
+    const ips = (info.ips || []).filter(ip => ip !== '127.0.0.1' && !ip.startsWith('::'));
+    const mainIp = pickLanIp(ips);
+    const port = info.http_port || (info.port + 1);
+
+    chatUrl = `http://${mainIp}:${port}/chat`;
+
+    document.getElementById('qrUrl').textContent = chatUrl;
+    document.getElementById('fullUrl').textContent = `https://${mainIp}:${info.port}/setup`;
+
+    // Render IPs — WiFi LAN IP first
+    const sortedIps = [...ips].sort((a, b) => {
+      const score = ip => /^192\.168\./.test(ip) ? 0 : /^10\./.test(ip) ? 1 : 2;
+      return score(a) - score(b);
+    });
+    const ipsEl = document.getElementById('ips');
+    ipsEl.innerHTML = sortedIps.map((ip, i) =>
+      `<div class="ip-item">
+        <span class="ip-label">${i === 0 ? '📱 扫码聊天' : 'HTTP'}</span>
+        <span class="ip-val">http://${ip}:${port}/chat</span>
+      </div>
+      <div class="ip-item">
+        <span class="ip-label">${i === 0 ? '🔐 完整版' : 'HTTPS'}</span>
+        <span class="ip-val">https://${ip}:${info.port}/app</span>
+      </div>`
+    ).join('');
+
+    renderQR(chatUrl);
+  } catch (e) {
+    document.getElementById('qrUrl').textContent = '获取地址失败，请刷新页面';
+    console.error(e);
+  }
+}
+
+function renderQR(url) {
+  // Use server-side QR generation — no CDN dependency
+  const img = document.getElementById('qrImg');
+  const src = `/api/qr?url=${encodeURIComponent(url)}&size=220`;
+  img.src = src;
+  img.onerror = () => {
+    // Ultimate fallback: external service
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+  };
+}
+
+// Auto-refresh countdown
+let countdown = 30;
+function tick() {
+  countdown--;
+  document.getElementById('refreshHint').textContent = `${countdown} 秒后刷新`;
+  document.getElementById('rfill').style.width = (countdown / 30 * 100) + '%';
+  if (countdown <= 0) { countdown = 30; loadInfo(); }
+}
+setInterval(tick, 1000);
+loadInfo();
+</script>
+</body>
+</html>

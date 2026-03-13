@@ -1,0 +1,3161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6c63ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/admin-manifest.json">
+<title>OpenClaw Admin - 工作流管理</title>
+<style>
+/* ── 主题系统：深色(默认) / 浅色 / 紫夜 ── */
+:root, [data-theme="dark"] {
+  --bg: #0f1117;
+  --bg2: #161822;
+  --bg3: #1e2030;
+  --bg4: #252838;
+  --border: #2e3148;
+  --text: #e0e0e8;
+  --text2: #9ca0b8;
+  --accent: #6c63ff;
+  --accent2: #8b83ff;
+  --green: #4caf50;
+  --red: #ef5350;
+  --orange: #ff9800;
+  --blue: #42a5f5;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+[data-theme="light"] {
+  --bg: #f5f6fa;
+  --bg2: #ffffff;
+  --bg3: #eef0f5;
+  --bg4: #e4e6ed;
+  --border: #d0d3e0;
+  --text: #1a1d2e;
+  --text2: #5c6080;
+  --accent: #5a52d5;
+  --accent2: #7b73ff;
+  --green: #43a047;
+  --red: #e53935;
+  --orange: #ef6c00;
+  --blue: #1e88e5;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+[data-theme="midnight"] {
+  --bg: #0a0014;
+  --bg2: #12002a;
+  --bg3: #1a0040;
+  --bg4: #280060;
+  --border: #3a0080;
+  --text: #e8deff;
+  --text2: #b0a0d0;
+  --accent: #a855f7;
+  --accent2: #c084fc;
+  --green: #22c55e;
+  --red: #f43f5e;
+  --orange: #f59e0b;
+  --blue: #60a5fa;
+  --shadow: 0 2px 16px rgba(80,0,160,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+
+/* ── Sidebar ────────────────────────────────────────── */
+.sidebar { width:220px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+.sidebar-logo { padding:20px; display:flex; align-items:center; gap:10px; font-size:18px; font-weight:700; border-bottom:1px solid var(--border); }
+.sidebar-logo span { color:var(--accent); }
+.sidebar-nav { flex:1; padding:12px 0; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; color:var(--text2); cursor:pointer; transition:all .2s; font-size:14px; border-left:3px solid transparent; }
+.nav-item:hover { background:var(--bg3); color:var(--text); }
+.nav-item.active { background:var(--bg3); color:var(--accent2); border-left-color:var(--accent); }
+.nav-item .icon { font-size:18px; width:24px; text-align:center; }
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+.sidebar-footer a { color:var(--text2); text-decoration:none; font-size:13px; display:flex; align-items:center; gap:6px; }
+.sidebar-footer a:hover { color:var(--accent2); }
+
+/* ── Main ───────────────────────────────────────────── */
+.main { flex:1; margin-left:220px; padding:24px 32px; min-height:100vh; }
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.page-header h1 { font-size:24px; font-weight:600; }
+.page-header .actions { display:flex; gap:8px; }
+
+/* ── Cards ──────────────────────────────────────────── */
+.stat-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
+.stat-card .label { font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; }
+.stat-card .value { font-size:28px; font-weight:700; margin-top:4px; }
+.stat-card .sub { font-size:12px; color:var(--text2); margin-top:4px; }
+
+/* ── Buttons ────────────────────────────────────────── */
+.btn { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; transition:all .2s; display:inline-flex; align-items:center; gap:6px; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:var(--accent2); }
+.btn-success { background:var(--green); color:#fff; }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text2); }
+.btn-outline:hover { border-color:var(--accent); color:var(--accent2); }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.btn-green { background:var(--green); color:#fff; }
+.btn-green:hover { opacity:0.85; }
+.btn-icon { width:32px; height:32px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; background:var(--bg3); border:1px solid var(--border); color:var(--text2); cursor:pointer; }
+.btn-icon:hover { border-color:var(--accent); color:var(--accent2); }
+
+/* ── Table ──────────────────────────────────────────── */
+.table-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.table-wrap table { width:100%; border-collapse:collapse; }
+.table-wrap th { background:var(--bg3); padding:12px 16px; text-align:left; font-size:12px; color:var(--text2); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+.table-wrap td { padding:12px 16px; border-top:1px solid var(--border); font-size:13px; vertical-align:middle; }
+.table-wrap tr:hover td { background:var(--bg3); }
+
+/* ── Badges ─────────────────────────────────────────── */
+.badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.badge-success { background:rgba(76,175,80,0.15); color:var(--green); }
+.badge-danger { background:rgba(239,83,80,0.15); color:var(--red); }
+.badge-warning { background:rgba(255,152,0,0.15); color:var(--orange); }
+.badge-info { background:rgba(66,165,245,0.15); color:var(--blue); }
+.badge-default { background:var(--bg4); color:var(--text2); }
+
+/* ── Toggle Switch ──────────────────────────────────── */
+.toggle { position:relative; width:40px; height:22px; display:inline-block; }
+.toggle input { display:none; }
+.toggle .slider { position:absolute; inset:0; background:var(--bg4); border-radius:11px; cursor:pointer; transition:.3s; }
+.toggle .slider::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.3s; }
+.toggle input:checked + .slider { background:var(--accent); }
+.toggle input:checked + .slider::before { transform:translateX(18px); }
+
+/* ── Modal ──────────────────────────────────────────── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--border); border-radius:12px; width:90%; max-width:700px; max-height:85vh; overflow-y:auto; box-shadow:var(--shadow); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+.modal-header h2 { font-size:16px; }
+.modal-body { padding:20px; }
+.modal-footer { padding:16px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+
+/* ── Form ───────────────────────────────────────────── */
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:13px; color:var(--text2); margin-bottom:6px; font-weight:500; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:8px 12px; background:var(--bg); border:1px solid var(--border);
+  border-radius:6px; color:var(--text); font-size:13px; font-family:inherit;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline:none; border-color:var(--accent);
+}
+.form-group textarea { min-height:80px; resize:vertical; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* ── Node Editor ────────────────────────────────────── */
+.node-list { display:flex; flex-direction:column; gap:0; position:relative; }
+.node-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; align-items:center; gap:12px; position:relative; z-index:1; cursor:grab; transition:transform .15s,box-shadow .15s; }
+.node-card:active { cursor:grabbing; }
+.node-card.dragging { opacity:0.5; transform:scale(0.95); }
+.node-card.drag-over { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+.node-card .node-icon { font-size:20px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:var(--bg3); border-radius:6px; flex-shrink:0; }
+.node-card .node-info { flex:1; min-width:0; }
+.node-card .node-info .name { font-size:13px; font-weight:600; }
+.node-card .node-info .type { font-size:11px; color:var(--text2); }
+.node-card .node-actions { display:flex; gap:4px; }
+.node-connector { width:2px; height:20px; background:var(--accent); margin:0 auto; position:relative; z-index:0; }
+.node-connector::after { content:''; position:absolute; bottom:-3px; left:-3px; width:8px; height:8px; background:var(--accent); border-radius:50%; }
+.node-card .node-num { width:22px; height:22px; background:var(--accent); border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.node-palette { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-top:8px; }
+.node-palette-item { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px; text-align:center; cursor:pointer; transition:all .2s; }
+.node-palette-item:hover { border-color:var(--accent); background:var(--bg3); }
+.node-palette-item .icon { font-size:22px; }
+.node-palette-item .label { font-size:11px; color:var(--text2); margin-top:4px; }
+
+/* ── Execution Log ──────────────────────────────────── */
+.exec-timeline { display:flex; flex-direction:column; gap:12px; }
+.exec-item { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:14px 18px; }
+.exec-item .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.exec-item .name { font-weight:600; font-size:14px; }
+.exec-item .meta { font-size:12px; color:var(--text2); display:flex; gap:12px; }
+.exec-item .nodes-bar { display:flex; gap:2px; margin-top:8px; }
+.exec-item .nodes-bar .dot { width:20px; height:6px; border-radius:3px; }
+.dot-success { background:var(--green); }
+.dot-failed { background:var(--red); }
+.dot-pending { background:var(--bg4); }
+
+/* ── Tabs ───────────────────────────────────────────── */
+.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.tab { padding:10px 18px; cursor:pointer; font-size:13px; color:var(--text2); border-bottom:2px solid transparent; transition:all .2s; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--accent2); border-bottom-color:var(--accent); }
+
+/* ── Empty ──────────────────────────────────────────── */
+.empty { text-align:center; padding:48px 20px; color:var(--text2); }
+.empty .icon { font-size:48px; margin-bottom:12px; }
+.empty .text { font-size:14px; }
+
+/* ── Responsive ─────────────────────────────────────── */
+@media(max-width:768px) {
+  .sidebar { width:60px; }
+  .sidebar .nav-item span:not(.icon), .sidebar-logo span, .sidebar-footer { display:none; }
+  .main { margin-left:60px; padding:12px; }
+  .form-row { grid-template-columns:1fr; }
+  .stat-cards { grid-template-columns:repeat(2,1fr); }
+  .page-header { flex-direction:column; gap:8px; }
+  .page-header .actions { width:100%; display:flex; gap:4px; }
+  .page-header .actions .btn { flex:1; font-size:12px; padding:6px 8px; }
+  .modal { max-width:95vw!important; margin:8px; }
+  .table-wrap { overflow-x:auto; }
+  #media-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important; }
+}
+@media(max-width:480px) {
+  .sidebar { width:0; overflow:hidden; }
+  .main { margin-left:0; }
+  .stat-cards { grid-template-columns:1fr 1fr; gap:8px; }
+}
+
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:3px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">⚡ <span>OpenClaw</span></div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span><span>仪表盘</span></div>
+    <div class="nav-item" data-page="workflows"><span class="icon">🔄</span><span>工作流</span></div>
+    <div class="nav-item" data-page="history"><span class="icon">📜</span><span>执行历史</span></div>
+    <div class="nav-item" data-page="moments"><span class="icon">👀</span><span>朋友圈</span></div>
+    <div class="nav-item" data-page="analytics"><span class="icon">📈</span><span>数据分析</span></div>
+    <div class="nav-item" data-page="broadcast"><span class="icon">📣</span><span>群发消息</span></div>
+    <div class="nav-item" data-page="media"><span class="icon">🖼</span><span>素材库</span></div>
+    <div class="nav-item" data-page="contacts"><span class="icon">👥</span><span>联系人画像</span></div>
+    <div class="nav-item" data-page="ollama"><span class="icon">🦙</span><span>本地模型</span></div>
+    <div class="nav-item" data-page="msg-rules"><span class="icon">🔀</span><span>消息路由</span></div>
+    <div class="nav-item" data-page="calendar"><span class="icon">📅</span><span>任务日历</span></div>
+    <div class="nav-item" data-page="accounts"><span class="icon">👤</span><span>多账号管理</span></div>
+    <div class="nav-item" data-page="inbox"><span class="icon">📬</span><span>统一收件箱</span></div>
+    <div class="nav-item" data-page="forward"><span class="icon">🔀</span><span>消息转发</span></div>
+    <div class="nav-item" data-page="moments-coop"><span class="icon">🤝</span><span>朋友圈协作</span></div>
+    <div class="nav-item" data-page="health"><span class="icon">🩺</span><span>账号健康</span></div>
+    <div class="nav-item" data-page="contact-fusion"><span class="icon">🔗</span><span>联系人融合</span></div>
+    <div class="nav-item" data-page="templates"><span class="icon">📦</span><span>模板商店</span></div>
+    <div class="nav-item" data-page="knowledge"><span class="icon">📚</span><span>知识库</span></div>
+    <div class="nav-item" data-page="daily-report"><span class="icon">📊</span><span>智能日报</span></div>
+    <div class="nav-item" data-page="bigscreen"><span class="icon">🖥️</span><span>数据大屏</span></div>
+    <div class="nav-item" data-page="sentiment"><span class="icon">💭</span><span>情感分析</span></div>
+    <div class="nav-item" data-page="group-mgr"><span class="icon">👥</span><span>群聊管理</span></div>
+    <div class="nav-item" data-page="wf-editor"><span class="icon">🎨</span><span>流程编辑</span></div>
+    <div class="nav-item" data-page="plugins"><span class="icon">🧩</span><span>插件市场</span></div>
+    <div class="nav-item" data-page="monitor"><span class="icon">💓</span><span>性能监控</span></div>
+    <div class="nav-item" data-page="nodes"><span class="icon">🧩</span><span>节点类型</span></div>
+    <div class="nav-item" data-page="mem-search"><span class="icon">🔍</span><span>记忆搜索</span></div>
+    <div class="nav-item" data-page="msg-export"><span class="icon">📥</span><span>消息导出</span></div>
+    <div class="nav-item" data-page="sys-health"><span class="icon">🩻</span><span>系统自检</span></div>
+    <div class="nav-item" data-page="audit"><span class="icon">📋</span><span>审计日志</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+      <button onclick="setTheme('dark')" title="深色" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">🌙</button>
+      <button onclick="setTheme('light')" title="浅色" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">☀️</button>
+      <button onclick="setTheme('midnight')" title="紫夜" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">🔮</button>
+      <span style="flex:1"></span>
+      <button onclick="switchLang('zh')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">中</button>
+      <button onclick="switchLang('en')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px">EN</button>
+    </div>
+    <a href="/app">← 返回主界面</a>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+
+  <!-- Dashboard Page -->
+  <div id="page-dashboard" class="page">
+    <div class="page-header">
+      <h1>📊 仪表盘</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="refreshDashboard()">🔄 刷新</button>
+        <div style="position:relative;display:inline-block">
+          <button class="btn btn-sm" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">📥 导出</button>
+          <div style="display:none;position:absolute;right:0;top:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:180px;z-index:50;box-shadow:var(--shadow)">
+            <a href="/api/export/report" style="display:block;padding:6px 12px;color:var(--text);text-decoration:none;font-size:13px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">📋 完整报告 (JSON)</a>
+            <a href="/api/export/analytics" style="display:block;padding:6px 12px;color:var(--text);text-decoration:none;font-size:13px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">📈 互动分析 (CSV)</a>
+            <a href="/api/export/contacts" style="display:block;padding:6px 12px;color:var(--text);text-decoration:none;font-size:13px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">👥 联系人画像 (CSV)</a>
+            <a href="/api/export/workflows" style="display:block;padding:6px 12px;color:var(--text);text-decoration:none;font-size:13px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">🔄 工作流 (JSON)</a>
+            <a href="/api/export/conversations" style="display:block;padding:6px 12px;color:var(--text);text-decoration:none;font-size:13px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">💬 对话记录 (JSON)</a>
+            <a href="/api/export/rules" style="display:block;padding:6px 12px;color:var(--text);text-decoration:none;font-size:13px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">🔀 路由规则 (JSON)</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-cards" id="stat-cards"></div>
+
+    <h3 style="margin-bottom:12px">最近执行</h3>
+    <div id="recent-execs" class="exec-timeline"></div>
+  </div>
+
+  <!-- Workflows Page -->
+  <div id="page-workflows" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🔄 工作流管理</h1>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="openWorkflowEditor()">+ 新建工作流</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-filter="">全部</div>
+      <div class="tab" data-filter="builtin">内置</div>
+      <div class="tab" data-filter="custom">自定义</div>
+    </div>
+    <div id="workflow-list" class="table-wrap"></div>
+  </div>
+
+  <!-- History Page -->
+  <div id="page-history" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📜 执行历史</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="loadHistory()">🔄 刷新</button>
+      </div>
+    </div>
+    <div id="history-list" class="exec-timeline"></div>
+    <div style="margin-top:16px;text-align:center">
+      <button class="btn btn-outline" id="history-more" onclick="loadMoreHistory()" style="display:none">加载更多</button>
+    </div>
+  </div>
+
+  <!-- Moments Page -->
+  <div id="page-moments" class="page" style="display:none">
+    <div class="page-header">
+      <h1>👀 朋友圈管理</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="loadMomentsStats()">🔄 刷新</button>
+        <button class="btn btn-primary" onclick="showPublishModal()">📢 AI发圈</button>
+      </div>
+    </div>
+
+    <div class="stat-cards" id="moments-stats"></div>
+
+    <div class="tabs" style="margin-top:16px">
+      <div class="tab active" data-mtab="calendar">内容日历</div>
+      <div class="tab" data-mtab="generate">AI文案</div>
+    </div>
+
+    <div id="mtab-calendar">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0">
+        <span style="font-size:14px;color:var(--text2)">30天内容规划</span>
+        <button class="btn btn-sm btn-outline" onclick="generateCalendar()">🗓 生成月计划</button>
+      </div>
+      <div id="calendar-list"></div>
+    </div>
+
+    <div id="mtab-generate" style="display:none">
+      <div class="form-row" style="margin-top:12px">
+        <div class="form-group"><label>主题</label><input id="mg-topic" placeholder="今天想分享什么"></div>
+        <div class="form-group"><label>风格</label>
+          <select id="mg-style"><option>日常</option><option>文艺</option><option>幽默</option><option>正式</option><option>简洁</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>心情</label>
+          <select id="mg-mood"><option>平常</option><option>开心</option><option>感慨</option><option>兴奋</option><option>安静</option></select>
+        </div>
+        <div class="form-group"><label>场景</label><input id="mg-scene" placeholder="可选：旅行、美食..."></div>
+      </div>
+      <button class="btn btn-primary" onclick="generateMomentText()" style="width:100%">✨ 生成文案</button>
+      <div id="mg-results" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Contacts Page -->
+  <div id="page-contacts" class="page" style="display:none">
+    <div class="page-header">
+      <h1>👥 联系人画像</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="loadProfiles()">🔄 刷新</button>
+      </div>
+    </div>
+    <div id="profiles-list" class="table-wrap"></div>
+  </div>
+
+  <!-- Analytics Page -->
+  <div id="page-analytics" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📈 数据分析</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="loadAnalytics()">🔄 刷新</button>
+        <button class="btn btn-primary" onclick="genStrategyReport()">🤖 AI策略报告</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="analytics-stats"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
+        <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">24小时互动热力图</h3>
+        <div id="chart-hourly" style="height:260px"></div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
+        <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">周趋势</h3>
+        <div id="chart-weekly" style="height:260px"></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
+        <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">活跃联系人 Top 10</h3>
+        <div id="chart-contacts" style="height:280px"></div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
+        <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">内容分类表现</h3>
+        <div id="chart-content" style="height:280px"></div>
+      </div>
+    </div>
+    <div id="analytics-report" style="margin-top:16px"></div>
+  </div>
+
+  <!-- Broadcast Page -->
+  <div id="page-broadcast" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📣 群发消息</h1>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="showBroadcastModal()">✉️ 新建群发</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="broadcast-stats"></div>
+    <h3 style="font-size:14px;color:var(--text2);margin:16px 0 8px">消息模板</h3>
+    <div id="broadcast-templates"></div>
+    <h3 style="font-size:14px;color:var(--text2);margin:16px 0 8px">历史任务</h3>
+    <div id="broadcast-campaigns"></div>
+  </div>
+
+  <!-- Media Page -->
+  <div id="page-media" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🖼 素材库</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="loadMedia()">🔄 刷新</button>
+        <button class="btn btn-primary" onclick="importMedia()">📁 导入</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="media-stats"></div>
+    <div id="media-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:16px"></div>
+  </div>
+
+  <!-- Ollama Page -->
+  <div id="page-ollama" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🦙 本地模型 (Ollama)</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="loadOllama()">🔄 检测</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="ollama-stats"></div>
+    <h3 style="font-size:14px;color:var(--text2);margin:16px 0 8px">已安装模型</h3>
+    <div id="ollama-models"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <input id="ollama-pull-name" placeholder="模型名 (如 qwen2.5:7b)" style="flex:1;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text)">
+      <button class="btn btn-primary" onclick="pullOllamaModel()">拉取模型</button>
+    </div>
+    <div id="ollama-benchmark" style="margin-top:16px"></div>
+  </div>
+
+  <!-- Calendar Page -->
+  <div id="page-calendar" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📅 任务日历</h1>
+      <div class="actions">
+        <button class="btn btn-sm" onclick="calNav(-1)">◀ 上月</button>
+        <span id="cal-month-label" style="padding:0 12px;font-size:16px;font-weight:600"></span>
+        <button class="btn btn-sm" onclick="calNav(1)">下月 ▶</button>
+      </div>
+    </div>
+    <div id="cal-heatmap" style="display:flex;gap:3px;margin-bottom:12px;align-items:flex-end;height:40px"></div>
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
+    <div id="cal-legend" style="margin-top:12px;display:flex;gap:16px;font-size:12px;color:var(--text2)">
+      <span>🔄 工作流</span><span>📢 朋友圈</span><span>⏱ 周期任务</span>
+      <span style="margin-left:auto">▊ 执行密度热力</span>
+    </div>
+  </div>
+
+  <!-- Accounts Page -->
+  <div id="page-accounts" class="page" style="display:none">
+    <div class="page-header">
+      <h1>👤 多账号管理</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="discoverWxInstances()">🔍 扫描微信</button>
+        <button class="btn btn-outline" onclick="autoBindAll()">⚡ 自动绑定全部</button>
+        <button class="btn btn-primary" onclick="showAccountEditor()">+ 手动添加</button>
+      </div>
+    </div>
+    <div id="accounts-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
+  </div>
+
+  <!-- Message Rules Page -->
+  <div id="page-msg-rules" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🔀 消息路由规则</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="aiSuggestRules()">🤖 AI 建议</button>
+        <button class="btn btn-primary" onclick="showRuleEditor()">+ 新建规则</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="rule-stats"></div>
+    <table class="table" id="rules-table">
+      <thead><tr><th>状态</th><th>名称</th><th>匹配方式</th><th>模式</th><th>动作</th><th>触发次数</th><th>操作</th></tr></thead>
+      <tbody id="rules-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Unified Inbox Page -->
+  <div id="page-inbox" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📬 统一收件箱</h1>
+      <div style="display:flex;gap:8px">
+        <select id="inbox-acct-filter" onchange="loadInbox()" style="background:#1e2030;color:#cdd6f4;border:1px solid #45475a;border-radius:8px;padding:6px 10px">
+          <option value="">全部账号</option>
+        </select>
+        <button class="btn btn-sm" onclick="markAllRead()">全部已读</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="inbox-stats"></div>
+    <div id="inbox-conversations" style="display:grid;grid-template-columns:280px 1fr;gap:16px;margin-top:16px;min-height:400px">
+      <div id="inbox-conv-list" style="background:#181926;border-radius:12px;overflow-y:auto;max-height:70vh;padding:8px"></div>
+      <div id="inbox-messages" style="background:#181926;border-radius:12px;padding:16px;overflow-y:auto;max-height:70vh"></div>
+    </div>
+  </div>
+
+  <!-- Forward Rules Page -->
+  <div id="page-forward" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🔀 消息转发</h1>
+      <button class="btn" onclick="showForwardDialog()">+ 添加转发规则</button>
+    </div>
+    <p style="color:#a6adc8;margin-bottom:16px">A 账号收到的消息自动转发给 B 账号的指定联系人</p>
+    <div id="forward-rules-list" style="display:grid;gap:12px"></div>
+  </div>
+
+  <!-- Moments Coop Page -->
+  <div id="page-moments-coop" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🤝 朋友圈协作</h1>
+      <button class="btn" onclick="refreshMomentsCoop()">🔄 刷新</button>
+    </div>
+    <div class="stat-cards" id="coop-stats"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div class="card" style="padding:20px">
+        <h3 style="margin:0 0 12px;color:#cba6f7">📖 协作浏览</h3>
+        <p style="color:#a6adc8;font-size:13px;margin-bottom:12px">安排多个账号依次浏览朋友圈，自动点赞/评论，间隔 3-8 分钟</p>
+        <div id="coop-browse-accounts" style="margin-bottom:12px"></div>
+        <button class="btn" onclick="startCoopBrowse()" style="width:100%">🚀 开始协作浏览</button>
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="margin:0 0 12px;color:#cba6f7">📝 协作发圈</h3>
+        <p style="color:#a6adc8;font-size:13px;margin-bottom:12px">多个账号按计划依次发布，AI 改写避免内容重复</p>
+        <input id="coop-pub-topic" placeholder="话题/主题" style="width:100%;background:#1e2030;color:#cdd6f4;border:1px solid #45475a;border-radius:8px;padding:8px;margin-bottom:8px">
+        <textarea id="coop-pub-text" placeholder="朋友圈正文（可选，留空由 AI 生成）" rows="3" style="width:100%;background:#1e2030;color:#cdd6f4;border:1px solid #45475a;border-radius:8px;padding:8px;margin-bottom:8px;resize:vertical"></textarea>
+        <label style="color:#a6adc8;font-size:12px">间隔（分钟）：<input id="coop-pub-stagger" type="number" value="30" min="5" max="180" style="width:60px;background:#1e2030;color:#cdd6f4;border:1px solid #45475a;border-radius:6px;padding:4px 6px"></label>
+        <button class="btn" onclick="startCoopPublish()" style="width:100%;margin-top:8px">🚀 开始协作发圈</button>
+      </div>
+    </div>
+    <div id="coop-task-list" style="margin-top:16px"></div>
+  </div>
+
+  <!-- Health Monitor Page -->
+  <div id="page-health" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🩺 账号健康</h1>
+      <button class="btn" onclick="runHealthCheck()">🔍 检查心跳</button>
+    </div>
+    <div class="stat-cards" id="health-stats"></div>
+    <div id="health-accounts-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:16px"></div>
+  </div>
+
+  <!-- Contact Fusion Page -->
+  <div id="page-contact-fusion" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🔗 联系人融合</h1>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="discoverContactMatches()">🔍 自动发现匹配</button>
+      </div>
+    </div>
+    <p style="color:#a6adc8;margin-bottom:16px">将同一个人在不同账号中的身份合并为统一画像</p>
+    <div id="fusion-matches" style="margin-bottom:20px"></div>
+    <h3 style="color:#cba6f7;margin-bottom:8px">已融合联系人</h3>
+    <div id="fused-contacts-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+  </div>
+
+  <!-- Template Store Page -->
+  <div id="page-templates" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📦 模板商店</h1>
+    </div>
+    <p style="color:#a6adc8;margin-bottom:16px">一键安装常用自动化工作流模板</p>
+    <div id="tpl-categories" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap"></div>
+    <div id="tpl-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
+  </div>
+
+  <!-- Knowledge Base Page -->
+  <div id="page-knowledge" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📚 知识库</h1>
+      <button class="btn" onclick="showKBImport()">+ 导入文档</button>
+    </div>
+    <div class="stat-cards" id="kb-stats"></div>
+    <div style="margin:16px 0">
+      <input id="kb-search-input" placeholder="搜索知识库..." style="width:60%;background:#1e2030;color:#cdd6f4;border:1px solid #45475a;border-radius:8px;padding:8px 12px;font-size:14px" onkeydown="if(event.key==='Enter')searchKB()">
+      <button class="btn btn-sm" onclick="searchKB()" style="margin-left:8px">🔍 搜索</button>
+    </div>
+    <div id="kb-search-results" style="margin-bottom:16px"></div>
+    <h3 style="color:#cba6f7;margin-bottom:8px">文档列表</h3>
+    <div id="kb-doc-list" style="display:grid;gap:8px"></div>
+  </div>
+
+  <!-- Daily Report Page -->
+  <div id="page-daily-report" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📊 智能日报</h1>
+      <button class="btn" onclick="generateDailyReport()">🔄 生成日报</button>
+    </div>
+    <div id="daily-report-content" style="background:#181926;border-radius:12px;padding:24px"></div>
+  </div>
+
+  <!-- Big Screen Page -->
+  <div id="page-bigscreen" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🖥️ 数据大屏</h1>
+      <button class="btn btn-sm" onclick="refreshBigScreen()">🔄 刷新</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="bs-top-cards"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card" style="padding:16px;min-height:200px">
+        <h3 style="color:#cba6f7;margin:0 0 8px">账号健康度</h3>
+        <div id="bs-health-bars"></div>
+      </div>
+      <div class="card" style="padding:16px;min-height:200px">
+        <h3 style="color:#cba6f7;margin:0 0 8px">异常告警</h3>
+        <div id="bs-alerts"></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div class="card" style="padding:16px">
+        <h3 style="color:#cba6f7;margin:0 0 8px">消息分布</h3>
+        <div id="bs-msg-dist"></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <h3 style="color:#cba6f7;margin:0 0 8px">系统模块</h3>
+        <div id="bs-modules"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sentiment Page -->
+  <div id="page-sentiment" class="page" style="display:none">
+    <div class="page-header"><h1>💭 情感分析</h1></div>
+    <div class="stat-cards" id="senti-stats"></div>
+    <div class="card" style="padding:16px;margin-top:16px">
+      <h3 style="color:#cba6f7;margin:0 0 12px">情感趋势（24h）</h3>
+      <div id="senti-trend" style="min-height:120px"></div>
+    </div>
+  </div>
+
+  <!-- Group Manager Page -->
+  <div id="page-group-mgr" class="page" style="display:none">
+    <div class="page-header"><h1>👥 群聊管理</h1></div>
+    <div id="group-list" style="display:grid;gap:8px"></div>
+  </div>
+
+  <!-- Workflow Editor Page -->
+  <div id="page-wf-editor" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🎨 流程编辑器</h1>
+      <button class="btn btn-sm" onclick="loadNodeTypes()">🔄 刷新节点</button>
+    </div>
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:16px">
+      <div class="card" style="padding:12px">
+        <h4 style="color:#cba6f7;margin:0 0 8px">可用节点</h4>
+        <div id="wf-node-palette" style="font-size:13px"></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <h4 style="color:#cba6f7;margin:0 0 8px">流程预览</h4>
+        <div id="wf-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plugins Page -->
+  <div id="page-plugins" class="page" style="display:none">
+    <div class="page-header"><h1>🧩 插件市场</h1></div>
+    <div class="stat-cards" id="plugin-stats"></div>
+    <div id="plugin-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:16px"></div>
+  </div>
+
+  <!-- Monitor Page -->
+  <div id="page-monitor" class="page" style="display:none">
+    <div class="page-header">
+      <h1>💓 性能监控</h1>
+      <div class="actions">
+        <button class="btn btn-sm" onclick="loadMonitor()">刷新</button>
+      </div>
+    </div>
+    <div class="stat-cards" id="monitor-stats"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <h3 style="margin-bottom:12px">AI Router 平台状态</h3>
+        <div id="monitor-providers"></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <h3 style="margin-bottom:12px">请求延迟趋势</h3>
+        <div id="chart-latency" style="height:300px"></div>
+      </div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:16px">
+      <h3 style="margin-bottom:12px">系统日志（最近）</h3>
+      <div id="monitor-logs" style="max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px;line-height:1.6;color:var(--text2)"></div>
+    </div>
+  </div>
+
+  <!-- Nodes Page -->
+  <div id="page-nodes" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🧩 可用节点类型</h1>
+    </div>
+    <div id="node-catalog" class="node-palette"></div>
+  </div>
+
+  <!-- 记忆搜索 -->
+  <div id="page-mem-search" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🔍 <span class="i18n" data-key="nav_search">记忆搜索</span></h1>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <input id="mem-q" placeholder="搜索关键词…" style="flex:1;min-width:150px;padding:8px;border:1px solid #333;border-radius:6px;background:#1a1a2e;color:#eee">
+      <select id="mem-role" style="padding:8px;border:1px solid #333;border-radius:6px;background:#1a1a2e;color:#eee">
+        <option value="">全部角色</option>
+        <option value="user">用户</option>
+        <option value="assistant">AI</option>
+      </select>
+      <input id="mem-start" type="date" style="padding:8px;border:1px solid #333;border-radius:6px;background:#1a1a2e;color:#eee">
+      <input id="mem-end" type="date" style="padding:8px;border:1px solid #333;border-radius:6px;background:#1a1a2e;color:#eee">
+      <button class="btn btn-primary" onclick="searchMemory()">搜索</button>
+    </div>
+    <div id="mem-stats" style="font-size:13px;color:#888;margin-bottom:10px"></div>
+    <div id="mem-results" class="card-grid"></div>
+  </div>
+
+  <!-- 消息导出 -->
+  <div id="page-msg-export" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📥 消息导出</h1>
+    </div>
+    <div class="card" style="padding:20px;max-width:600px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;color:var(--text2)">数据来源</label>
+          <select id="exp-source" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);margin-top:4px">
+            <option value="memory">AI 对话记录</option>
+            <option value="inbox">微信消息收件箱</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text2)">导出格式</label>
+          <select id="exp-fmt" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);margin-top:4px">
+            <option value="csv">CSV (Excel)</option>
+            <option value="html">HTML 报表 (可打印PDF)</option>
+            <option value="json">JSON 原始数据</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text2)">联系人 (选填)</label>
+          <input id="exp-contact" placeholder="留空=全部" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);margin-top:4px">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text2)">会话 ID (选填)</label>
+          <input id="exp-session" placeholder="default" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);margin-top:4px">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text2)">起始日期</label>
+          <input id="exp-start" type="date" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);margin-top:4px">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text2)">结束日期</label>
+          <input id="exp-end" type="date" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);margin-top:4px">
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label style="font-size:12px;color:var(--text2)">
+          <input type="checkbox" id="exp-sentiment"> 包含情感分析摘要
+        </label>
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="doExport()">导出</button>
+    </div>
+  </div>
+
+  <!-- 系统自检 -->
+  <div id="page-sys-health" class="page" style="display:none">
+    <div class="page-header">
+      <h1>🩻 <span class="i18n" data-key="nav_health">系统自检</span></h1>
+      <button class="btn btn-primary" onclick="runHealthCheck(true)">重新检查</button>
+    </div>
+    <div id="health-summary" style="margin-bottom:16px"></div>
+    <div id="health-checks" class="card-grid"></div>
+  </div>
+
+  <!-- 审计日志 -->
+  <div id="page-audit" class="page" style="display:none">
+    <div class="page-header">
+      <h1>📋 <span class="i18n" data-key="nav_audit">审计日志</span></h1>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <select id="audit-action" style="padding:8px;border:1px solid #333;border-radius:6px;background:#1a1a2e;color:#eee">
+        <option value="">全部操作</option>
+        <option value="wechat_send">微信发送</option>
+        <option value="workflow_run">工作流执行</option>
+        <option value="plugin_toggle">插件操作</option>
+        <option value="broadcast_send">群发消息</option>
+        <option value="knowledge_import">知识库导入</option>
+        <option value="system_config">系统配置</option>
+      </select>
+      <select id="audit-severity" style="padding:8px;border:1px solid #333;border-radius:6px;background:#1a1a2e;color:#eee">
+        <option value="">全部级别</option>
+        <option value="info">info</option>
+        <option value="warning">warning</option>
+        <option value="critical">critical</option>
+      </select>
+      <button class="btn btn-primary" onclick="loadAuditLogs()">查询</button>
+    </div>
+    <div id="audit-stats" style="font-size:13px;color:#888;margin-bottom:10px"></div>
+    <table id="audit-table" style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="color:#aaa;text-align:left;border-bottom:1px solid #333">
+        <th style="padding:8px">时间</th><th style="padding:8px">操作</th><th style="padding:8px">目标</th>
+        <th style="padding:8px">级别</th><th style="padding:8px">详情</th>
+      </tr></thead>
+      <tbody id="audit-body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Workflow Editor Modal -->
+<div class="modal-overlay" id="modal-editor">
+  <div class="modal" style="max-width:800px">
+    <div class="modal-header">
+      <h2 id="editor-title">编辑工作流</h2>
+      <button class="btn-icon" onclick="closeModal('modal-editor')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>名称</label>
+          <input id="wf-name" placeholder="工作流名称">
+        </div>
+        <div class="form-group">
+          <label>图标</label>
+          <input id="wf-icon" placeholder="⚙️" style="width:60px">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>描述</label>
+        <input id="wf-desc" placeholder="这个工作流做什么">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>触发方式</label>
+          <select id="wf-trigger-type" onchange="onTriggerTypeChange()">
+            <option value="manual">手动触发</option>
+            <option value="schedule">定时执行</option>
+            <option value="interval">固定间隔</option>
+            <option value="event">事件驱动</option>
+          </select>
+        </div>
+        <div class="form-group" id="trigger-time-group" style="display:none">
+          <label>执行时间 (HH:MM)</label>
+          <input id="wf-trigger-time" type="time">
+        </div>
+        <div class="form-group" id="trigger-interval-group" style="display:none">
+          <label>间隔（秒）</label>
+          <input id="wf-trigger-interval" type="number" min="60" value="3600">
+        </div>
+        <div class="form-group" id="trigger-event-group" style="display:none">
+          <label>事件名称</label>
+          <input id="wf-trigger-event" placeholder="wechat_message">
+        </div>
+      </div>
+      <div class="form-group" id="trigger-days-group" style="display:none">
+        <label>执行日期</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="wf-trigger-days">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="mon">一</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="tue">二</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="wed">三</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="thu">四</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="fri">五</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="sat">六</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="sun">日</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>自定义变量 (JSON)</label>
+        <textarea id="wf-variables" rows="2" placeholder='{"key":"value"}'></textarea>
+      </div>
+
+      <h3 style="margin:16px 0 8px;font-size:14px">节点列表</h3>
+      <div id="editor-nodes" class="node-list"></div>
+      <button class="btn btn-outline" style="margin-top:8px;width:100%" onclick="addNodeToEditor()">+ 添加节点</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-editor')">取消</button>
+      <button class="btn btn-primary" onclick="saveWorkflow()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Node Editor Modal -->
+<div class="modal-overlay" id="modal-node">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h2 id="node-editor-title">编辑节点</h2>
+      <button class="btn-icon" onclick="closeModal('modal-node')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>节点ID</label>
+          <input id="node-id" placeholder="唯一标识">
+        </div>
+        <div class="form-group">
+          <label>节点类型</label>
+          <select id="node-type" onchange="onNodeTypeChange()"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>显示名称</label>
+        <input id="node-label" placeholder="节点名称">
+      </div>
+      <div class="form-group">
+        <label>参数 (JSON)</label>
+        <textarea id="node-params" rows="6" placeholder='{"prompt":"...", "key":"value"}'></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>错误处理</label>
+          <select id="node-on-error">
+            <option value="stop">停止工作流</option>
+            <option value="skip">跳过节点</option>
+            <option value="retry">重试</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>超时（秒）</label>
+          <input id="node-timeout" type="number" value="60" min="5">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-node')">取消</button>
+      <button class="btn btn-primary" onclick="saveNode()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Publish Modal -->
+<div class="modal-overlay" id="modal-publish">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h2>📢 发布朋友圈</h2>
+      <button class="btn-icon" onclick="closeModal('modal-publish')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>文案内容</label><textarea id="pub-text" rows="4" placeholder="输入文案或使用AI生成"></textarea></div>
+      <div class="form-group"><label>隐私设置</label>
+        <select id="pub-privacy"><option value="all">所有人可见</option><option value="friends">仅好友</option></select>
+      </div>
+      <div style="margin-bottom:12px"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="pub-generate"> AI 自动生成文案</label></div>
+      <div class="form-group" id="pub-topic-group" style="display:none"><label>AI主题</label><input id="pub-topic" placeholder="输入主题关键词"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-publish')">取消</button>
+      <button class="btn btn-primary" onclick="doPublish()">发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- Execution Detail Modal -->
+<div class="modal-overlay" id="modal-exec">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h2>执行详情</h2>
+      <button class="btn-icon" onclick="closeModal('modal-exec')">✕</button>
+    </div>
+    <div class="modal-body" id="exec-detail-body"></div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let allWorkflows = [];
+let allNodeTypes = [];
+let editingWf = null;
+let editingNodes = [];
+let editingNodeIdx = -1;
+let historyOffset = 0;
+
+// ── Navigation ──────────────────────────────────────────────────
+
+document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    document.getElementById('page-' + el.dataset.page).style.display = '';
+    if (el.dataset.page === 'dashboard') refreshDashboard();
+    if (el.dataset.page === 'workflows') loadWorkflows();
+    if (el.dataset.page === 'history') { historyOffset = 0; loadHistory(); }
+    if (el.dataset.page === 'moments') loadMomentsStats();
+    if (el.dataset.page === 'analytics') loadAnalytics();
+    if (el.dataset.page === 'broadcast') loadBroadcast();
+    if (el.dataset.page === 'media') loadMedia();
+    if (el.dataset.page === 'contacts') loadProfiles();
+    if (el.dataset.page === 'ollama') loadOllama();
+    if (el.dataset.page === 'msg-rules') loadMsgRules();
+    if (el.dataset.page === 'calendar') loadCalendar();
+    if (el.dataset.page === 'accounts') loadAccounts();
+    if (el.dataset.page === 'inbox') loadInbox();
+    if (el.dataset.page === 'forward') loadForwardRules();
+    if (el.dataset.page === 'moments-coop') loadMomentsCoop();
+    if (el.dataset.page === 'health') loadHealth();
+    if (el.dataset.page === 'contact-fusion') loadContactFusion();
+    if (el.dataset.page === 'templates') loadTemplates();
+    if (el.dataset.page === 'knowledge') loadKnowledge();
+    if (el.dataset.page === 'daily-report') loadDailyReport();
+    if (el.dataset.page === 'bigscreen') loadBigScreen();
+    if (el.dataset.page === 'sentiment') loadSentiment();
+    if (el.dataset.page === 'group-mgr') loadGroupMgr();
+    if (el.dataset.page === 'wf-editor') loadWfEditor();
+    if (el.dataset.page === 'plugins') loadPlugins();
+    if (el.dataset.page === 'monitor') loadMonitor();
+    if (el.dataset.page === 'nodes') loadNodeTypes();
+    if (el.dataset.page === 'mem-search') loadMemSearch();
+    if (el.dataset.page === 'msg-export') {}
+    if (el.dataset.page === 'sys-health') runHealthCheck();
+    if (el.dataset.page === 'audit') loadAuditLogs();
+  });
+});
+
+document.querySelectorAll('.tabs .tab').forEach(el => {
+  el.addEventListener('click', () => {
+    const parent = el.parentElement;
+    parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    if (el.dataset.filter !== undefined) {
+      loadWorkflows(el.dataset.filter);
+    }
+    if (el.dataset.mtab) {
+      document.querySelectorAll('[id^="mtab-"]').forEach(d => d.style.display = 'none');
+      document.getElementById('mtab-' + el.dataset.mtab).style.display = '';
+    }
+  });
+});
+
+document.getElementById('pub-generate')?.addEventListener('change', e => {
+  document.getElementById('pub-topic-group').style.display = e.target.checked ? '' : 'none';
+  document.getElementById('pub-text').disabled = e.target.checked;
+});
+
+// ── API Helpers ─────────────────────────────────────────────────
+
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    return await r.json();
+  } catch (e) {
+    console.error('API error:', e);
+    return { error: e.message };
+  }
+}
+
+function fmtTime(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+function fmtDuration(ms) {
+  if (!ms) return '-';
+  if (ms < 1000) return ms.toFixed(0) + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function statusBadge(status) {
+  const map = {
+    success: ['成功', 'success'],
+    failed: ['失败', 'danger'],
+    running: ['运行中', 'info'],
+    pending: ['等待', 'default'],
+    cancelled: ['已取消', 'warning'],
+    paused: ['暂停', 'warning'],
+  };
+  const [text, cls] = map[status] || [status, 'default'];
+  return `<span class="badge badge-${cls}">${text}</span>`;
+}
+
+function triggerLabel(t) {
+  if (!t) return '手动';
+  const map = {
+    manual: '手动',
+    schedule: `⏰ ${t.time || ''}`,
+    interval: `🔄 ${t.seconds || 0}s`,
+    event: `📡 ${t.event || ''}`,
+  };
+  return map[t.type] || t.type;
+}
+
+// ── Dashboard ───────────────────────────────────────────────────
+
+async function refreshDashboard() {
+  const [status, execs] = await Promise.all([
+    api('/api/workflow/status'),
+    api('/api/workflow/executions?limit=10'),
+  ]);
+
+  const cards = document.getElementById('stat-cards');
+  if (status.available === false) {
+    cards.innerHTML = '<div class="empty"><div class="icon">⚠️</div><div class="text">工作流引擎不可用</div></div>';
+    return;
+  }
+
+  cards.innerHTML = `
+    <div class="stat-card"><div class="label">工作流总数</div><div class="value">${status.total_workflows || 0}</div></div>
+    <div class="stat-card"><div class="label">已启用</div><div class="value" style="color:var(--green)">${status.enabled_workflows || 0}</div></div>
+    <div class="stat-card"><div class="label">今日执行</div><div class="value">${status.today_runs || 0}</div><div class="sub">成功 ${status.today_success || 0} / 失败 ${status.today_failed || 0}</div></div>
+    <div class="stat-card"><div class="label">运行中</div><div class="value" style="color:var(--blue)">${status.active_executions || 0}</div></div>
+  `;
+
+  renderExecList(document.getElementById('recent-execs'), (execs.executions || []).slice(0, 8));
+}
+
+// ── Workflows ───────────────────────────────────────────────────
+
+async function loadWorkflows(category = '') {
+  const data = await api('/api/workflow/list' + (category ? '?category=' + category : ''));
+  allWorkflows = data.workflows || [];
+  renderWorkflowTable(allWorkflows);
+}
+
+function renderWorkflowTable(wfs) {
+  const el = document.getElementById('workflow-list');
+  if (!wfs.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">📭</div><div class="text">暂无工作流</div></div>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th style="width:40px"></th><th>名称</th><th>触发方式</th><th>分类</th><th>状态</th><th style="width:200px">操作</th>
+  </tr></thead><tbody>`;
+
+  for (const w of wfs) {
+    html += `<tr>
+      <td>${w.icon || '⚙️'}</td>
+      <td><strong>${esc(w.name)}</strong><br><span style="font-size:11px;color:var(--text2)">${esc(w.description || '')}</span></td>
+      <td>${triggerLabel(w.trigger)}</td>
+      <td><span class="badge badge-${w.category === 'builtin' ? 'info' : 'default'}">${w.category === 'builtin' ? '内置' : '自定义'}</span></td>
+      <td>
+        <label class="toggle"><input type="checkbox" ${w.enabled ? 'checked' : ''} onchange="toggleWorkflow('${w.id}',this.checked)"><span class="slider"></span></label>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="runWorkflow('${w.id}')">▶ 运行</button>
+        <button class="btn btn-sm btn-outline" onclick="editWorkflow('${w.id}')">✏️</button>
+        ${w.category !== 'builtin' ? `<button class="btn btn-sm btn-danger" onclick="deleteWorkflow('${w.id}')">🗑</button>` : ''}
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+async function toggleWorkflow(id, enabled) {
+  await api(`/api/workflow/${id}/toggle`, {
+    method: 'POST',
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+async function runWorkflow(id) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  const result = await api(`/api/workflow/${id}/execute`, { method: 'POST' });
+  btn.disabled = false;
+  btn.textContent = '▶ 运行';
+
+  if (result.execution) {
+    showExecDetail(result.execution);
+  } else {
+    alert('执行失败: ' + (result.error || 'unknown'));
+  }
+}
+
+async function deleteWorkflow(id) {
+  if (!confirm('确定删除此工作流？')) return;
+  await api(`/api/workflow/${id}`, { method: 'DELETE' });
+  loadWorkflows();
+}
+
+// ── Workflow Editor ─────────────────────────────────────────────
+
+function openWorkflowEditor(wf = null) {
+  editingWf = wf;
+  editingNodes = wf ? JSON.parse(JSON.stringify(wf.nodes || [])) : [];
+
+  document.getElementById('editor-title').textContent = wf ? '编辑工作流' : '新建工作流';
+  document.getElementById('wf-name').value = wf?.name || '';
+  document.getElementById('wf-icon').value = wf?.icon || '⚙️';
+  document.getElementById('wf-desc').value = wf?.description || '';
+  document.getElementById('wf-trigger-type').value = wf?.trigger?.type || 'manual';
+  document.getElementById('wf-trigger-time').value = wf?.trigger?.time || '';
+  document.getElementById('wf-trigger-interval').value = wf?.trigger?.seconds || 3600;
+  document.getElementById('wf-trigger-event').value = wf?.trigger?.event || '';
+  document.getElementById('wf-variables').value = wf?.variables ? JSON.stringify(wf.variables, null, 2) : '{}';
+
+  // days
+  document.querySelectorAll('#wf-trigger-days input').forEach(cb => {
+    cb.checked = (wf?.trigger?.days || []).includes(cb.value);
+  });
+
+  onTriggerTypeChange();
+  renderEditorNodes();
+  showModal('modal-editor');
+}
+
+async function editWorkflow(id) {
+  const data = await api(`/api/workflow/${id}`);
+  if (data.workflow) openWorkflowEditor(data.workflow);
+}
+
+function onTriggerTypeChange() {
+  const t = document.getElementById('wf-trigger-type').value;
+  document.getElementById('trigger-time-group').style.display = t === 'schedule' ? '' : 'none';
+  document.getElementById('trigger-days-group').style.display = t === 'schedule' ? '' : 'none';
+  document.getElementById('trigger-interval-group').style.display = t === 'interval' ? '' : 'none';
+  document.getElementById('trigger-event-group').style.display = t === 'event' ? '' : 'none';
+}
+
+function renderEditorNodes() {
+  const el = document.getElementById('editor-nodes');
+  if (!editingNodes.length) {
+    el.innerHTML = '<div class="empty" style="padding:20px"><div class="text">暂无节点，点击下方按钮添加</div></div>';
+    return;
+  }
+
+  const typeMap = {};
+  allNodeTypes.forEach(n => typeMap[n.type] = n);
+
+  let html = '';
+  editingNodes.forEach((n, i) => {
+    const info = typeMap[n.type] || {};
+    if (i > 0) html += '<div class="node-connector"></div>';
+    html += `<div class="node-card" draggable="true" data-idx="${i}"
+      ondragstart="nodeDragStart(event,${i})" ondragover="nodeDragOver(event,${i})"
+      ondragend="nodeDragEnd(event)" ondrop="nodeDrop(event,${i})"
+      ondragleave="event.currentTarget.classList.remove('drag-over')">
+      <div class="node-num">${i + 1}</div>
+      <div class="node-icon">${info.icon || '⚙️'}</div>
+      <div class="node-info">
+        <div class="name">${esc(n.label || n.id)}</div>
+        <div class="type">${info.label || n.type} · ${n.id}</div>
+      </div>
+      <div class="node-actions">
+        <button class="btn-icon" onclick="editNodeAt(${i})" title="编辑">✏️</button>
+        <button class="btn-icon" onclick="removeNode(${i})" title="删除" style="color:var(--red)">✕</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+let _dragIdx = -1;
+function nodeDragStart(e, idx) { _dragIdx = idx; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+function nodeDragOver(e, idx) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (idx !== _dragIdx) e.currentTarget.classList.add('drag-over'); }
+function nodeDragEnd(e) { _dragIdx = -1; document.querySelectorAll('.node-card').forEach(c => c.classList.remove('dragging','drag-over')); }
+function nodeDrop(e, targetIdx) {
+  e.preventDefault();
+  if (_dragIdx < 0 || _dragIdx === targetIdx) return;
+  const [moved] = editingNodes.splice(_dragIdx, 1);
+  editingNodes.splice(targetIdx, 0, moved);
+  _dragIdx = -1;
+  renderEditorNodes();
+}
+
+function moveNode(idx, dir) {
+  const t = editingNodes[idx];
+  editingNodes[idx] = editingNodes[idx + dir];
+  editingNodes[idx + dir] = t;
+  renderEditorNodes();
+}
+
+function removeNode(idx) {
+  editingNodes.splice(idx, 1);
+  renderEditorNodes();
+}
+
+function addNodeToEditor() {
+  editingNodeIdx = -1;
+  document.getElementById('node-editor-title').textContent = '添加节点';
+  document.getElementById('node-id').value = 'node_' + (editingNodes.length + 1);
+  document.getElementById('node-label').value = '';
+  document.getElementById('node-params').value = '{}';
+  document.getElementById('node-on-error').value = 'stop';
+  document.getElementById('node-timeout').value = '60';
+  populateNodeTypeSelect();
+  showModal('modal-node');
+}
+
+function editNodeAt(idx) {
+  editingNodeIdx = idx;
+  const n = editingNodes[idx];
+  document.getElementById('node-editor-title').textContent = '编辑节点';
+  document.getElementById('node-id').value = n.id;
+  document.getElementById('node-label').value = n.label || '';
+  document.getElementById('node-params').value = JSON.stringify(n.params || {}, null, 2);
+  document.getElementById('node-on-error').value = n.on_error || 'stop';
+  document.getElementById('node-timeout').value = n.timeout || 60;
+  populateNodeTypeSelect(n.type);
+  showModal('modal-node');
+}
+
+function populateNodeTypeSelect(selected = '') {
+  const sel = document.getElementById('node-type');
+  sel.innerHTML = allNodeTypes.map(n =>
+    `<option value="${n.type}" ${n.type === selected ? 'selected' : ''}>${n.icon} ${n.label}</option>`
+  ).join('');
+}
+
+function onNodeTypeChange() {
+  const type = document.getElementById('node-type').value;
+  const templates = {
+    llm_generate: { prompt: '请简短回答...', system: '你是一个有用的AI助手。' },
+    llm_classify: { text: '{{input}}', categories: ['正面','负面','中性'] },
+    template: { template: '{{node1.output}}' },
+    tts_speak: { text: '{{prev.output}}' },
+    wechat_send: { contact: '', message: '{{text.output}}' },
+    wechat_read: { contact: '' },
+    wechat_autoreply: { action: 'status' },
+    delay: { seconds: 5 },
+    condition: { expr: 'true', then: 'yes', else: 'no' },
+    system_info: { type: 'all' },
+    http_request: { url: '', method: 'GET' },
+    notify: { message: '', channel: 'log' },
+    file_read: { path: '', max_chars: 10000 },
+    file_write: { path: '', content: '', mode: 'w' },
+    skill_execute: { skill_id: '' },
+    python_eval: { expression: '1+1' },
+    loop: { items_key: 'data.messages', item_var: 'item' },
+    parallel: { node_ids: [] },
+  };
+  if (templates[type] && !document.getElementById('node-params').value.trim()) {
+    document.getElementById('node-params').value = JSON.stringify(templates[type], null, 2);
+  }
+}
+
+function saveNode() {
+  const node = {
+    id: document.getElementById('node-id').value.trim(),
+    type: document.getElementById('node-type').value,
+    label: document.getElementById('node-label').value.trim(),
+    on_error: document.getElementById('node-on-error').value,
+    timeout: parseInt(document.getElementById('node-timeout').value) || 60,
+  };
+  try {
+    node.params = JSON.parse(document.getElementById('node-params').value || '{}');
+  } catch {
+    alert('参数 JSON 格式错误');
+    return;
+  }
+  if (!node.id) { alert('请填写节点ID'); return; }
+
+  if (editingNodeIdx >= 0) {
+    editingNodes[editingNodeIdx] = node;
+  } else {
+    editingNodes.push(node);
+  }
+  renderEditorNodes();
+  closeModal('modal-node');
+}
+
+async function saveWorkflow() {
+  const days = [];
+  document.querySelectorAll('#wf-trigger-days input:checked').forEach(cb => days.push(cb.value));
+
+  let variables = {};
+  try {
+    variables = JSON.parse(document.getElementById('wf-variables').value || '{}');
+  } catch {
+    alert('变量 JSON 格式错误');
+    return;
+  }
+
+  const wf = {
+    id: editingWf?.id || '',
+    name: document.getElementById('wf-name').value.trim(),
+    description: document.getElementById('wf-desc').value.trim(),
+    icon: document.getElementById('wf-icon').value.trim() || '⚙️',
+    category: editingWf?.category || 'custom',
+    trigger: {
+      type: document.getElementById('wf-trigger-type').value,
+      time: document.getElementById('wf-trigger-time').value,
+      days: days,
+      seconds: parseInt(document.getElementById('wf-trigger-interval').value) || 0,
+      event: document.getElementById('wf-trigger-event').value.trim(),
+      enabled: true,
+    },
+    nodes: editingNodes,
+    enabled: editingWf?.enabled || false,
+    variables: variables,
+    created_at: editingWf?.created_at || 0,
+  };
+
+  if (!wf.name) { alert('请填写工作流名称'); return; }
+
+  const result = await api('/api/workflow/save', {
+    method: 'POST',
+    body: JSON.stringify(wf),
+  });
+
+  if (result.ok) {
+    closeModal('modal-editor');
+    loadWorkflows();
+  } else {
+    alert('保存失败: ' + (result.error || 'unknown'));
+  }
+}
+
+// ── History ─────────────────────────────────────────────────────
+
+async function loadHistory() {
+  historyOffset = 0;
+  const data = await api('/api/workflow/executions?limit=30&offset=0');
+  renderExecList(document.getElementById('history-list'), data.executions || []);
+  document.getElementById('history-more').style.display =
+    (data.executions || []).length >= 30 ? '' : 'none';
+}
+
+async function loadMoreHistory() {
+  historyOffset += 30;
+  const data = await api(`/api/workflow/executions?limit=30&offset=${historyOffset}`);
+  const el = document.getElementById('history-list');
+  const items = data.executions || [];
+  items.forEach(ex => el.innerHTML += renderExecItem(ex));
+  document.getElementById('history-more').style.display =
+    items.length >= 30 ? '' : 'none';
+}
+
+function renderExecList(container, execs) {
+  if (!execs.length) {
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><div class="text">暂无执行记录</div></div>';
+    return;
+  }
+  container.innerHTML = execs.map(renderExecItem).join('');
+}
+
+function renderExecItem(ex) {
+  const nodes = (ex.node_results || []);
+  const dots = nodes.map(n =>
+    `<div class="dot dot-${n.status}" title="${esc(n.node_id)}: ${n.status}"></div>`
+  ).join('');
+
+  return `<div class="exec-item" style="cursor:pointer" onclick='showExecDetail(${JSON.stringify(ex).replace(/'/g,"&#39;")})'>
+    <div class="header">
+      <span class="name">${esc(ex.workflow_name || ex.workflow_id)}</span>
+      ${statusBadge(ex.status)}
+    </div>
+    <div class="meta">
+      <span>🕐 ${fmtTime(ex.started_at)}</span>
+      <span>⏱ ${fmtDuration(ex.duration_ms)}</span>
+      <span>📡 ${ex.trigger_type}</span>
+      <span>🔗 ${nodes.length} 节点</span>
+    </div>
+    ${dots ? `<div class="nodes-bar">${dots}</div>` : ''}
+  </div>`;
+}
+
+function showExecDetail(ex) {
+  const body = document.getElementById('exec-detail-body');
+  let html = `
+    <div style="margin-bottom:16px">
+      <strong>${esc(ex.workflow_name)}</strong> ${statusBadge(ex.status)}
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">
+        ID: ${ex.id} · 触发: ${ex.trigger_type} · 时间: ${fmtTime(ex.started_at)} · 耗时: ${fmtDuration(ex.duration_ms)}
+      </div>
+      ${ex.error ? `<div style="margin-top:8px;padding:8px;background:rgba(239,83,80,0.1);border-radius:6px;color:var(--red);font-size:12px">${esc(ex.error)}</div>` : ''}
+    </div>
+    <h3 style="font-size:14px;margin-bottom:8px">节点执行详情</h3>
+  `;
+
+  (ex.node_results || []).forEach((nr, i) => {
+    const output = typeof nr.output === 'object' ? JSON.stringify(nr.output, null, 2) : String(nr.output || '');
+    html += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-weight:600;font-size:13px">#${i + 1} ${esc(nr.node_id)}</span>
+        ${statusBadge(nr.status)}
+        <span style="font-size:11px;color:var(--text2)">${fmtDuration(nr.duration_ms)}</span>
+      </div>
+      ${nr.error ? `<div style="color:var(--red);font-size:12px">❌ ${esc(nr.error)}</div>` : ''}
+      ${output ? `<pre style="font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow-y:auto;margin-top:4px">${esc(output.substring(0, 2000))}</pre>` : ''}
+    </div>`;
+  });
+
+  body.innerHTML = html;
+  showModal('modal-exec');
+}
+
+// ── Node Catalog ────────────────────────────────────────────────
+
+async function loadNodeTypes() {
+  if (allNodeTypes.length) { renderNodeCatalog(); return; }
+  const data = await api('/api/workflow/nodes');
+  allNodeTypes = data.nodes || [];
+  renderNodeCatalog();
+}
+
+function renderNodeCatalog() {
+  const el = document.getElementById('node-catalog');
+  if (!allNodeTypes.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🧩</div><div class="text">无可用节点</div></div>';
+    return;
+  }
+  el.innerHTML = allNodeTypes.map(n => `
+    <div class="node-palette-item">
+      <div class="icon">${n.icon}</div>
+      <div class="label">${esc(n.label)}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:2px">${n.type}</div>
+      <div><span class="badge badge-default" style="margin-top:4px">${esc(n.category)}</span></div>
+    </div>
+  `).join('');
+}
+
+// ── Modal Helpers ───────────────────────────────────────────────
+
+function showModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target === el) el.classList.remove('show');
+  });
+});
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+// ── Moments ──────────────────────────────────────────────────────
+
+async function loadMomentsStats() {
+  try {
+    const [stats, cal, chain] = await Promise.all([
+      api('/api/moments/stats').catch(() => ({})),
+      api('/api/moments/calendar').catch(() => ({entries:[]})),
+      api('/api/moments/chain/stats').catch(() => ({})),
+    ]);
+    const s = stats;
+    document.getElementById('moments-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">今日点赞</div><div class="stat-value">${s.guard?.today_likes||0}</div></div>
+      <div class="stat-card"><div class="stat-label">今日评论</div><div class="stat-value">${s.guard?.today_comments||0}</div></div>
+      <div class="stat-card"><div class="stat-label">今日发圈</div><div class="stat-value">${s.guard?.today_publishes||0}</div></div>
+      <div class="stat-card"><div class="stat-label">评论链追踪</div><div class="stat-value">${chain.total_comments||0}</div></div>
+      <div class="stat-card"><div class="stat-label">收到回复</div><div class="stat-value">${chain.received_replies||0}</div></div>
+    `;
+    renderCalendar(cal.entries || []);
+  } catch(e) { console.warn('moments stats:', e); }
+}
+
+function renderCalendar(entries) {
+  const el = document.getElementById('calendar-list');
+  if (!entries.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:40px">暂无日历规划，点击"生成月计划"开始</div>';
+    return;
+  }
+  el.innerHTML = '<div class="table-wrap"><table><thead><tr><th>日期</th><th>主题</th><th>文案</th><th>状态</th><th>操作</th></tr></thead><tbody>'
+    + entries.map(e => {
+      const sc = {planned:'🕐 待审',approved:'✅ 已批',published:'📢 已发',skipped:'⏭ 跳过'}[e.status]||e.status;
+      return `<tr>
+        <td style="white-space:nowrap">${esc(e.date)}</td>
+        <td>${esc(e.topic)}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.text)}">${esc(e.text)}</td>
+        <td>${sc}</td>
+        <td style="white-space:nowrap">
+          ${e.status==='planned'?`<button class="btn btn-sm btn-green" onclick="calAction('${e.date}','approve')">批准</button>
+          <button class="btn btn-sm btn-outline" onclick="calAction('${e.date}','skip')">跳过</button>`:''}
+        </td></tr>`;
+    }).join('') + '</tbody></table></div>';
+}
+
+async function calAction(date, action) {
+  await api(`/api/moments/calendar/${date}/${action}`, {method:'POST'});
+  loadMomentsStats();
+}
+
+async function generateCalendar() {
+  if (!confirm('AI将生成30天内容日历（需约10秒），确定？')) return;
+  const btn = event.target; btn.disabled = true; btn.textContent = '生成中...';
+  try {
+    const res = await api('/api/moments/calendar/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    loadMomentsStats();
+  } catch(e) { alert('生成失败: ' + e.message); }
+  btn.disabled = false; btn.textContent = '🗓 生成月计划';
+}
+
+async function generateMomentText() {
+  const topic = document.getElementById('mg-topic').value;
+  const style = document.getElementById('mg-style').value;
+  const mood = document.getElementById('mg-mood').value;
+  const scene = document.getElementById('mg-scene').value;
+  const el = document.getElementById('mg-results');
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">AI 生成中...</div>';
+  try {
+    const res = await api('/api/moments/generate-text', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,style,mood,scene})});
+    const drafts = res.drafts || [];
+    el.innerHTML = drafts.map((d,i) => `
+      <div class="card" style="margin-bottom:8px;padding:12px;cursor:pointer" onclick="document.getElementById('pub-text').value=this.querySelector('.draft-text').textContent;showPublishModal()">
+        <div style="font-size:12px;color:var(--accent);margin-bottom:4px">${esc(d.style||('方案'+(i+1)))}</div>
+        <div class="draft-text">${esc(d.text)}</div>
+      </div>`).join('') || '<div style="color:var(--text2)">生成失败</div>';
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">${esc(e.message)}</div>`; }
+}
+
+function showPublishModal() {
+  document.getElementById('modal-publish').classList.add('active');
+}
+
+async function doPublish() {
+  const gen = document.getElementById('pub-generate').checked;
+  const body = gen
+    ? { generate: true, topic: document.getElementById('pub-topic').value, style: '日常' }
+    : { text: document.getElementById('pub-text').value };
+  try {
+    await api('/api/moments/publish', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    closeModal('modal-publish');
+    alert('已提交发布（进入审核队列）');
+    loadMomentsStats();
+  } catch(e) { alert('发布失败: ' + e.message); }
+}
+
+// ── Contacts ─────────────────────────────────────────────────────
+
+async function loadProfiles() {
+  try {
+    const res = await api('/api/contacts/profiles');
+    const profiles = res.profiles || [];
+    const el = document.getElementById('profiles-list');
+    if (!profiles.length) {
+      el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:40px">暂无联系人画像，互动后自动生成</div>';
+      return;
+    }
+    el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>昵称</th><th>关系</th><th>亲密度</th><th>互动</th><th>兴趣</th><th>评论风格</th></tr></thead><tbody>`
+      + profiles.map(p => {
+        const bar = Math.min(100, p.intimacy || 0);
+        const color = bar > 70 ? 'var(--green)' : bar > 40 ? 'var(--orange)' : 'var(--text2)';
+        return `<tr>
+          <td><strong>${esc(p.name||p.nickname)}</strong></td>
+          <td>${esc(p.relationship||'未知')}</td>
+          <td><div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${bar}%;height:100%;background:${color}"></div></div><span style="font-size:12px">${bar.toFixed(0)}</span></div></td>
+          <td style="font-size:12px">${(p.total_likes||0)} 赞 / ${(p.total_comments||0)} 评</td>
+          <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc((p.interests||[]).join(', '))}</td>
+          <td style="font-size:12px">${esc(p.comment_style||'默认')}</td>
+        </tr>`;
+      }).join('') + '</tbody></table></div>';
+  } catch(e) { console.warn('profiles:', e); }
+}
+
+// ── Analytics ─────────────────────────────────────────────────────
+
+const CHART_THEME = {
+  bg: 'transparent',
+  textColor: '#9ca0b8',
+  axisLine: '#2e3148',
+  splitLine: '#1e2030',
+  colors: ['#6c63ff','#42a5f5','#4caf50','#ff9800','#ef5350','#ab47bc','#26c6da'],
+};
+
+function chartOption(base) {
+  return Object.assign({
+    backgroundColor: CHART_THEME.bg,
+    textStyle: { color: CHART_THEME.textColor, fontSize: 11 },
+    grid: { left: 50, right: 16, top: 30, bottom: 30 },
+  }, base);
+}
+
+async function loadAnalytics() {
+  try {
+    const [overview, hourly, weekly, contacts, content] = await Promise.all([
+      api('/api/analytics/overview').catch(()=>({})),
+      api('/api/analytics/hourly').catch(()=>({distribution:[]})),
+      api('/api/analytics/weekly-trend').catch(()=>({trend:[]})),
+      api('/api/analytics/top-contacts').catch(()=>({contacts:[]})),
+      api('/api/analytics/content-performance').catch(()=>({performance:[]})),
+    ]);
+
+    document.getElementById('analytics-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">总点赞</div><div class="stat-value">${overview.total_likes_given||0}</div></div>
+      <div class="stat-card"><div class="stat-label">总评论</div><div class="stat-value">${overview.total_comments_given||0}</div></div>
+      <div class="stat-card"><div class="stat-label">总发布</div><div class="stat-value">${overview.total_publishes||0}</div></div>
+      <div class="stat-card"><div class="stat-label">平均互动分</div><div class="stat-value">${overview.avg_engagement||0}</div></div>
+    `;
+
+    // Hourly heatmap
+    const hd = hourly.distribution || [];
+    if (typeof echarts !== 'undefined') {
+      const c1 = echarts.init(document.getElementById('chart-hourly'));
+      c1.setOption(chartOption({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: hd.map(h=>h.hour+'时'), axisLine:{lineStyle:{color:CHART_THEME.axisLine}} },
+        yAxis: { type: 'value', splitLine:{lineStyle:{color:CHART_THEME.splitLine}}, axisLine:{show:false} },
+        series: [
+          { name:'点赞', type:'bar', stack:'a', data:hd.map(h=>h.likes), itemStyle:{color:CHART_THEME.colors[0]} },
+          { name:'评论', type:'bar', stack:'a', data:hd.map(h=>h.comments), itemStyle:{color:CHART_THEME.colors[1]} },
+        ],
+        legend: { data:['点赞','评论'], textStyle:{color:CHART_THEME.textColor}, top:0 },
+      }));
+
+      // Weekly trend
+      const wd = weekly.trend || [];
+      const c2 = echarts.init(document.getElementById('chart-weekly'));
+      c2.setOption(chartOption({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type:'category', data:wd.map(w=>w.week), axisLine:{lineStyle:{color:CHART_THEME.axisLine}} },
+        yAxis: { type:'value', splitLine:{lineStyle:{color:CHART_THEME.splitLine}}, axisLine:{show:false} },
+        series: [
+          { name:'点赞', type:'line', data:wd.map(w=>w.likes), smooth:true, lineStyle:{width:2}, itemStyle:{color:CHART_THEME.colors[0]} },
+          { name:'评论', type:'line', data:wd.map(w=>w.comments), smooth:true, lineStyle:{width:2}, itemStyle:{color:CHART_THEME.colors[1]} },
+          { name:'总计', type:'line', data:wd.map(w=>w.total), smooth:true, lineStyle:{width:2,type:'dashed'}, itemStyle:{color:CHART_THEME.colors[3]} },
+        ],
+        legend: { data:['点赞','评论','总计'], textStyle:{color:CHART_THEME.textColor}, top:0 },
+      }));
+
+      // Top contacts bar
+      const cd = (contacts.contacts||[]).reverse();
+      const c3 = echarts.init(document.getElementById('chart-contacts'));
+      c3.setOption(chartOption({
+        tooltip: { trigger: 'axis', axisPointer:{type:'shadow'} },
+        grid: { left:80, right:16, top:10, bottom:20 },
+        xAxis: { type:'value', splitLine:{lineStyle:{color:CHART_THEME.splitLine}}, axisLine:{show:false} },
+        yAxis: { type:'category', data:cd.map(c=>c.author), axisLine:{lineStyle:{color:CHART_THEME.axisLine}} },
+        series: [
+          { name:'点赞', type:'bar', stack:'a', data:cd.map(c=>c.likes), itemStyle:{color:CHART_THEME.colors[0]} },
+          { name:'评论', type:'bar', stack:'a', data:cd.map(c=>c.comments), itemStyle:{color:CHART_THEME.colors[1]} },
+        ],
+      }));
+
+      // Content category pie
+      const pd = (content.performance||[]);
+      const c4 = echarts.init(document.getElementById('chart-content'));
+      if (pd.length) {
+        c4.setOption(chartOption({
+          tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' },
+          series: [{
+            type:'pie', radius:['40%','70%'],
+            label: { color:CHART_THEME.textColor, fontSize:11 },
+            data: pd.map((p,i)=>({name:p.category, value:p.count, itemStyle:{color:CHART_THEME.colors[i%7]}})),
+          }],
+        }));
+      } else {
+        c4.setOption(chartOption({ title:{text:'暂无数据',left:'center',top:'center',textStyle:{color:CHART_THEME.textColor,fontSize:13}} }));
+      }
+
+      window.addEventListener('resize', ()=>{ [c1,c2,c3,c4].forEach(c=>c.resize()); });
+    }
+  } catch(e) { console.warn('analytics:', e); }
+}
+
+async function genStrategyReport() {
+  const el = document.getElementById('analytics-report');
+  el.innerHTML = '<div style="padding:16px;background:var(--bg2);border-radius:var(--radius);color:var(--text2)">AI 分析中...</div>';
+  try {
+    const res = await api('/api/analytics/strategy-report', {method:'POST'});
+    el.innerHTML = `<div style="padding:16px;background:var(--bg2);border-radius:var(--radius);white-space:pre-wrap;line-height:1.6">${esc(res.report||'生成失败')}</div>`;
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">${esc(e.message)}</div>`; }
+}
+
+// ── Broadcast ────────────────────────────────────────────────────
+
+async function loadBroadcast() {
+  try {
+    const [tpls, camps, stats] = await Promise.all([
+      api('/api/broadcast/templates').catch(()=>({templates:[]})),
+      api('/api/broadcast/campaigns').catch(()=>({campaigns:[]})),
+      api('/api/broadcast/stats').catch(()=>({})),
+    ]);
+    document.getElementById('broadcast-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">今日已发</div><div class="stat-value">${stats.sent_today||0}</div></div>
+      <div class="stat-card"><div class="stat-label">剩余配额</div><div class="stat-value">${stats.remaining||50}</div></div>
+      <div class="stat-card"><div class="stat-label">每日上限</div><div class="stat-value">${stats.daily_limit||50}</div></div>
+    `;
+    const templates = tpls.templates||[];
+    document.getElementById('broadcast-templates').innerHTML = templates.length
+      ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'
+        + templates.map(t=>`<div class="card" style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-weight:600;margin-bottom:4px">${esc(t.name)}</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${esc(t.content.substring(0,60))}</div>
+            <span class="badge badge-info">${esc(t.category)}</span>
+          </div>`).join('') + '</div>'
+      : '<div style="color:var(--text2);padding:12px">暂无模板</div>';
+    const campaigns = camps.campaigns||[];
+    document.getElementById('broadcast-campaigns').innerHTML = campaigns.length
+      ? '<div class="table-wrap"><table><thead><tr><th>名称</th><th>状态</th><th>已发/总数</th><th>失败</th></tr></thead><tbody>'
+        + campaigns.map(c=>`<tr><td>${esc(c.name)}</td><td><span class="badge badge-${c.status==='completed'?'success':c.status==='running'?'warning':'info'}">${c.status}</span></td><td>${c.sent}/${c.total}</td><td>${c.failed}</td></tr>`).join('')
+        + '</tbody></table></div>'
+      : '<div style="color:var(--text2);padding:12px">暂无任务</div>';
+  } catch(e) { console.warn('broadcast:', e); }
+}
+
+function showBroadcastModal() { alert('请通过 API 或工作流创建群发任务 (/api/broadcast/send)'); }
+
+// ── Media ────────────────────────────────────────────────────────
+
+async function loadMedia() {
+  try {
+    const res = await api('/api/media/list');
+    const s = res.stats||{};
+    document.getElementById('media-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">总素材</div><div class="stat-value">${s.total||0}</div></div>
+      <div class="stat-card"><div class="stat-label">已标注</div><div class="stat-value">${s.analyzed||0}</div></div>
+      <div class="stat-card"><div class="stat-label">已使用</div><div class="stat-value">${s.used||0}</div></div>
+      <div class="stat-card"><div class="stat-label">未使用</div><div class="stat-value">${s.unused||0}</div></div>
+    `;
+    const media = res.media||[];
+    document.getElementById('media-grid').innerHTML = media.length
+      ? media.map(m=>`<div class="card" style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);text-align:center">
+          <div style="height:100px;background:var(--bg3);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:6px">${m.ai_analyzed?'🖼':'📷'}</div>
+          <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.filename)}</div>
+          <div style="font-size:10px;color:var(--text2)">${(m.tags||[]).slice(0,3).join(', ')}</div>
+        </div>`).join('')
+      : '<div style="color:var(--text2);text-align:center;padding:40px;grid-column:1/-1">暂无素材，点击"导入"添加图片</div>';
+  } catch(e) { console.warn('media:', e); }
+}
+
+function importMedia() {
+  const path = prompt('输入图片文件或文件夹路径：');
+  if (!path) return;
+  const cat = prompt('分类名称（可选）：', '') || '';
+  api('/api/media/import', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,category:cat})})
+    .then(r => { alert(`导入完成：${r.imported||0} 张`); loadMedia(); })
+    .catch(e => alert('导入失败: ' + e.message));
+}
+
+// ── Ollama ────────────────────────────────────────────────────────
+
+async function loadOllama() {
+  try {
+    const res = await api('/api/ollama/check', {method:'POST'});
+    document.getElementById('ollama-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">状态</div><div class="stat-value" style="color:${res.available?'var(--green)':'var(--red)'}">${res.available?'运行中':'未运行'}</div></div>
+      <div class="stat-card"><div class="stat-label">版本</div><div class="stat-value">${esc(res.version||'-')}</div></div>
+      <div class="stat-card"><div class="stat-label">模型数</div><div class="stat-value">${(res.models||[]).length}</div></div>
+      <div class="stat-card"><div class="stat-label">延迟</div><div class="stat-value">${res.latency_ms||0}ms</div></div>
+    `;
+    const models = res.models||[];
+    document.getElementById('ollama-models').innerHTML = models.length
+      ? '<div class="table-wrap"><table><thead><tr><th>模型</th><th>大小</th><th>参数</th><th>量化</th><th>操作</th></tr></thead><tbody>'
+        + models.map(m=>`<tr><td><strong>${esc(m.name)}</strong></td><td>${esc(m.size)}</td><td>${esc(m.params)}</td><td>${esc(m.quant)}</td>
+          <td><button class="btn btn-sm btn-outline" onclick="benchOllama('${esc(m.name)}')">测速</button>
+          <button class="btn btn-sm btn-outline" style="color:var(--red)" onclick="delOllama('${esc(m.name)}')">删除</button></td></tr>`).join('')
+        + '</tbody></table></div>'
+      : '<div style="color:var(--text2);padding:12px">'+(res.available?'暂无模型，请拉取一个':'请先安装并启动 Ollama (ollama.com)')+'</div>';
+    const bm = res.benchmarks||{};
+    if (Object.keys(bm).length) {
+      document.getElementById('ollama-benchmark').innerHTML = '<h3 style="font-size:14px;color:var(--text2);margin-bottom:8px">基准测试结果</h3>'
+        + Object.entries(bm).map(([k,v])=>`<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:4px"><strong>${esc(k)}</strong>: ${v} tokens/s</div>`).join('');
+    }
+  } catch(e) { console.warn('ollama:', e); }
+}
+
+async function pullOllamaModel() {
+  const name = document.getElementById('ollama-pull-name').value.trim();
+  if (!name) return;
+  if (!confirm(`拉取模型 "${name}"？这可能需要几分钟。`)) return;
+  try {
+    await api('/api/ollama/pull', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:name})});
+    alert('模型拉取完成！');
+    loadOllama();
+  } catch(e) { alert('拉取失败: ' + e.message); }
+}
+
+async function benchOllama(model) {
+  const el = document.getElementById('ollama-benchmark');
+  el.innerHTML = `<div style="padding:12px;color:var(--text2)">正在测试 ${esc(model)}...</div>`;
+  try {
+    const res = await api('/api/ollama/benchmark', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model})});
+    el.innerHTML = `<div style="padding:12px;background:var(--bg2);border-radius:var(--radius)">
+      <strong>${esc(res.model||model)}</strong><br>
+      首Token: ${res.first_token_ms||0}ms | 总耗时: ${res.total_ms||0}ms | 吞吐: ${res.tokens_per_second||0} tok/s
+    </div>`;
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">${esc(e.message)}</div>`; }
+}
+
+async function delOllama(name) {
+  if (!confirm(`删除模型 "${name}"？`)) return;
+  await api(`/api/ollama/models/${name}`, {method:'DELETE'});
+  loadOllama();
+}
+
+// ── SSE Real-time ────────────────────────────────────────────────
+
+let _sse = null;
+function connectSSE() {
+  if (_sse) _sse.close();
+  _sse = new EventSource(API + '/api/events/stream');
+  _sse.addEventListener('broadcast_progress', e => {
+    try {
+      const d = JSON.parse(e.data).data;
+      showToast(`群发进度: ${d.current}/${d.total} (已发${d.sent})`, 'info');
+    } catch(e) {}
+  });
+  _sse.addEventListener('broadcast_complete', e => {
+    try {
+      const d = JSON.parse(e.data).data;
+      showToast(`群发完成: 发送${d.sent}人，失败${d.failed}人`, d.failed ? 'warning' : 'success');
+      if (document.getElementById('page-broadcast').style.display !== 'none') loadBroadcast();
+    } catch(e) {}
+  });
+  _sse.addEventListener('workflow_event', e => {
+    try {
+      const d = JSON.parse(e.data).data;
+      showToast(`工作流: ${d.name||''} ${d.status||''}`, 'info');
+    } catch(e) {}
+  });
+  _sse.addEventListener('moments_event', e => {
+    try {
+      const d = JSON.parse(e.data).data;
+      showToast(`朋友圈: ${d.message||''}`, 'info');
+    } catch(e) {}
+  });
+  _sse.onerror = () => { setTimeout(connectSSE, 5000); };
+}
+
+function showToast(msg, type='info') {
+  const el = document.createElement('div');
+  const colors = {info:'var(--accent)',success:'var(--green)',warning:'var(--orange)',error:'var(--red)'};
+  el.style.cssText = `position:fixed;top:16px;right:16px;padding:10px 16px;background:var(--bg3);border:1px solid ${colors[type]||colors.info};border-radius:8px;color:var(--text);font-size:13px;z-index:9999;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,0.4);animation:fadeIn .3s`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 4000);
+}
+
+// ── Message Rules ────────────────────────────────────────────────
+
+let _allRules = [];
+
+async function loadMsgRules() {
+  try {
+    const [rulesData, statsData] = await Promise.all([
+      api('/api/msg-rules'),
+      api('/api/msg-rules/stats'),
+    ]);
+    _allRules = rulesData.rules || [];
+    const s = statsData;
+    document.getElementById('rule-stats').innerHTML = `
+      <div class="stat-card"><div class="label">总规则</div><div class="value">${s.total_rules||0}</div></div>
+      <div class="stat-card"><div class="label">已启用</div><div class="value">${s.enabled||0}</div></div>
+      <div class="stat-card"><div class="label">总触发</div><div class="value">${s.total_triggers||0}</div></div>
+    `;
+    const matchLabel = {keyword:'关键词',regex:'正则',contains:'包含',exact:'精确'};
+    const actionLabel = {workflow:'触发工作流',reply:'自动回复',forward:'转发',notify:'通知',webhook:'Webhook'};
+    document.getElementById('rules-body').innerHTML = _allRules.map(r => `<tr>
+      <td>${r.enabled ? '<span style="color:var(--green)">●</span>' : '<span style="color:var(--text2)">○</span>'}</td>
+      <td>${r.name}</td>
+      <td>${matchLabel[r.match_type]||r.match_type}</td>
+      <td style="font-family:monospace;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.match_pattern}</td>
+      <td><span class="badge">${actionLabel[r.action_type]||r.action_type}</span> ${r.action_target?.substring(0,30)||''}</td>
+      <td>${r.trigger_count||0}</td>
+      <td><button class="btn btn-sm" onclick="editRule('${r.id}')">编辑</button> <button class="btn btn-sm btn-outline" onclick="delRule('${r.id}')">删除</button></td>
+    </tr>`).join('');
+  } catch(e) {
+    console.error('loadMsgRules', e);
+  }
+}
+
+function showRuleEditor(ruleId) {
+  const r = ruleId ? _allRules.find(x=>x.id===ruleId) : {};
+  const html = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:500px;margin:0 auto">
+    <h3 style="margin-bottom:16px">${ruleId ? '编辑' : '新建'}消息路由规则</h3>
+    <div class="form-group"><label>规则名称</label><input id="re-name" value="${r.name||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>匹配方式</label><select id="re-match-type">
+        <option value="keyword" ${r.match_type==='keyword'?'selected':''}>关键词</option>
+        <option value="regex" ${r.match_type==='regex'?'selected':''}>正则表达式</option>
+        <option value="contains" ${r.match_type==='contains'?'selected':''}>包含</option>
+        <option value="exact" ${r.match_type==='exact'?'selected':''}>精确匹配</option>
+      </select></div>
+      <div class="form-group"><label>优先级</label><input id="re-priority" type="number" value="${r.priority||50}"></div>
+    </div>
+    <div class="form-group"><label>匹配模式 (关键词逗号分隔)</label><input id="re-pattern" value="${r.match_pattern||''}"></div>
+    <div class="form-group"><label>限定联系人 (逗号分隔，空=所有)</label><input id="re-contacts" value="${r.match_contacts||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>动作类型</label><select id="re-action-type">
+        <option value="notify" ${r.action_type==='notify'?'selected':''}>通知</option>
+        <option value="workflow" ${r.action_type==='workflow'?'selected':''}>触发工作流</option>
+        <option value="reply" ${r.action_type==='reply'?'selected':''}>自动回复</option>
+        <option value="forward" ${r.action_type==='forward'?'selected':''}>转发消息</option>
+        <option value="webhook" ${r.action_type==='webhook'?'selected':''}>Webhook</option>
+      </select></div>
+      <div class="form-group"><label>冷却(秒)</label><input id="re-cooldown" type="number" value="${r.cooldown_seconds||60}"></div>
+    </div>
+    <div class="form-group"><label>动作目标 (工作流ID/回复文本/URL)</label><input id="re-target" value="${r.action_target||''}"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="saveRule('${ruleId||''}')">保存</button>
+      <button class="btn btn-outline" onclick="loadMsgRules()">取消</button>
+    </div></div>`;
+  document.getElementById('rules-body').innerHTML = `<tr><td colspan="7">${html}</td></tr>`;
+}
+function editRule(id) { showRuleEditor(id); }
+
+async function saveRule(ruleId) {
+  const data = {
+    id: ruleId || undefined,
+    name: document.getElementById('re-name').value,
+    match_type: document.getElementById('re-match-type').value,
+    match_pattern: document.getElementById('re-pattern').value,
+    match_contacts: document.getElementById('re-contacts').value,
+    action_type: document.getElementById('re-action-type').value,
+    action_target: document.getElementById('re-target').value,
+    priority: parseInt(document.getElementById('re-priority').value) || 50,
+    cooldown_seconds: parseInt(document.getElementById('re-cooldown').value) || 60,
+  };
+  await api('/api/msg-rules', 'POST', data);
+  showToast('规则已保存', 'success');
+  loadMsgRules();
+}
+
+async function delRule(id) {
+  if (!confirm('确定删除此规则？')) return;
+  await api(`/api/msg-rules/${id}`, 'DELETE');
+  showToast('规则已删除', 'success');
+  loadMsgRules();
+}
+
+async function aiSuggestRules() {
+  showToast('AI 正在分析消息历史...', 'info');
+  try {
+    const data = await api('/api/msg-rules/suggest', 'POST');
+    const suggestions = data.suggestions || [];
+    if (!suggestions.length) {
+      showToast('暂无新规则建议', 'info');
+      return;
+    }
+    let html = '<div style="padding:16px"><h3 style="margin-bottom:12px">🤖 AI 建议的规则</h3>';
+    suggestions.forEach((s, i) => {
+      html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="font-weight:600">${s.name}</div>
+        <div style="font-size:12px;color:var(--text2);margin:4px 0">匹配: ${s.match_pattern} | 动作: ${s.action_type}</div>
+        <div style="font-size:12px;color:var(--text2)">${s.reason||''}</div>
+        <button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="applySuggestion(${i})">采纳</button>
+      </div>`;
+    });
+    html += '<button class="btn btn-outline" style="margin-top:8px" onclick="loadMsgRules()">关闭</button></div>';
+    document.getElementById('rules-body').innerHTML = `<tr><td colspan="7">${html}</td></tr>`;
+    window._suggestions = suggestions;
+  } catch(e) {
+    showToast('AI 分析失败: ' + (e.message||e), 'error');
+  }
+}
+
+async function applySuggestion(idx) {
+  const s = window._suggestions?.[idx];
+  if (!s) return;
+  await api('/api/msg-rules', 'POST', {
+    name: s.name,
+    match_type: s.match_type || 'keyword',
+    match_pattern: s.match_pattern || '',
+    action_type: s.action_type || 'notify',
+    action_target: s.action_target || '',
+  });
+  showToast(`已采纳规则: ${s.name}`, 'success');
+  loadMsgRules();
+}
+
+// ── Calendar ─────────────────────────────────────────────────────
+
+let _calYear = new Date().getFullYear();
+let _calMonth = new Date().getMonth() + 1;
+
+function calNav(delta) {
+  _calMonth += delta;
+  if (_calMonth > 12) { _calMonth = 1; _calYear++; }
+  if (_calMonth < 1) { _calMonth = 12; _calYear--; }
+  loadCalendar();
+}
+
+// ── 统一收件箱 ──────────────────────────────────────────────────────────────
+
+let _inboxActiveContact = null;
+let _inboxActiveAccount = '';
+
+async function loadInbox() {
+  const acctFilter = document.getElementById('inbox-acct-filter').value;
+  const stats = await api(`/api/inbox/stats?account_id=${acctFilter}`);
+  document.getElementById('inbox-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${stats.total||0}</div><div class="stat-label">总消息</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#f38ba8">${stats.unread||0}</div><div class="stat-label">未读</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#f9e2af">${stats.starred||0}</div><div class="stat-label">星标</div></div>
+  `;
+
+  const convs = await api(`/api/inbox/conversations?account_id=${acctFilter}`);
+  const list = convs.conversations || [];
+  document.getElementById('inbox-conv-list').innerHTML = list.map(c => `
+    <div class="card" style="padding:10px;margin-bottom:4px;cursor:pointer;border-left:3px solid ${c.unread_count>0?'#f38ba8':'transparent'}"
+         onclick="openConversation('${c.account_id}','${c.contact.replace(/'/g,"\\'")}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="color:#cdd6f4;font-size:13px">${c.contact}</b>
+        ${c.unread_count>0?`<span style="background:#f38ba8;color:#1e1e2e;border-radius:10px;padding:1px 6px;font-size:11px">${c.unread_count}</span>`:''}
+      </div>
+      <div style="color:#a6adc8;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last_msg||''}</div>
+      <div style="color:#585b70;font-size:10px">${c.account_id}</div>
+    </div>
+  `).join('');
+
+  // 填充账号过滤器
+  const byAcct = stats.unread_by_account || {};
+  const sel = document.getElementById('inbox-acct-filter');
+  const current = sel.value;
+  const opts = ['<option value="">全部账号</option>'];
+  Object.keys(byAcct).forEach(a => opts.push(`<option value="${a}">${a} (${byAcct[a]})</option>`));
+  sel.innerHTML = opts.join('');
+  sel.value = current;
+}
+
+async function openConversation(accountId, contact) {
+  _inboxActiveAccount = accountId;
+  _inboxActiveContact = contact;
+  const data = await api(`/api/inbox?account_id=${accountId}&contact=${encodeURIComponent(contact)}&limit=40`);
+  const msgs = (data.messages || []).reverse();
+  const box = document.getElementById('inbox-messages');
+  box.innerHTML = `<h3 style="color:#cba6f7;margin:0 0 12px">${contact} <span style="color:#585b70;font-size:12px">${accountId}</span></h3>` +
+    msgs.map(m => `
+      <div style="margin-bottom:8px;text-align:${m.is_mine?'right':'left'}">
+        <div style="display:inline-block;background:${m.is_mine?'#313244':'#1e2030'};color:#cdd6f4;padding:8px 12px;border-radius:12px;max-width:80%;font-size:13px">
+          ${m.sender && !m.is_mine ? `<div style="color:#89b4fa;font-size:11px;margin-bottom:2px">${m.sender}</div>` : ''}
+          ${m.content}
+        </div>
+        <div style="font-size:10px;color:#585b70;margin-top:2px">${new Date(m.timestamp*1000).toLocaleTimeString()}</div>
+      </div>
+    `).join('');
+  box.scrollTop = box.scrollHeight;
+  // 标已读
+  await api('/api/inbox/read', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:accountId,contact})});
+  setTimeout(loadInbox, 500);
+}
+
+async function markAllRead() {
+  const acct = document.getElementById('inbox-acct-filter').value;
+  await api('/api/inbox/read', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:acct})});
+  loadInbox();
+}
+
+// ── 转发规则 ────────────────────────────────────────────────────────────────
+
+async function loadForwardRules() {
+  const data = await api('/api/forward-rules');
+  const rules = data.rules || [];
+  document.getElementById('forward-rules-list').innerHTML = rules.length === 0
+    ? '<p style="color:#585b70;text-align:center;padding:40px">暂无转发规则</p>'
+    : rules.map(r => `
+      <div class="card" style="padding:16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <b style="color:${r.enabled?'#a6e3a1':'#585b70'}">${r.enabled?'●':'○'} ${r.name}</b>
+          <div style="color:#a6adc8;font-size:12px;margin-top:4px">
+            ${r.src_account}${r.src_contact?' / '+r.src_contact:' / 全部'}
+            <span style="color:#89b4fa;margin:0 8px">→</span>
+            ${r.dst_account} / ${r.dst_contact}
+          </div>
+          ${r.keyword_filter ? `<div style="color:#f9e2af;font-size:11px;margin-top:2px">关键词: ${r.keyword_filter}</div>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteForwardRule('${r.id}')">删除</button>
+      </div>
+    `).join('');
+}
+
+async function showForwardDialog() {
+  const name = prompt('规则名称:', '新转发规则');
+  if (!name) return;
+  const src_acct = prompt('来源账号 ID:', 'default');
+  const src_contact = prompt('来源联系人（空=全部）:', '');
+  const dst_acct = prompt('目标账号 ID:');
+  if (!dst_acct) return;
+  const dst_contact = prompt('转发给谁（联系人名）:');
+  if (!dst_contact) return;
+  const kw = prompt('关键词过滤（逗号分隔，空=不过滤）:', '');
+  await api('/api/forward-rules', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name, src_account:src_acct, src_contact, dst_account:dst_acct, dst_contact, keyword_filter:kw})});
+  loadForwardRules();
+  toast('转发规则已添加', 'success');
+}
+
+async function deleteForwardRule(id) {
+  if (!confirm('确认删除？')) return;
+  await api(`/api/forward-rules/${id}`, {method:'DELETE'});
+  loadForwardRules();
+}
+
+// ── 朋友圈协作 ──────────────────────────────────────────────────────────────
+
+async function loadMomentsCoop() {
+  // 获取已连接账号
+  const accts = await api('/api/accounts/connected');
+  const connected = accts.accounts || [];
+  const checkboxes = connected.map(a => `
+    <label style="display:flex;align-items:center;gap:6px;color:#cdd6f4;font-size:13px;margin-bottom:4px">
+      <input type="checkbox" class="coop-acct-cb" value="${a.id}" checked> ${a.name||a.id}
+    </label>
+  `).join('');
+  document.getElementById('coop-browse-accounts').innerHTML = checkboxes || '<span style="color:#585b70">无已连接账号</span>';
+
+  // 状态
+  const st = await api('/api/moments-coop/status');
+  document.getElementById('coop-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${st.tracked_accounts||0}</div><div class="stat-label">活跃账号</div></div>
+    <div class="stat-card"><div class="stat-value">${st.pending_tasks||0}</div><div class="stat-label">待执行</div></div>
+    <div class="stat-card"><div class="stat-value">${st.interacted_posts||0}</div><div class="stat-label">已互动帖</div></div>
+  `;
+
+  const tasks = st.tasks || [];
+  document.getElementById('coop-task-list').innerHTML = tasks.length ? `
+    <h3 style="color:#cba6f7;margin-bottom:8px">📋 任务队列</h3>
+    ${tasks.map(t => `
+      <div class="card" style="padding:10px;margin-bottom:4px;display:flex;justify-content:space-between">
+        <span style="color:#cdd6f4">${t.account} — ${t.action}</span>
+        <span style="color:${t.status==='done'?'#a6e3a1':t.status==='running'?'#89b4fa':'#a6adc8'}">${t.status}</span>
+      </div>
+    `).join('')}` : '';
+}
+
+function refreshMomentsCoop() { loadMomentsCoop(); }
+
+async function startCoopBrowse() {
+  const selected = [...document.querySelectorAll('.coop-acct-cb:checked')].map(cb => cb.value);
+  if (!selected.length) { toast('请选择至少一个账号', 'warn'); return; }
+  await api('/api/moments-coop/browse', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({account_ids:selected, max_posts:5, auto_interact:true})});
+  toast(`已安排 ${selected.length} 个账号协作浏览`, 'success');
+  loadMomentsCoop();
+}
+
+async function startCoopPublish() {
+  const selected = [...document.querySelectorAll('.coop-acct-cb:checked')].map(cb => cb.value);
+  if (!selected.length) { toast('请选择至少一个账号', 'warn'); return; }
+  const topic = document.getElementById('coop-pub-topic').value;
+  const text = document.getElementById('coop-pub-text').value;
+  const stagger = parseInt(document.getElementById('coop-pub-stagger').value) || 30;
+  if (!topic && !text) { toast('请输入话题或正文', 'warn'); return; }
+  await api('/api/moments-coop/publish', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({account_ids:selected, topic, text, stagger_minutes:stagger})});
+  toast(`已安排 ${selected.length} 个账号协作发圈`, 'success');
+  loadMomentsCoop();
+}
+
+// ── 账号健康 ────────────────────────────────────────────────────────────────
+
+async function loadHealth() {
+  const ov = await api('/api/health/overview');
+  document.getElementById('health-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${ov.total||0}</div><div class="stat-label">总账号</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#a6e3a1">${ov.connected||0}</div><div class="stat-label">在线</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${(ov.avg_health||0)>=80?'#a6e3a1':(ov.avg_health||0)>=50?'#f9e2af':'#f38ba8'}">${ov.avg_health||0}</div><div class="stat-label">平均健康</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#f38ba8">${ov.danger_count||0}</div><div class="stat-label">危险</div></div>
+  `;
+
+  const all = await api('/api/health/accounts');
+  const accounts = all.accounts || [];
+  document.getElementById('health-accounts-list').innerHTML = accounts.map(a => {
+    const color = a.risk_level==='safe'?'#a6e3a1':a.risk_level==='warning'?'#f9e2af':'#f38ba8';
+    return `
+    <div class="card" style="padding:16px;border-left:4px solid ${color}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="color:#cdd6f4">${a.account_id}</b>
+        <span style="font-size:24px;font-weight:bold;color:${color}">${a.health_score}</span>
+      </div>
+      <div style="background:#11111b;border-radius:6px;height:6px;overflow:hidden;margin-bottom:8px">
+        <div style="width:${a.health_score}%;height:100%;background:${color};border-radius:6px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;color:#a6adc8">
+        <span>连接: ${a.connected?'✅':'❌'}</span>
+        <span>错误: ${a.errors}</span>
+        <span>发送/h: ${a.send_rate_per_hour}</span>
+        <span>接收/h: ${a.recv_rate_per_hour}</span>
+        <span>错误/h: ${a.error_rate_per_hour}</span>
+        <span>心跳失败: ${a.heartbeat_failures}</span>
+      </div>
+      ${a.last_error?`<div style="color:#f38ba8;font-size:11px;margin-top:4px">最后错误: ${a.last_error}</div>`:''}
+    </div>`;
+  }).join('') || '<p style="color:#585b70;text-align:center;padding:40px">暂无健康数据（请先绑定账号并运行一段时间）</p>';
+}
+
+async function runHealthCheck() {
+  toast('正在检查...', 'info');
+  await api('/api/health/check', {method:'POST'});
+  loadHealth();
+  toast('心跳检查完成', 'success');
+}
+
+// ── 联系人融合 ──────────────────────────────────────────────────────────────
+
+async function loadContactFusion() {
+  const data = await api('/api/contacts/fused');
+  const contacts = data.contacts || [];
+  document.getElementById('fused-contacts-list').innerHTML = contacts.length === 0
+    ? '<p style="color:#585b70;text-align:center;padding:40px">暂无融合联系人，点击"自动发现匹配"开始</p>'
+    : contacts.map(c => `
+      <div class="card" style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="color:#cdd6f4;font-size:15px">${c.display_name}</b>
+          <span style="color:#89b4fa;font-size:12px">${c.accounts_count} 个账号</span>
+        </div>
+        <div style="color:#a6adc8;font-size:12px;margin-bottom:4px">别名: ${(c.aliases||[]).join(', ')}</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <span style="color:#f9e2af;font-size:12px">亲密度: ${c.intimacy}</span>
+          <span style="color:#a6e3a1;font-size:12px">互动: ${c.total_interactions}</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="view360('${c.id}')">360° 视图</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFused('${c.id}')">删除</button>
+        </div>
+      </div>
+    `).join('');
+}
+
+async function discoverContactMatches() {
+  toast('正在扫描跨账号匹配...', 'info');
+  const data = await api('/api/contacts/discover-matches');
+  const matches = data.matches || [];
+  if (!matches.length) {
+    document.getElementById('fusion-matches').innerHTML = '<p style="color:#585b70">未发现匹配（需要多个账号有消息记录）</p>';
+    return;
+  }
+  document.getElementById('fusion-matches').innerHTML = `
+    <h3 style="color:#f9e2af;margin-bottom:8px">发现 ${matches.length} 个潜在匹配</h3>
+    ${matches.map(m => `
+      <div class="card" style="padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="color:#cdd6f4">${m.name1}</span>
+          <span style="color:#585b70;margin:0 6px">${m.account1}</span>
+          <span style="color:#89b4fa">≈</span>
+          <span style="color:#cdd6f4;margin-left:6px">${m.name2}</span>
+          <span style="color:#585b70;margin:0 6px">${m.account2}</span>
+          <span style="color:#a6e3a1;margin-left:8px">${(m.similarity*100).toFixed(0)}%</span>
+        </div>
+        <button class="btn btn-sm" onclick="fuseMatch('${m.name1}','${m.account1}','${m.name2}','${m.account2}')">合并</button>
+      </div>
+    `).join('')}`;
+}
+
+async function fuseMatch(n1, a1, n2, a2) {
+  const name = prompt('设置显示名称:', n1);
+  if (!name) return;
+  await api('/api/contacts/fuse', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({display_name:name, account_contacts:[{account_id:a1,name:n1},{account_id:a2,name:n2}]})});
+  toast('联系人已融合', 'success');
+  loadContactFusion();
+}
+
+async function view360(fusedId) {
+  const data = await api(`/api/contacts/fused/${fusedId}`);
+  alert(JSON.stringify(data, null, 2).substring(0, 500));
+}
+
+async function deleteFused(fusedId) {
+  if (!confirm('确认删除融合？')) return;
+  await api(`/api/contacts/fused/${fusedId}`, {method:'DELETE'});
+  loadContactFusion();
+}
+
+// ── 模板商店 ────────────────────────────────────────────────────────────────
+
+async function loadTemplates() {
+  const data = await api('/api/templates');
+  const templates = data.templates || [];
+  const cats = data.categories || [];
+
+  document.getElementById('tpl-categories').innerHTML =
+    `<button class="btn btn-sm" onclick="loadTemplates()" style="background:#313244">全部</button>` +
+    cats.map(c => `<button class="btn btn-sm" onclick="loadTemplatesCat('${c.category}')" style="background:#313244">${c.label} (${c.count})</button>`).join('');
+
+  renderTemplates(templates);
+}
+
+async function loadTemplatesCat(cat) {
+  const data = await api(`/api/templates?category=${cat}`);
+  renderTemplates(data.templates || []);
+}
+
+function renderTemplates(templates) {
+  const CAT_COLORS = {daily:'#89b4fa',wechat:'#a6e3a1',moments:'#f9e2af',system:'#f38ba8'};
+  document.getElementById('tpl-list').innerHTML = templates.map(t => `
+    <div class="card" style="padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+        <h3 style="color:#cdd6f4;margin:0;font-size:15px">${t.name}</h3>
+        <span style="background:${CAT_COLORS[t.category]||'#585b70'}22;color:${CAT_COLORS[t.category]||'#585b70'};padding:2px 8px;border-radius:6px;font-size:11px">${t.category}</span>
+      </div>
+      <p style="color:#a6adc8;font-size:13px;margin:0 0 8px">${t.description||''}</p>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+        ${(t.tags||[]).map(tag => `<span style="background:#313244;color:#bac2de;padding:1px 6px;border-radius:4px;font-size:11px">${tag}</span>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="color:#585b70;font-size:12px">${(t.nodes||[]).length} 个节点</span>
+        <button class="btn btn-sm" onclick="installTemplate('${t.id}','${t.name}')" style="margin-left:auto">安装</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function installTemplate(tplId, name) {
+  const customName = prompt('工作流名称:', name);
+  if (customName === null) return;
+  const data = await api(`/api/templates/${tplId}/install`, {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name: customName || name})});
+  if (data.ok) {
+    toast(`已安装: ${customName||name}`, 'success');
+  } else {
+    toast('安装失败', 'error');
+  }
+}
+
+// ── 知识库 ──────────────────────────────────────────────────────────────────
+
+async function loadKnowledge() {
+  const data = await api('/api/knowledge');
+  document.getElementById('kb-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${data.documents||0}</div><div class="stat-label">文档数</div></div>
+    <div class="stat-card"><div class="stat-value">${data.chunks||0}</div><div class="stat-label">文本块</div></div>
+    <div class="stat-card"><div class="stat-value">${data.terms||0}</div><div class="stat-label">词条索引</div></div>
+  `;
+  const docs = data.documents_list || data.documents || [];
+  if (Array.isArray(docs)) {
+    document.getElementById('kb-doc-list').innerHTML = docs.map(d => `
+      <div class="card" style="padding:12px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <b style="color:#cdd6f4">${d.title||d.id}</b>
+          <span style="color:#585b70;font-size:12px;margin-left:8px">${d.chunk_count||0} 块</span>
+          ${d.source?`<span style="color:#a6adc8;font-size:11px;margin-left:8px">${d.source}</span>`:''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteKBDoc('${d.id}')">删除</button>
+      </div>
+    `).join('') || '<p style="color:#585b70">暂无文档</p>';
+  }
+}
+
+async function showKBImport() {
+  const title = prompt('文档标题:');
+  if (!title) return;
+  const content = prompt('粘贴文档内容（或输入文本）:');
+  if (!content) return;
+  await api('/api/knowledge/import', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title, content})});
+  toast('文档已导入', 'success');
+  loadKnowledge();
+}
+
+async function searchKB() {
+  const q = document.getElementById('kb-search-input').value;
+  if (!q) return;
+  const data = await api('/api/knowledge/search', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({query:q, top_k:5})});
+  const results = data.results || [];
+  document.getElementById('kb-search-results').innerHTML = results.length
+    ? results.map(r => `
+      <div class="card" style="padding:12px;margin-bottom:6px;border-left:3px solid #89b4fa">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <b style="color:#89b4fa;font-size:12px">${r.title||'未知'}</b>
+          <span style="color:#a6e3a1;font-size:11px">相关度: ${r.score}</span>
+        </div>
+        <div style="color:#cdd6f4;font-size:13px">${r.content?.substring(0,200)||''}</div>
+      </div>
+    `).join('')
+    : '<p style="color:#585b70">未找到相关内容</p>';
+}
+
+async function deleteKBDoc(id) {
+  if (!confirm('确认删除？')) return;
+  await api(`/api/knowledge/${id}`, {method:'DELETE'});
+  loadKnowledge();
+}
+
+// ── 智能日报 ────────────────────────────────────────────────────────────────
+
+async function loadDailyReport() {
+  const data = await api('/api/daily-report');
+  renderDailyReport(data);
+}
+
+async function generateDailyReport() {
+  toast('正在生成日报...', 'info');
+  const data = await api('/api/daily-report', {method:'POST'});
+  renderDailyReport(data);
+  toast('日报已生成', 'success');
+}
+
+function renderDailyReport(data) {
+  const s = data.sections || {};
+  const msg = s.messages || {};
+  const accts = s.accounts || {};
+  const wf = s.workflows || {};
+  const mom = s.moments || {};
+  const scoreColor = (data.score||0)>=80?'#a6e3a1':(data.score||0)>=50?'#f9e2af':'#f38ba8';
+
+  document.getElementById('daily-report-content').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:48px;font-weight:bold;color:${scoreColor}">${data.score||0}</div>
+      <div style="color:#a6adc8;font-size:14px">${data.date||'未知日期'} 综合评分</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+      <div class="card" style="padding:12px;text-align:center"><div style="color:#89b4fa;font-size:24px;font-weight:bold">${msg.received||0}</div><div style="color:#a6adc8;font-size:12px">收到消息</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="color:#a6e3a1;font-size:24px;font-weight:bold">${msg.sent||0}</div><div style="color:#a6adc8;font-size:12px">发送消息</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="color:#f9e2af;font-size:24px;font-weight:bold">${accts.connected||0}/${accts.total||0}</div><div style="color:#a6adc8;font-size:12px">在线账号</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="color:#cba6f7;font-size:24px;font-weight:bold">${wf.runs||0}</div><div style="color:#a6adc8;font-size:12px">工作流执行</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="color:#f38ba8;font-size:24px;font-weight:bold">${mom.likes||0}</div><div style="color:#a6adc8;font-size:12px">朋友圈点赞</div></div>
+    </div>
+    ${data.ai_insight?`<div class="card" style="padding:16px;border-left:4px solid #cba6f7"><b style="color:#cba6f7">AI 洞察</b><p style="color:#cdd6f4;margin:8px 0 0">${data.ai_insight}</p></div>`:''}
+  `;
+}
+
+// ── 数据大屏 ────────────────────────────────────────────────────────────────
+
+async function loadBigScreen() {
+  const d = await api('/api/dashboard/realtime');
+  const inbox = d.inbox || {};
+  const health = d.health || {};
+  const wf = d.workflows || {};
+  const notif = d.notifications || {};
+  const anomaly = d.anomaly || {};
+  const kb = d.knowledge || {};
+
+  document.getElementById('bs-top-cards').innerHTML = `
+    <div class="card" style="padding:16px;text-align:center;background:linear-gradient(135deg,#1e1e2e,#313244)">
+      <div style="color:#89b4fa;font-size:32px;font-weight:bold">${inbox.total||0}</div>
+      <div style="color:#a6adc8;font-size:12px">总消息</div>
+    </div>
+    <div class="card" style="padding:16px;text-align:center;background:linear-gradient(135deg,#1e1e2e,#313244)">
+      <div style="color:#a6e3a1;font-size:32px;font-weight:bold">${health.connected||0}</div>
+      <div style="color:#a6adc8;font-size:12px">在线账号</div>
+    </div>
+    <div class="card" style="padding:16px;text-align:center;background:linear-gradient(135deg,#1e1e2e,#313244)">
+      <div style="color:#f9e2af;font-size:32px;font-weight:bold">${wf.today_runs||0}</div>
+      <div style="color:#a6adc8;font-size:12px">今日工作流</div>
+    </div>
+    <div class="card" style="padding:16px;text-align:center;background:linear-gradient(135deg,#1e1e2e,#313244)">
+      <div style="color:#cba6f7;font-size:32px;font-weight:bold">${kb.documents||0}</div>
+      <div style="color:#a6adc8;font-size:12px">知识库文档</div>
+    </div>
+  `;
+
+  // 健康度条
+  const accounts = d.accounts || [];
+  document.getElementById('bs-health-bars').innerHTML = accounts.length ? accounts.map(a => {
+    const c = a.risk_level==='safe'?'#a6e3a1':a.risk_level==='warning'?'#f9e2af':'#f38ba8';
+    return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;color:#cdd6f4;font-size:13px"><span>${a.account_id}</span><span style="color:${c}">${a.health_score}</span></div><div style="background:#11111b;border-radius:4px;height:4px;overflow:hidden"><div style="width:${a.health_score}%;height:100%;background:${c}"></div></div></div>`;
+  }).join('') : '<p style="color:#585b70;font-size:13px">暂无数据</p>';
+
+  // 告警
+  const breakers = anomaly.breakers || {};
+  const bKeys = Object.keys(breakers);
+  document.getElementById('bs-alerts').innerHTML = bKeys.length
+    ? bKeys.map(k => `<div style="color:${breakers[k]>=2?'#f38ba8':'#f9e2af'};font-size:13px;margin-bottom:4px">${k}: Level ${breakers[k]}</div>`).join('')
+    : '<p style="color:#a6e3a1;font-size:13px">系统正常，无告警</p>';
+
+  // 消息分布
+  const byAcct = inbox.unread_by_account || {};
+  document.getElementById('bs-msg-dist').innerHTML = Object.keys(byAcct).length
+    ? Object.entries(byAcct).map(([a,c]) => `<div style="display:flex;justify-content:space-between;color:#cdd6f4;font-size:13px;margin-bottom:4px"><span>${a}</span><span style="color:#f38ba8">${c} 未读</span></div>`).join('')
+    : '<p style="color:#585b70;font-size:13px">无未读消息</p>';
+
+  // 模块状态
+  document.getElementById('bs-modules').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+      <span style="color:#a6e3a1">✅ 收件箱</span>
+      <span style="color:#a6e3a1">✅ 健康监控</span>
+      <span style="color:#a6e3a1">✅ 异常检测</span>
+      <span style="color:#a6e3a1">✅ 知识库 (${kb.documents||0} 文档)</span>
+      <span style="color:#a6e3a1">✅ 工作流 (${wf.enabled_workflows||0} 启用)</span>
+      <span style="color:#a6e3a1">✅ 通知聚合 (${notif.total_groups||0} 组)</span>
+    </div>
+  `;
+}
+
+function refreshBigScreen() { loadBigScreen(); }
+
+// ── 情感分析 ────────────────────────────────────────────────────────────────
+
+async function loadSentiment() {
+  const ov = await api('/api/sentiment/overview');
+  const moodColor = ov.mood==='positive'?'#a6e3a1':ov.mood==='negative'?'#f38ba8':'#f9e2af';
+  const moodCn = {positive:'积极',neutral:'平稳',negative:'低落'}[ov.mood]||'平稳';
+  document.getElementById('senti-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value" style="color:${moodColor}">${moodCn}</div><div class="stat-label">今日情绪</div></div>
+    <div class="stat-card"><div class="stat-value">${ov.total_24h||0}</div><div class="stat-label">分析消息数</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#a6e3a1">${ov.positive||0}</div><div class="stat-label">正面</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#f9e2af">${ov.neutral||0}</div><div class="stat-label">中性</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#f38ba8">${ov.negative||0}</div><div class="stat-label">负面</div></div>
+  `;
+
+  const trend = await api('/api/sentiment/trend?hours=24');
+  const items = trend.trend || [];
+  if (items.length) {
+    const maxC = Math.max(...items.map(i=>i.count||1));
+    document.getElementById('senti-trend').innerHTML = `
+      <div style="display:flex;align-items:end;gap:2px;height:100px">
+        ${items.map(i => {
+          const h = Math.max(4, ((i.count||0)/maxC)*90);
+          const c = (i.avg_score||0)>0.1?'#a6e3a1':(i.avg_score||0)<-0.1?'#f38ba8':'#f9e2af';
+          return `<div style="flex:1;height:${h}px;background:${c};border-radius:2px" title="消息${i.count} 分数${(i.avg_score||0).toFixed(2)}"></div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;color:#585b70;font-size:10px;margin-top:4px">
+        <span>24h前</span><span>现在</span>
+      </div>`;
+  } else {
+    document.getElementById('senti-trend').innerHTML = '<p style="color:#585b70">暂无数据</p>';
+  }
+}
+
+// ── 群聊管理 ────────────────────────────────────────────────────────────────
+
+async function loadGroupMgr() {
+  const data = await api('/api/groups');
+  const groups = data.groups || [];
+  document.getElementById('group-list').innerHTML = groups.length ? groups.map(g => `
+    <div class="card" style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="color:#cdd6f4;font-size:15px">👥 ${g.group_name}</b>
+        <span style="color:#a6adc8;font-size:12px">${g.total_messages} 条消息</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#a6adc8">
+        <span>活跃成员: ${g.active_members_count}</span>
+        <span>重要消息: ${g.important_count}</span>
+        <span>新成员: ${g.new_members_count}</span>
+      </div>
+      ${g.top_members?.length ? `<div style="margin-top:8px;font-size:11px;color:#585b70">活跃排行: ${g.top_members.map(m=>`${m[0]}(${m[1]})`).join('、')}</div>` : ''}
+      <button class="btn btn-sm" style="margin-top:8px" onclick="genGroupSummary('${g.group_name}')">📋 生成摘要</button>
+    </div>
+  `).join('') : '<p style="color:#585b70;padding:20px">暂无群聊数据（群消息进入后自动统计）</p>';
+}
+
+async function genGroupSummary(name) {
+  toast('正在生成摘要...', 'info');
+  const data = await api(`/api/groups/${encodeURIComponent(name)}/summary`, {method:'POST'});
+  alert(data.summary || '无摘要');
+}
+
+// ── 流程编辑器 ──────────────────────────────────────────────────────────────
+
+async function loadWfEditor() {
+  loadNodeTypes();
+}
+
+async function loadNodeTypes() {
+  const data = await api('/api/workflow-editor/node-types');
+  const types = data.types || [];
+  document.getElementById('wf-node-palette').innerHTML = types.map(t => `
+    <div style="padding:6px 8px;margin-bottom:4px;border-radius:6px;background:#1e2030;cursor:pointer;display:flex;align-items:center;gap:6px" title="${t.type}">
+      <span style="font-size:16px">${t.icon}</span>
+      <span style="color:${t.color}">${t.label}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('wf-preview').innerHTML = '<p style="color:#585b70;font-size:13px">选择工作流后将在此处显示流程图</p>';
+}
+
+// ── 插件市场 ────────────────────────────────────────────────────────────────
+
+async function loadPlugins() {
+  const data = await api('/api/plugins');
+  const plugins = data.plugins || [];
+  document.getElementById('plugin-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${data.total||0}</div><div class="stat-label">总插件</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#a6e3a1">${data.enabled||0}</div><div class="stat-label">已启用</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#585b70">${data.disabled||0}</div><div class="stat-label">已禁用</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#f38ba8">${data.error||0}</div><div class="stat-label">错误</div></div>
+  `;
+
+  const catIcons = {analytics:'📊',ai:'🤖',wechat:'💬',workflow:'⚙️',system:'🔧',general:'📦'};
+  document.getElementById('plugin-list').innerHTML = plugins.map(p => {
+    const stateColor = p.state==='enabled'?'#a6e3a1':p.state==='error'?'#f38ba8':'#585b70';
+    const stateCn = {enabled:'运行中',disabled:'已禁用',error:'错误',registered:'已注册'}[p.state]||p.state;
+    return `
+    <div class="card" style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:20px">${catIcons[p.category]||'📦'}</span>
+        <span style="color:${stateColor};font-size:11px;border:1px solid ${stateColor};border-radius:8px;padding:2px 8px">${stateCn}</span>
+      </div>
+      <b style="color:#cdd6f4">${p.name}</b>
+      <span style="color:#585b70;font-size:11px;margin-left:6px">v${p.version}</span>
+      <p style="color:#a6adc8;font-size:12px;margin:6px 0 12px">${p.description}</p>
+      <div style="display:flex;gap:6px">
+        ${p.state==='enabled'
+          ? `<button class="btn btn-sm btn-danger" onclick="togglePlugin('${p.id}','disable')">禁用</button>`
+          : `<button class="btn btn-sm" onclick="togglePlugin('${p.id}','enable')">启用</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function togglePlugin(id, action) {
+  await api(`/api/plugins/${id}/${action}`, {method:'POST'});
+  loadPlugins();
+}
+
+async function loadCalendar() {
+  const data = await api(`/api/calendar?year=${_calYear}&month=${_calMonth}`);
+  document.getElementById('cal-month-label').textContent = `${_calYear}年${_calMonth}月`;
+
+  const events = data.events || [];
+  const heatmap = data.heatmap || {};
+  const byDate = {};
+  events.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+
+  const daysInMonth = new Date(_calYear, _calMonth, 0).getDate();
+
+  // Heatmap bar
+  const maxHeat = Math.max(1, ...Object.values(heatmap));
+  let heatHtml = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${_calYear}-${String(_calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const count = heatmap[key] || 0;
+    const evtCount = (byDate[key]||[]).length;
+    const total = count + evtCount;
+    const h = total ? Math.max(6, Math.round((total / Math.max(maxHeat, 1)) * 36)) : 4;
+    const opacity = total ? Math.min(0.3 + total * 0.15, 1) : 0.08;
+    heatHtml += `<div title="${d}日: ${count}次执行, ${evtCount}个任务" style="flex:1;height:${h}px;background:var(--accent);opacity:${opacity};border-radius:2px;cursor:default"></div>`;
+  }
+  document.getElementById('cal-heatmap').innerHTML = heatHtml;
+
+  // Calendar grid
+  const firstDay = new Date(_calYear, _calMonth - 1, 1).getDay();
+  const weekDays = ['日','一','二','三','四','五','六'];
+  let html = weekDays.map(d => `<div style="text-align:center;padding:8px;font-size:12px;color:var(--text2);font-weight:600">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) html += '<div></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${_calYear}-${String(_calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEvents = byDate[dateStr] || [];
+    const execCount = heatmap[dateStr] || 0;
+    const isToday = dateStr === new Date().toISOString().slice(0,10);
+    const bg = isToday ? 'var(--accent)' : dayEvents.length ? 'var(--bg3)' : 'var(--bg2)';
+    const border = isToday ? 'var(--accent)' : 'var(--border)';
+
+    let evHtml = dayEvents.slice(0, 3).map(e =>
+      `<div style="font-size:10px;padding:1px 3px;margin-top:2px;background:var(--bg4);border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.time} ${e.title}">${e.icon} ${e.title}</div>`
+    ).join('');
+    if (dayEvents.length > 3) evHtml += `<div style="font-size:10px;color:var(--text2)">+${dayEvents.length-3}更多</div>`;
+    if (execCount > 0) evHtml += `<div style="font-size:10px;color:var(--accent2);margin-top:2px">⚡${execCount}次执行</div>`;
+
+    html += `<div style="background:${bg};border:1px solid ${border};border-radius:6px;padding:6px;min-height:80px;position:relative">
+      <div style="font-size:13px;font-weight:${isToday?'700':'400'};color:${isToday?'#fff':'var(--text)'}">${d}</div>
+      ${evHtml}
+    </div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+// ── Accounts ─────────────────────────────────────────────────────
+
+async function loadAccounts() {
+  const data = await api('/api/accounts');
+  const accounts = data.accounts || [];
+  const statusColors = {connected:'var(--green)', disconnected:'var(--text2)', error:'var(--red)'};
+  const statusLabels = {connected:'已连接', disconnected:'未连接', error:'异常'};
+
+  document.getElementById('accounts-list').innerHTML = accounts.map(a => {
+    const sc = statusColors[a.status] || statusColors.disconnected;
+    const sl = statusLabels[a.status] || a.status;
+    return `
+    <div style="background:var(--bg2);border:1px solid ${a.status==='connected'?'var(--green)':'var(--border)'};border-radius:var(--radius);padding:20px;position:relative">
+      <div style="position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:4px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc}"></span>
+        <span style="font-size:11px;color:${sc}">${sl}</span>
+      </div>
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">${a.name}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:4px">${a.wx_name || '未绑定微信号'}</div>
+      ${a.hwnd ? `<div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-family:monospace">hwnd: ${a.hwnd} | pid: ${a.pid}</div>` : ''}
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px">${a.notes || ''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${a.status!=='connected' ? `<button class="btn btn-sm btn-primary" onclick="bindAccountUI('${a.id}')">绑定窗口</button>` : `<button class="btn btn-sm btn-outline" onclick="disconnectAccount('${a.id}')">断开</button>`}
+        <button class="btn btn-sm btn-outline" onclick="editAccount('${a.id}')">编辑</button>
+        ${a.id!=='default' ? `<button class="btn btn-sm btn-outline" onclick="delAccount('${a.id}')">删除</button>` : ''}
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--text2)">暂无账号，点击"扫描微信"自动发现</div>';
+}
+
+async function discoverWxInstances() {
+  showToast('正在扫描微信窗口...', 'info');
+  const data = await api('/api/accounts/discover');
+  const instances = data.instances || [];
+  if (!instances.length) {
+    showToast('未发现运行中的微信窗口', 'warning');
+    return;
+  }
+  showToast(`发现 ${instances.length} 个微信窗口`, 'success');
+
+  let html = '<div style="padding:16px"><h3 style="margin-bottom:12px">发现的微信窗口</h3>';
+  instances.forEach(inst => {
+    const bound = inst.bound_account_id ? `<span style="color:var(--green);font-size:12px">已绑定: ${inst.bound_account_id}</span>` : '';
+    html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:600">${inst.wx_name || inst.title || '未知'}</div>
+        <div style="font-size:12px;color:var(--text2);font-family:monospace">hwnd: ${inst.hwnd} | pid: ${inst.pid}</div>
+        ${bound}
+      </div>
+      ${!inst.bound_account_id ? `<button class="btn btn-sm btn-primary" onclick="quickBind(${inst.hwnd},'${inst.wx_name||''}')">绑定</button>` : ''}
+    </div>`;
+  });
+  html += '<button class="btn btn-outline" style="margin-top:8px" onclick="loadAccounts()">关闭</button></div>';
+  document.getElementById('accounts-list').innerHTML = html;
+}
+
+async function autoBindAll() {
+  showToast('正在自动绑定所有微信窗口...', 'info');
+  const data = await api('/api/accounts/auto-bind', 'POST');
+  const bound = data.bound || {};
+  const count = Object.keys(bound).length;
+  showToast(`已绑定 ${count} 个微信账号`, count ? 'success' : 'warning');
+  loadAccounts();
+}
+
+async function quickBind(hwnd, wxName) {
+  const name = prompt('账号名称:', wxName || '新账号');
+  if (!name) return;
+  const saveRes = await api('/api/accounts', 'POST', {name, wx_name: wxName});
+  if (saveRes.id) {
+    await api(`/api/accounts/${saveRes.id}/bind`, 'POST', {hwnd});
+    showToast(`已绑定: ${name}`, 'success');
+  }
+  loadAccounts();
+}
+
+async function bindAccountUI(acctId) {
+  const data = await api('/api/accounts/discover');
+  const free = (data.instances || []).filter(i => !i.bound_account_id);
+  if (!free.length) {
+    showToast('没有未绑定的微信窗口，请先多开微信', 'warning');
+    return;
+  }
+  if (free.length === 1) {
+    await api(`/api/accounts/${acctId}/bind`, 'POST', {hwnd: free[0].hwnd});
+    showToast('已绑定', 'success');
+    loadAccounts();
+    return;
+  }
+  const choice = prompt(`选择窗口 (${free.map((f,i)=>`${i+1}:${f.wx_name}`).join(', ')})`, '1');
+  const idx = parseInt(choice) - 1;
+  if (idx >= 0 && idx < free.length) {
+    await api(`/api/accounts/${acctId}/bind`, 'POST', {hwnd: free[idx].hwnd});
+    showToast('已绑定', 'success');
+  }
+  loadAccounts();
+}
+
+async function disconnectAccount(id) {
+  await api(`/api/accounts/${id}/disconnect`, 'POST');
+  showToast('已断开连接', 'info');
+  loadAccounts();
+}
+
+function showAccountEditor(acctId) {
+  const html = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:400px">
+    <h3 style="margin-bottom:16px">${acctId?'编辑':'添加'}账号</h3>
+    <div class="form-group"><label>账号名称</label><input id="acct-name" placeholder="例: 工作微信"></div>
+    <div class="form-group"><label>微信昵称</label><input id="acct-wx" placeholder="微信号昵称"></div>
+    <div class="form-group"><label>备注</label><input id="acct-notes" placeholder="备注信息"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="saveAccount('${acctId||''}')">保存</button>
+      <button class="btn btn-outline" onclick="loadAccounts()">取消</button>
+    </div>
+  </div>`;
+  document.getElementById('accounts-list').innerHTML = html;
+}
+function editAccount(id) { showAccountEditor(id); }
+
+async function saveAccount(id) {
+  await api('/api/accounts', 'POST', {
+    id: id || undefined,
+    name: document.getElementById('acct-name').value,
+    wx_name: document.getElementById('acct-wx').value,
+    notes: document.getElementById('acct-notes').value,
+  });
+  showToast('账号已保存', 'success');
+  loadAccounts();
+}
+
+async function delAccount(id) {
+  if (!confirm('确定删除此账号？')) return;
+  await api(`/api/accounts/${id}`, 'DELETE');
+  loadAccounts();
+}
+
+// ── Performance Monitor ──────────────────────────────────────────
+
+let _monitorTimer = null;
+
+async function loadMonitor() {
+  try {
+    const [routerData, sysData] = await Promise.all([
+      api('/api/router/status').catch(()=>({})),
+      api('/api/system/stats').catch(()=>({})),
+    ]);
+
+    // Stats
+    const providers = routerData.providers || [];
+    const activeCount = providers.filter(p => p.available !== false).length;
+    const totalReq = providers.reduce((s,p) => s + (p.requests||0), 0);
+    const avgLatency = providers.length ? Math.round(providers.reduce((s,p)=>s+(p.avg_latency||0),0)/providers.length) : 0;
+
+    document.getElementById('monitor-stats').innerHTML = `
+      <div class="stat-card"><div class="label">活跃平台</div><div class="value">${activeCount}/${providers.length}</div></div>
+      <div class="stat-card"><div class="label">总请求</div><div class="value">${totalReq}</div></div>
+      <div class="stat-card"><div class="label">平均延迟</div><div class="value">${avgLatency}ms</div></div>
+      <div class="stat-card"><div class="label">内存</div><div class="value">${sysData.memory_mb||'?'} MB</div></div>
+    `;
+
+    // Providers table
+    document.getElementById('monitor-providers').innerHTML = providers.length ? providers.map(p => {
+      const statusColor = p.available !== false ? 'var(--green)' : 'var(--red)';
+      const bar = p.quota_remaining !== undefined ? `<div style="height:4px;background:var(--bg4);border-radius:2px;margin-top:4px"><div style="height:100%;width:${Math.min(100,p.quota_remaining||0)}%;background:var(--accent);border-radius:2px"></div></div>` : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="color:${statusColor};font-size:18px">●</span>
+        <div style="flex:1"><div style="font-size:14px">${p.name||p.id}</div><div style="font-size:12px;color:var(--text2)">${p.model||''} · ${p.requests||0}次 · ${p.avg_latency||0}ms${bar}</div></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--text2)">未配置 AI Router</div>';
+
+    // Latency chart
+    if (typeof echarts !== 'undefined' && providers.length) {
+      const chartEl = document.getElementById('chart-latency');
+      let chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl);
+      chart.setOption({
+        backgroundColor: 'transparent',
+        grid: {top:30,right:20,bottom:30,left:50},
+        xAxis: {type:'category', data: providers.map(p=>p.name||p.id), axisLabel:{color:'#9ca0b8',fontSize:11}},
+        yAxis: {type:'value', name:'ms', axisLabel:{color:'#9ca0b8'}, splitLine:{lineStyle:{color:'#2e3148'}}},
+        series: [{
+          type: 'bar', barWidth:30,
+          data: providers.map(p=>({value:p.avg_latency||0, itemStyle:{color: (p.avg_latency||0) < 500 ? '#6c63ff' : (p.avg_latency||0) < 1500 ? '#ff9800' : '#ef5350'}})),
+        }],
+        tooltip: {trigger:'axis'},
+      });
+    }
+
+    // System logs
+    try {
+      const logData = await api('/api/events/recent?limit=30&event_type=');
+      const events = logData.events || [];
+      document.getElementById('monitor-logs').innerHTML = events.map(ev =>
+        `<div style="padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent)">${new Date(ev.ts*1000).toLocaleTimeString()}</span> <span style="color:var(--orange)">[${ev.type}]</span> ${JSON.stringify(ev.data).substring(0,100)}</div>`
+      ).join('') || '<div style="color:var(--text2)">暂无事件</div>';
+    } catch(e) {}
+
+    // Auto-refresh
+    if (_monitorTimer) clearInterval(_monitorTimer);
+    _monitorTimer = setInterval(loadMonitor, 15000);
+  } catch(e) {
+    console.error('loadMonitor', e);
+  }
+}
+
+// ── WebSocket 实时推送（自动降级 SSE） ──────────────────────
+
+let _wsEvents = null;
+function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${location.host}/ws/events`;
+  try {
+    _wsEvents = new WebSocket(url);
+    _wsEvents.onopen = () => {
+      console.log('[WS] 事件通道已连接');
+      if (_sse) { _sse.close(); _sse = null; }
+    };
+    _wsEvents.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        handleRealtimeEvent(event);
+      } catch(err) {}
+    };
+    _wsEvents.onclose = () => {
+      console.log('[WS] 断开，降级到 SSE');
+      _wsEvents = null;
+      setTimeout(() => { if (!_wsEvents) connectSSE(); }, 2000);
+    };
+    _wsEvents.onerror = () => { _wsEvents = null; connectSSE(); };
+  } catch(err) {
+    connectSSE();
+  }
+}
+
+function handleRealtimeEvent(event) {
+  const t = event.type, d = event.data;
+  if (t === 'broadcast_progress' && d) {
+    showToast(`群发进度: ${d.current}/${d.total} (已发${d.sent})`, 'info');
+  } else if (t === 'broadcast_complete' && d) {
+    showToast(`群发完成: 发送${d.sent}人，失败${d.failed}人`, d.failed ? 'warning' : 'success');
+  } else if (t === 'workflow_event' && d) {
+    showToast(`工作流: ${d.name||''} ${d.status||''}`, 'info');
+  } else if (t === 'anomaly_alert' && d) {
+    showToast(`⚠️ 异常: ${d.metric||''} z=${(d.z_score||0).toFixed(1)}`, 'warning');
+  } else if (t === 'daily_report') {
+    showToast('📊 新日报已生成', 'success');
+  }
+}
+
+// ── 记忆搜索 ──────────────────────────────────────────────────
+
+async function loadMemSearch() {
+  const data = await api('/api/memory/stats');
+  document.getElementById('mem-stats').textContent = `总消息: ${data.total_messages || 0}，会话: ${data.total_sessions || 0}`;
+}
+
+async function searchMemory() {
+  const q = document.getElementById('mem-q').value;
+  const role = document.getElementById('mem-role').value;
+  const start = document.getElementById('mem-start').value;
+  const end = document.getElementById('mem-end').value;
+  const data = await api(`/api/memory/search?q=${encodeURIComponent(q)}&role=${role}&start=${start}&end=${end}&limit=50`);
+  const results = data.results || [];
+  const el = document.getElementById('mem-results');
+  if (!results.length) { el.innerHTML = '<p style="color:#888">未找到匹配结果</p>'; return; }
+  el.innerHTML = results.map(r => `
+    <div class="card" style="margin-bottom:8px;padding:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:6px">
+        <span>${r.role === 'user' ? '👤 用户' : '🤖 AI'}</span>
+        <span>${r.time}</span>
+      </div>
+      <div style="font-size:13px;line-height:1.6">${r.highlight || r.content}</div>
+    </div>
+  `).join('');
+  document.getElementById('mem-stats').textContent = `找到 ${data.total} 条结果`;
+}
+
+// ── 系统自检 ──────────────────────────────────────────────────
+
+async function runHealthCheck(force) {
+  const url = force ? '/api/health/recheck' : '/api/health';
+  const method = force ? 'POST' : 'GET';
+  const data = force ? await api(url, {method}) : await api(url);
+  const sum = document.getElementById('health-summary');
+  const colors = {healthy: '#4caf50', degraded: '#ff9800', unhealthy: '#f44336'};
+  sum.innerHTML = `
+    <div style="display:flex;gap:20px;align-items:center">
+      <span style="font-size:28px;color:${colors[data.status]||'#aaa'}">${data.status === 'healthy' ? '✅' : data.status === 'degraded' ? '⚠️' : '❌'} ${data.status}</span>
+      <span style="color:#888">${data.passed}/${data.total} 通过</span>
+    </div>
+  `;
+  const checks = data.checks || [];
+  document.getElementById('health-checks').innerHTML = checks.map(c => `
+    <div class="card" style="padding:12px;border-left:3px solid ${c.ok ? '#4caf50' : '#f44336'}">
+      <div style="font-weight:bold">${c.ok ? '✅' : '❌'} ${c.name}</div>
+      <div style="font-size:12px;color:#888">${c.category} · ${c.elapsed_ms}ms</div>
+      <div style="font-size:13px;margin-top:4px">${c.detail}</div>
+    </div>
+  `).join('');
+}
+
+// ── 审计日志 ──────────────────────────────────────────────────
+
+async function loadAuditLogs() {
+  const action = document.getElementById('audit-action').value;
+  const severity = document.getElementById('audit-severity').value;
+  const qs = new URLSearchParams({action, severity, limit: '100'}).toString();
+  const [logData, statsData] = await Promise.all([
+    api(`/api/audit/logs?${qs}`),
+    api('/api/audit/stats'),
+  ]);
+  document.getElementById('audit-stats').textContent =
+    `总记录: ${statsData.total || 0}，今日: ${statsData.today || 0}，今日严重: ${statsData.critical_today || 0}`;
+
+  const logs = logData.logs || [];
+  const body = document.getElementById('audit-body');
+  const sevColors = {info: '#4caf50', warning: '#ff9800', critical: '#f44336'};
+  body.innerHTML = logs.map(l => `
+    <tr style="border-bottom:1px solid #222">
+      <td style="padding:6px;white-space:nowrap;color:#888">${l.time_str}</td>
+      <td style="padding:6px">${l.action}</td>
+      <td style="padding:6px">${l.target}</td>
+      <td style="padding:6px"><span style="color:${sevColors[l.severity]||'#aaa'}">${l.severity}</span></td>
+      <td style="padding:6px;max-width:300px;overflow:hidden;text-overflow:ellipsis">${l.detail}</td>
+    </tr>
+  `).join('');
+}
+
+// ── 消息导出 ──────────────────────────────────────────────────
+
+async function doExport() {
+  const params = new URLSearchParams({
+    source: document.getElementById('exp-source').value,
+    fmt: document.getElementById('exp-fmt').value,
+    contact: document.getElementById('exp-contact').value,
+    session: document.getElementById('exp-session').value,
+    start: document.getElementById('exp-start').value,
+    end: document.getElementById('exp-end').value,
+    sentiment: document.getElementById('exp-sentiment').checked,
+  });
+  const url = API + `/api/export/messages?${params}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('Export started', 'success');
+}
+
+// ── 主题系统 ──────────────────────────────────────────────────
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('oc-theme', theme);
+}
+(function restoreTheme() {
+  const saved = localStorage.getItem('oc-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+// ── i18n 切换 ─────────────────────────────────────────────────
+
+let _i18nCache = {};
+async function loadI18n(lang) {
+  const data = await api(`/api/i18n/translations${lang ? '?lang='+lang : ''}`);
+  _i18nCache = data.translations || {};
+  document.querySelectorAll('.i18n[data-key]').forEach(el => {
+    const key = el.dataset.key;
+    if (_i18nCache[key]) el.textContent = _i18nCache[key];
+  });
+}
+function i18n(key) { return _i18nCache[key] || key; }
+async function switchLang(lang) {
+  await api('/api/i18n/language', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lang})});
+  await loadI18n(lang);
+  showToast(lang === 'zh' ? '已切换到中文' : 'Switched to English', 'success');
+}
+
+// ── Init ────────────────────────────────────────────────────────
+
+(async function init() {
+  const nodeData = await api('/api/workflow/nodes');
+  allNodeTypes = nodeData.nodes || [];
+  refreshDashboard();
+
+  connectWebSocket();
+
+  loadI18n();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/admin-sw.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>

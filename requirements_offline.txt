@@ -1,0 +1,39 @@
+# OpenClaw 离线安装依赖清单 (Python 3.11, Windows amd64)
+# Core web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-multipart>=0.0.6
+
+# HTTP & AI clients
+openai>=1.6.0
+httpx>=0.26.0
+
+# Audio
+numpy>=1.26.0
+soundfile>=0.12.1
+
+# TTS
+edge-tts>=6.1.0
+
+# STT (faster-whisper + torch CPU)
+faster-whisper>=1.0.0
+silero-vad>=4.0.0
+
+# Utilities
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+loguru>=0.7.2
+pillow>=10.0.0
+qrcode[pil]>=7.4.2
+pyperclip>=1.8.0
+jieba>=0.42.1
+
+# Desktop GUI
+pystray>=0.19.5
+customtkinter>=5.2.0
+
+# Crypto for SSL
+cryptography>=42.0.0

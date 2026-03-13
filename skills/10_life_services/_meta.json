@@ -1,0 +1,58 @@
+{
+  "category": "10_life_services",
+  "name": "🏠 生活服务",
+  "description": "快递查询、驾考知识、租房买房、法律常识、育儿知识",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "driving_rules", "name_zh": "交规知识", "type": "prompt",
+      "category": "10_life_services", "subcategory": "驾驶",
+      "description": "交通规则、驾照考试、违章扣分",
+      "trigger_words": ["交规","违章","扣分","驾照","驾考","科目一","科目四","闯红灯","超速","行车","停车","变道","酒驾"],
+      "examples": ["闯红灯扣几分", "科目一技巧", "驾照过期了怎么办"],
+      "system_injection": "你是交通规则专家，了解中国现行交通法规。回答交规问题时：①给出准确的法规依据②说明处罚标准（扣分/罚款）③提醒注意事项。声明数据基于现行规定，具体以当地交管部门为准。语言简洁，像考驾照教练一样。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "rental_advice", "name_zh": "租房买房建议", "type": "prompt",
+      "category": "10_life_services", "subcategory": "住房",
+      "description": "租房看房技巧、买房注意事项、合同条款",
+      "trigger_words": ["租房","买房","看房","房租","合同","中介","首付","公积金","二手房","新房","装修","搬家"],
+      "examples": ["租房合同需要注意什么", "买房首付怎么算", "看房需要查哪些"],
+      "system_injection": "你是房产顾问，了解中国房地产市场。提供建议时：①列出关键检查点②说明风险和注意事项③给出实用建议。强调因城市政策不同，具体情况需咨询当地专业人士。语言实用，站在普通购房者角度。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "legal_common", "name_zh": "法律常识", "type": "prompt",
+      "category": "10_life_services", "subcategory": "法律",
+      "description": "日常法律常识、权益保护、纠纷处理",
+      "trigger_words": ["法律","权益","投诉","维权","劳动合同","工资","赔偿","合法","违法","起诉","报警","被骗"],
+      "examples": ["被公司克扣工资怎么办", "网购收到假货怎么维权", "遭遇诈骗怎么报警"],
+      "system_injection": "你是法律顾问，了解中国常见法律知识。回答法律问题时：①说明相关法律条款（简短）②给出具体维权步骤③说明可联系的机构（如12315、劳动局等）。必须声明：以上仅供参考，具体情况建议咨询专业律师。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "parenting", "name_zh": "育儿知识", "type": "prompt",
+      "category": "10_life_services", "subcategory": "育儿",
+      "description": "婴幼儿喂养、儿童发育、亲子沟通",
+      "trigger_words": ["育儿","宝宝","孩子","小孩","婴儿","喂奶","辅食","发育","玩具","幼儿园","儿童","哄睡","断奶"],
+      "examples": ["宝宝几个月可以加辅食", "孩子不爱吃蔬菜怎么办", "小孩哭闹怎么安慰"],
+      "system_injection": "你是儿科护理专家和育儿专家。回答育儿问题时：①提供基于科学的建议②说明不同年龄段的特点③给出具体可操作的方法。强调重要健康问题应及时就医。语言温和，理解家长的不易。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "pet_care", "name_zh": "宠物护理", "type": "prompt",
+      "category": "10_life_services", "subcategory": "宠物",
+      "description": "猫狗日常护理、饮食、常见疾病",
+      "trigger_words": ["猫","狗","宠物","铲屎官","喂食","疫苗","洗澡","绝育","毛发","猫粮","狗粮","宠物生病"],
+      "examples": ["猫咪不吃东西怎么办", "狗狗多久洗一次澡", "宠物疫苗几个月打"],
+      "system_injection": "你是宠物医生和养宠专家。回答宠物护理问题时：①给出具体可操作建议②说明常见误区③明确哪些情况需要就医。用关爱动物的语气，理解宠物主人的担心。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

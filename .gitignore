@@ -1,13 +1,50 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-.venv/
-venv/
-.env
 *.egg-info/
-dist/
-build/
 .pytest_cache/
 .ruff_cache/
+
+# Virtual env
+.venv/
+venv/
+
+# Environment / secrets
+.env
+config.ini
+
+# Build output
+dist/
+build/
+
+# Logs
 *.log
+logs/
+
+# Data (runtime generated)
+data/
+
+# Models (large binaries)
+models/
+
+# SSL certs (per-machine)
+certs/*.key
+certs/*.crt
+certs/*.pem
+
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp
+*.tmp
+glm_error.txt
+uv.lock

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a14">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
+<title>OpenClaw AI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a14;--bg2:#111122;--card:#161628;--border:#2a2a4a;
+  --accent:#7c6aef;--accent2:#22d3ee;--text:#e8e8f0;--muted:#666688;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+  --r:16px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ── Header ── */
+.hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:calc(10px + var(--safe-top)) 12px 10px;
+  background:rgba(10,10,20,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);flex-shrink:0;z-index:10;
+}
+.hdr-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.hdr-info{flex:1;min-width:0}
+.hdr-name{font-size:16px;font-weight:700}
+.hdr-status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:1px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0;transition:background .3s}
+.status-dot.thinking{background:var(--accent);animation:pulse .8s ease-in-out infinite}
+.status-dot.speaking{background:var(--accent2);animation:pulse .6s ease-in-out infinite}
+.status-dot.wake{background:#f59e0b;animation:pulse 1.5s ease-in-out infinite}
+.status-dot.err{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+.hdr-actions{display:flex;gap:4px;align-items:center}
+.icon-btn{
+  width:36px;height:36px;border-radius:10px;border:none;cursor:pointer;
+  background:transparent;color:var(--text);font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.icon-btn:active{background:rgba(255,255,255,.1)}
+.icon-btn.active{background:rgba(124,106,239,.25);color:var(--accent)}
+
+/* ── Messages ── */
+.msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;overscroll-behavior:contain}
+.msgs::-webkit-scrollbar{display:none}
+
+.msg{display:flex;gap:8px;align-items:flex-end;max-width:88%;animation:fadeUp .2s ease}
+.msg.user{flex-direction:row-reverse;align-self:flex-end}
+.msg.ai{align-self:flex-start}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.bubble{
+  padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.55;
+  max-width:100%;word-break:break-word;
+}
+.msg.user .bubble{
+  background:linear-gradient(135deg,var(--accent),#5b4ee0);
+  color:#fff;border-bottom-right-radius:4px;
+}
+.msg.ai .bubble{
+  background:var(--card);border:1px solid var(--border);
+  color:var(--text);border-bottom-left-radius:4px;
+}
+.bubble.streaming::after{
+  content:'▋';display:inline-block;
+  animation:blink .7s step-end infinite;color:var(--accent);margin-left:2px;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.ai-avatar{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+
+/* ── Welcome ── */
+.welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:14px;text-align:center;padding:24px 16px;
+}
+.welcome-logo{
+  width:72px;height:72px;border-radius:24px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+  box-shadow:0 8px 32px rgba(124,106,239,.4);
+  animation:logoPop .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes logoPop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.welcome h1{font-size:22px;font-weight:700}
+.welcome p{font-size:14px;color:var(--muted);line-height:1.6}
+.suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px}
+.sug-btn{
+  padding:8px 14px;border-radius:20px;border:1px solid var(--border);
+  background:var(--card);color:var(--text);font-size:13px;cursor:pointer;
+}
+.sug-btn:active{background:var(--accent);border-color:var(--accent)}
+
+/* ── Audio wave ── */
+.audio-wave{display:none;align-items:center;gap:3px;height:20px}
+.audio-wave.active{display:flex}
+.audio-wave span{width:3px;border-radius:2px;background:var(--accent2);animation:wave 1s ease-in-out infinite}
+.audio-wave span:nth-child(1){animation-delay:0s;height:8px}
+.audio-wave span:nth-child(2){animation-delay:.15s;height:14px}
+.audio-wave span:nth-child(3){animation-delay:.3s;height:18px}
+.audio-wave span:nth-child(4){animation-delay:.45s;height:14px}
+.audio-wave span:nth-child(5){animation-delay:.6s;height:8px}
+@keyframes wave{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
+
+/* ── Input area ── */
+.input-wrap{
+  padding:8px 12px;padding-bottom:calc(8px + var(--safe-bot));
+  background:rgba(10,10,20,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);flex-shrink:0;
+}
+.voice-bar{
+  display:none;align-items:center;gap:8px;
+  padding:8px 10px;margin-bottom:6px;border-radius:12px;
+  background:rgba(124,106,239,.12);border:1px solid rgba(124,106,239,.3);
+  font-size:13px;color:var(--accent);
+}
+.voice-bar.show{display:flex}
+.vbar-pulse{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:pulse .8s ease-in-out infinite}
+.vbar-text{flex:1;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-vstop{width:28px;height:28px;border-radius:8px;border:1px solid #ef4444;background:rgba(239,68,68,.15);color:#ef4444;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.input-row{display:flex;align-items:flex-end;gap:8px}
+.input-box{
+  flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:22px;padding:10px 16px;
+  color:var(--text);font-size:15px;resize:none;max-height:120px;
+  font-family:inherit;line-height:1.5;outline:none;transition:border-color .2s;
+}
+.input-box:focus{border-color:var(--accent)}
+.input-box::placeholder{color:var(--muted)}
+.btn-mic,.btn-send,.btn-stop{
+  width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;
+}
+.btn-send{background:var(--accent);color:#fff;font-size:18px}
+.btn-send:disabled{background:var(--border);cursor:default}
+.btn-send:not(:disabled):active{transform:scale(.92)}
+.btn-mic{background:var(--card);border:1px solid var(--border);color:var(--text);font-size:20px}
+.btn-mic.listening{
+  background:rgba(124,106,239,.2);border-color:var(--accent);
+  animation:micPulse 1s ease-in-out infinite;
+}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,106,239,.4)}70%{box-shadow:0 0 0 10px rgba(124,106,239,0)}}
+.btn-stop{background:rgba(239,68,68,.15);border:1px solid #ef4444;color:#ef4444;font-size:16px}
+.btn-stop:active{background:rgba(239,68,68,.4)}
+
+/* ── Settings Drawer ── */
+.drawer-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.drawer-overlay.open{opacity:1;pointer-events:all}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);
+  background:var(--bg2);border-left:1px solid var(--border);z-index:51;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.drawer.open{transform:translateX(0)}
+.drawer-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:calc(16px + var(--safe-top)) 16px 16px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.drawer-title{font-size:18px;font-weight:700}
+.drawer-close{width:32px;height:32px;border-radius:8px;border:none;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.drawer-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:20px}
+.drawer-body::-webkit-scrollbar{display:none}
+
+.section-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.setting-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;
+}
+.setting-info{flex:1;min-width:0}
+.setting-name{font-size:14px;font-weight:500}
+.setting-desc{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* Toggle switch */
+.toggle{width:44px;height:26px;border-radius:13px;background:var(--border);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;border:none}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.toggle.on::after{transform:translateX(18px)}
+
+.seg-ctrl{display:flex;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg-btn{flex:1;padding:8px 4px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;transition:all .15s;text-align:center}
+.seg-btn.active{background:var(--accent);color:#fff}
+
+.camera-card{
+  padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.camera-card-hdr{display:flex;align-items:center;gap:10px}
+.camera-icon{font-size:24px}
+.camera-text .t1{font-size:14px;font-weight:500}
+.camera-text .t2{font-size:12px;color:var(--muted)}
+.btn-full{
+  width:100%;padding:10px;border-radius:10px;border:1px solid var(--accent);
+  background:rgba(124,106,239,.1);color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;
+  transition:all .15s;
+}
+.btn-full:active{background:var(--accent);color:#fff}
+
+.version-info{text-align:center;font-size:12px;color:var(--muted);padding:8px 0}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;top:calc(64px + var(--safe-top));left:50%;
+  transform:translateX(-50%) translateY(-60px);
+  background:rgba(22,22,40,.95);border:1px solid var(--border);
+  border-radius:20px;padding:8px 18px;
+  font-size:13px;z-index:100;opacity:0;
+  transition:all .3s;pointer-events:none;white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── Wake word banner ── */
+.wake-banner{
+  display:none;position:fixed;top:calc(56px + var(--safe-top));left:50%;
+  transform:translateX(-50%);
+  background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);
+  border-radius:20px;padding:6px 16px;font-size:12px;color:#f59e0b;
+  z-index:20;align-items:center;gap:6px;white-space:nowrap;
+}
+.wake-banner.show{display:flex}
+.wake-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b;animation:pulse 1.5s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-avatar">🤖</div>
+  <div class="hdr-info">
+    <div class="hdr-name">OpenClaw AI</div>
+    <div class="hdr-status">
+      <div class="status-dot" id="sdot"></div>
+      <span id="slabel">连接中...</span>
+    </div>
+  </div>
+  <div class="hdr-actions">
+    <div class="audio-wave" id="awave">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <button class="icon-btn" id="wakeBtn" onclick="toggleWake()" title="语音唤醒">🎤</button>
+    <button class="icon-btn" onclick="openSettings()" title="设置">⚙️</button>
+  </div>
+</div>
+
+<!-- Wake banner -->
+<div class="wake-banner" id="wakeBanner">
+  <div class="wake-dot"></div>
+  <span>正在监听唤醒词"<span id="wakeWordDisplay">你好小龙</span>"</span>
+</div>
+
+<!-- Messages -->
+<div class="msgs" id="msgs">
+  <div class="welcome" id="welcome">
+    <div class="welcome-logo">🤖</div>
+    <h1>你好！我是 OpenClaw AI</h1>
+    <p>输入文字或点击麦克风和我对话<br>我会用语音回复你</p>
+    <div class="suggestions">
+      <button class="sug-btn" onclick="send('你能做什么？')">你能做什么？</button>
+      <button class="sug-btn" onclick="send('给我讲个笑话')">讲个笑话</button>
+      <button class="sug-btn" onclick="send('现在几点了？')">现在几点了？</button>
+      <button class="sug-btn" onclick="send('帮我写首诗')">帮我写首诗</button>
+    </div>
+  </div>
+</div>
+
+<!-- Input -->
+<div class="input-wrap">
+  <div class="voice-bar" id="vbar">
+    <div class="vbar-pulse"></div>
+    <span class="vbar-text" id="vbarText">正在聆听...</span>
+    <button class="btn-vstop" onclick="stopMic()">■</button>
+  </div>
+  <div class="input-row">
+    <textarea class="input-box" id="inp" rows="1" placeholder="给 AI 发消息..." autocomplete="off" autocorrect="off"></textarea>
+    <button class="btn-mic" id="bmicro" onclick="toggleMic()" title="语音输入">🎤</button>
+    <button class="btn-send" id="bsend" onclick="send()" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.01a.75.75 0 000-1.36L3.478 2.405z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Settings Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeSettings()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hdr">
+    <span class="drawer-title">⚙️ 设置</span>
+    <button class="drawer-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="drawer-body">
+
+    <!-- 语音功能 -->
+    <div>
+      <div class="section-label">语音功能</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">🎤 语音唤醒</div>
+            <div class="setting-desc" id="wakeDesc">说"你好小龙"自动开始对话</div>
+          </div>
+          <button class="toggle" id="wakeToggle" onclick="toggleWake()"></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">🔊 语音回复（TTS）</div>
+            <div class="setting-desc">AI 自动朗读回答内容</div>
+          </div>
+          <button class="toggle on" id="ttsToggle" onclick="toggleTTS()"></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">🗣️ 识别语言</div>
+            <div class="setting-desc">语音输入的识别语言</div>
+          </div>
+          <div class="seg-ctrl">
+            <button class="seg-btn active" id="langZh" onclick="setLang('zh-CN')">中文</button>
+            <button class="seg-btn" id="langEn" onclick="setLang('en-US')">EN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 摄像头 -->
+    <div>
+      <div class="section-label">摄像头 / 视觉 AI</div>
+      <div class="camera-card">
+        <div class="camera-card-hdr">
+          <div class="camera-icon">📷</div>
+          <div class="camera-text">
+            <div class="t1">摄像头功能</div>
+            <div class="t2" id="cameraDesc">检测中...</div>
+          </div>
+        </div>
+        <button class="btn-full" id="cameraBtn" onclick="openFullApp()">
+          🔓 打开完整版（含摄像头）
+        </button>
+      </div>
+    </div>
+
+    <!-- 完整版入口 -->
+    <div>
+      <div class="section-label">完整功能版</div>
+      <div class="camera-card">
+        <div class="camera-card-hdr">
+          <div class="camera-icon">🚀</div>
+          <div class="camera-text">
+            <div class="t1">HTTPS 完整版</div>
+            <div class="t2">摄像头、手势控制、远程桌面、唤醒词</div>
+          </div>
+        </div>
+        <button class="btn-full" onclick="openFullApp()">
+          打开完整版 →
+        </button>
+      </div>
+    </div>
+
+    <!-- 关于 -->
+    <div class="version-info" id="versionInfo">OpenClaw AI · HTTP 简洁版</div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config & State ──
+const BASE = window.location.origin;
+let cfg = {
+  wake: false,
+  tts: true,
+  lang: 'zh-CN',
+  wakeWord: '你好小龙',
+};
+try { Object.assign(cfg, JSON.parse(localStorage.getItem('oc_chat_cfg') || '{}')); } catch {}
+
+const saveCfg = () => localStorage.setItem('oc_chat_cfg', JSON.stringify(cfg));
+
+let isAiTyping = false;
+let speechRecog = null, isListening = false;
+let wakeRecog = null, isWakeActive = false;
+
+// ── DOM refs ──
+const inp     = document.getElementById('inp');
+const msgs    = document.getElementById('msgs');
+const bsend   = document.getElementById('bsend');
+const bmicro  = document.getElementById('bmicro');
+const sdot    = document.getElementById('sdot');
+const slabel  = document.getElementById('slabel');
+const awave   = document.getElementById('awave');
+const vbar    = document.getElementById('vbar');
+const vbarText= document.getElementById('vbarText');
+const wakeBtn = document.getElementById('wakeBtn');
+const wakeBanner = document.getElementById('wakeBanner');
+const wakeToggle = document.getElementById('wakeToggle');
+
+// ── Helpers ──
+function setStatus(state, text) {
+  sdot.className = 'status-dot' + (state ? ' ' + state : '');
+  slabel.textContent = text;
+}
+function showToast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), dur);
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Input resize ──
+inp.addEventListener('input', () => {
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+  bsend.disabled = !inp.value.trim();
+});
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+// ── Messages ──
+function hideWelcome() { document.getElementById('welcome')?.remove(); }
+function addMsg(role, text, streaming = false) {
+  hideWelcome();
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  if (role === 'ai') {
+    div.innerHTML = `<div class="ai-avatar">🤖</div><div class="bubble${streaming ? ' streaming' : ''}">${escHtml(text)}</div>`;
+  } else {
+    div.innerHTML = `<div class="bubble">${escHtml(text)}</div>`;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div.querySelector('.bubble');
+}
+
+// ── Send message ──
+async function send(text) {
+  text = text ?? inp.value.trim();
+  if (!text || isAiTyping) return;
+  inp.value = '';
+  inp.style.height = 'auto';
+  bsend.disabled = true;
+
+  addMsg('user', text);
+  isAiTyping = true;
+  setStatus('thinking', '思考中...');
+
+  const aiEl = addMsg('ai', '', true);
+
+  try {
+    const resp = await fetch(`${BASE}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: text }],
+        model: 'deepseek-chat',
+        stream: true,
+      }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', full = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const d = t.slice(5).trim();
+        if (d === '[DONE]') continue;
+        try {
+          const chunk = JSON.parse(d).choices?.[0]?.delta?.content || '';
+          if (chunk) { full += chunk; aiEl.innerHTML = escHtml(full); }
+        } catch {}
+      }
+    }
+    aiEl.classList.remove('streaming');
+    aiEl.innerHTML = escHtml(full);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    if (full.trim() && cfg.tts) speakTTS(full);
+    else { setStatus('', '已连接'); isAiTyping = false; }
+  } catch (e) {
+    aiEl.classList.remove('streaming');
+    aiEl.innerHTML = '⚠️ 连接失败，请检查网络';
+    aiEl.style.color = '#f87171';
+    setStatus('err', '连接失败');
+    isAiTyping = false;
+  }
+}
+
+// ── TTS ──
+async function speakTTS(text) {
+  try {
+    setStatus('speaking', '朗读中...');
+    awave.classList.add('active');
+    const resp = await fetch(`${BASE}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.slice(0, 500) }),
+    });
+    if (!resp.ok) throw new Error('TTS failed');
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    const chunks = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const d = t.slice(5).trim();
+        if (d === '[DONE]') continue;
+        try {
+          const p = JSON.parse(d);
+          if (p.audio) chunks.push({ audio: p.audio, fmt: p.format || 'pcm', sr: p.sample_rate || 24000 });
+        } catch {}
+      }
+    }
+    await playChunks(chunks);
+  } catch (e) {
+    console.warn('TTS error:', e);
+    onSpeakDone();
+  }
+}
+
+async function playChunks(chunks) {
+  for (const c of chunks) {
+    await new Promise(resolve => {
+      try {
+        const raw = atob(c.audio);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        if (c.fmt === 'mp3') {
+          const ctx = new AudioContext();
+          ctx.decodeAudioData(bytes.buffer.slice(0)).then(buf => {
+            const src = ctx.createBufferSource();
+            src.buffer = buf; src.connect(ctx.destination);
+            src.onended = () => { ctx.close(); resolve(); };
+            src.start(0);
+          }).catch(resolve);
+        } else {
+          const i16 = new Int16Array(bytes.buffer);
+          const f32 = new Float32Array(i16.length);
+          for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768.0;
+          const ctx = new AudioContext({ sampleRate: c.sr });
+          const ab = ctx.createBuffer(1, f32.length, c.sr);
+          ab.copyToChannel(f32, 0);
+          const src = ctx.createBufferSource();
+          src.buffer = ab; src.connect(ctx.destination);
+          src.onended = () => { ctx.close(); resolve(); };
+          src.start(0);
+        }
+      } catch { resolve(); }
+    });
+  }
+  onSpeakDone();
+}
+
+function onSpeakDone() {
+  awave.classList.remove('active');
+  setStatus(isWakeActive ? 'wake' : '', isWakeActive ? '监听唤醒词中' : '已连接');
+  isAiTyping = false;
+}
+
+// ── Mic / Speech recognition ──
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function makeSpeechRecog(continuous, onResult, onEnd, onError) {
+  if (!SR) return null;
+  const r = new SR();
+  r.continuous = continuous;
+  r.interimResults = true;
+  r.lang = cfg.lang;
+  r.onresult = onResult;
+  r.onend = onEnd;
+  r.onerror = onError;
+  return r;
+}
+
+function toggleMic() {
+  if (isListening) { stopMic(); return; }
+  if (!SR) { showToast('此浏览器不支持语音识别，请用 Chrome'); return; }
+
+  pauseWake();
+
+  // Track captured text across events (Android Chrome often only fires interim,
+  // never isFinal — we fall back to sending the last interim on onend)
+  let capturedFinal = '';
+  let capturedInterim = '';
+  let didSend = false;
+
+  function doSend(text) {
+    if (didSend || !text.trim()) return;
+    didSend = true;
+    send(text.trim());
+  }
+
+  speechRecog = makeSpeechRecog(
+    false,
+    (e) => {
+      let interim = '', final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      if (final) capturedFinal += final;
+      if (interim) capturedInterim = interim;
+
+      vbarText.textContent = capturedFinal || interim || '正在聆听...';
+
+      // If we already have a final result, send immediately
+      if (capturedFinal) { stopMic(); doSend(capturedFinal); }
+    },
+    () => {
+      // onend fires when recognition stops (silence timeout or manual stop)
+      // On Android Chrome, isFinal may never come — fall back to interim text
+      isListening = false;
+      bmicro.classList.remove('listening');
+      vbar.classList.remove('show');
+      if (!isAiTyping) setStatus(isWakeActive ? 'wake' : '', isWakeActive ? '监听唤醒词中' : '已连接');
+      resumeWake();
+      // Fallback: send interim if no final was ever received
+      if (!didSend) doSend(capturedFinal || capturedInterim);
+    },
+    (e) => {
+      isListening = false;
+      bmicro.classList.remove('listening');
+      vbar.classList.remove('show');
+      if (e.error === 'not-allowed') showToast('❌ 麦克风权限被拒绝');
+      else if (e.error !== 'aborted') showToast('⚠️ ' + e.error);
+      resumeWake();
+      if (!didSend) doSend(capturedFinal || capturedInterim);
+    }
+  );
+
+  try {
+    speechRecog.start();
+    isListening = true;
+    bmicro.classList.add('listening');
+    vbar.classList.add('show');
+    vbarText.textContent = '正在聆听...';
+    setStatus('', '正在聆听');
+  } catch (e) {
+    showToast('⚠️ 无法启动麦克风');
+  }
+}
+
+function stopMic() {
+  if (speechRecog && isListening) {
+    try { speechRecog.stop(); } catch {}
+  }
+}
+
+// ── Wake word ──
+function toggleWake() {
+  if (isWakeActive) {
+    stopWake();
+  } else {
+    startWake();
+  }
+}
+
+function startWake() {
+  if (!SR) {
+    showToast('当前浏览器不支持唤醒词（请用 Chrome）');
+    return;
+  }
+  isWakeActive = true;
+  cfg.wake = true;
+  saveCfg();
+  updateWakeUI();
+  _doStartWake();
+}
+
+function _doStartWake() {
+  if (!isWakeActive || isListening) return;
+
+  let wakeTriggered = false;
+
+  wakeRecog = makeSpeechRecog(
+    true,
+    (e) => {
+      if (wakeTriggered) return;
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const text = e.results[i][0].transcript;
+        const keyword = cfg.wakeWord || '你好小龙';
+        // Match first 2 chars of keyword to be tolerant of partial recognition
+        if (text.includes(keyword.slice(0, 2)) || text.includes(keyword)) {
+          wakeTriggered = true;
+          try { wakeRecog.stop(); } catch {}
+          wakeRecog = null;
+          showToast('🎤 唤醒成功！请说话...');
+          setTimeout(toggleMic, 200);
+          return;
+        }
+      }
+    },
+    () => {
+      if (!wakeTriggered && isWakeActive && !isListening) {
+        setTimeout(() => { if (isWakeActive && !isListening) _doStartWake(); }, 800);
+      }
+    },
+    (e) => {
+      if (e.error === 'not-allowed') {
+        showToast('❌ 需要麦克风权限才能使用唤醒词');
+        stopWake();
+      } else if (!wakeTriggered && isWakeActive && !isListening) {
+        setTimeout(() => { if (isWakeActive && !isListening) _doStartWake(); }, 1500);
+      }
+    }
+  );
+
+  try { wakeRecog.start(); } catch {}
+}
+
+function stopWake() {
+  isWakeActive = false;
+  cfg.wake = false;
+  saveCfg();
+  if (wakeRecog) { try { wakeRecog.stop(); } catch {} wakeRecog = null; }
+  updateWakeUI();
+}
+
+function pauseWake() {
+  if (wakeRecog) { try { wakeRecog.stop(); } catch {} wakeRecog = null; }
+}
+
+function resumeWake() {
+  if (isWakeActive && !isListening) setTimeout(_doStartWake, 600);
+}
+
+function updateWakeUI() {
+  wakeBtn.classList.toggle('active', isWakeActive);
+  wakeToggle.classList.toggle('on', isWakeActive);
+  wakeBanner.classList.toggle('show', isWakeActive);
+  document.getElementById('wakeWordDisplay').textContent = cfg.wakeWord || '你好小龙';
+  if (isWakeActive) {
+    setStatus('wake', '监听唤醒词中');
+  } else {
+    if (!isAiTyping) setStatus('', '已连接');
+  }
+}
+
+// ── Settings ──
+function openSettings() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+  syncSettingsUI();
+}
+function closeSettings() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+function syncSettingsUI() {
+  wakeToggle.classList.toggle('on', isWakeActive);
+  document.getElementById('ttsToggle').classList.toggle('on', cfg.tts);
+  document.getElementById('langZh').classList.toggle('active', cfg.lang === 'zh-CN');
+  document.getElementById('langEn').classList.toggle('active', cfg.lang === 'en-US');
+}
+
+function toggleTTS() {
+  cfg.tts = !cfg.tts;
+  saveCfg();
+  document.getElementById('ttsToggle').classList.toggle('on', cfg.tts);
+  showToast(cfg.tts ? '🔊 语音回复已开启' : '🔇 语音回复已关闭');
+}
+function setLang(lang) {
+  cfg.lang = lang;
+  saveCfg();
+  document.getElementById('langZh').classList.toggle('active', lang === 'zh-CN');
+  document.getElementById('langEn').classList.toggle('active', lang === 'en-US');
+  if (speechRecog) { try { speechRecog.stop(); } catch {} speechRecog = null; }
+  if (isWakeActive) { stopWake(); setTimeout(startWake, 300); }
+  showToast(lang === 'zh-CN' ? '🇨🇳 已切换中文识别' : '🇺🇸 Switched to English');
+}
+
+// ── Camera / Full app ──
+let fullAppUrl = '';
+
+async function detectCamera() {
+  const cameraDesc = document.getElementById('cameraDesc');
+  const cameraBtn  = document.getElementById('cameraBtn');
+  try {
+    // Test getUserMedia
+    await navigator.mediaDevices.getUserMedia({ video: true });
+    cameraDesc.textContent = '✅ 摄像头可用（当前页面支持）';
+    cameraBtn.textContent  = '📷 打开完整版（更多功能）';
+  } catch (e) {
+    if (e.name === 'NotAllowedError') {
+      cameraDesc.textContent = '摄像头权限被拒绝，请在浏览器设置中允许';
+    } else {
+      cameraDesc.textContent = '📱 摄像头需要 HTTPS，请打开完整版';
+    }
+    cameraBtn.textContent = '🔓 打开完整版（HTTPS）';
+  }
+}
+
+function openFullApp() {
+  if (fullAppUrl) {
+    window.open(fullAppUrl, '_blank');
+  } else {
+    // Derive HTTPS URL from current HTTP URL
+    const u = new URL(window.location.href);
+    u.protocol = 'https:';
+    u.port = '8765';
+    u.pathname = '/app';
+    window.open(u.href, '_blank');
+  }
+  closeSettings();
+}
+
+// ── Init ──
+(async () => {
+  // Load server info
+  try {
+    const r = await fetch(`${BASE}/api/server-info`);
+    if (r.ok) {
+      const info = await r.json();
+      setStatus('', '已连接');
+      const ips = (info.ips || []).filter(ip => ip !== '127.0.0.1');
+      const lanIp = ips.find(ip => /^192\.168\.|^10\./.test(ip)) || ips[0];
+      if (lanIp) {
+        fullAppUrl = `https://${lanIp}:${info.port || 8765}/app`;
+        document.getElementById('versionInfo').textContent =
+          `OpenClaw AI · HTTP 简洁版 · 完整版: ${fullAppUrl}`;
+      }
+    } else throw new Error();
+  } catch {
+    setStatus('err', '连接失败');
+    slabel.style.color = '#ef4444';
+  }
+
+  // Apply saved settings
+  if (cfg.wake) startWake();
+  updateWakeUI();
+  syncSettingsUI();
+
+  // Camera detection (async, non-blocking)
+  if (navigator.mediaDevices?.getUserMedia) {
+    detectCamera().catch(() => {});
+  } else {
+    document.getElementById('cameraDesc').textContent = '📱 摄像头需要 HTTPS，请打开完整版';
+  }
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('SW registered:', reg.scope))
+      .catch((e) => console.warn('SW registration failed:', e));
+  });
+}
+</script>
+</body>
+</html>

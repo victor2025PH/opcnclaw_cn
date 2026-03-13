@@ -1,0 +1,39 @@
+{
+  "name": "OpenClaw 语音助手",
+  "short_name": "OpenClaw",
+  "description": "本地部署的全双工 AI 语音助手",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#0f0f10",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%236366f1'/%3E%3Ccircle cx='96' cy='80' r='30' fill='white'/%3E%3Crect x='66' y='110' width='60' height='8' rx='4' fill='white'/%3E%3Cellipse cx='96' cy='140' rx='36' ry='20' fill='none' stroke='white' stroke-width='6'/%3E%3Cline x1='96' y1='160' x2='96' y2='175' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3Cline x1='76' y1='175' x2='116' y2='175' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%236366f1'/%3E%3Ccircle cx='256' cy='210' r='80' fill='white'/%3E%3Crect x='176' y='290' width='160' height='20' rx='10' fill='white'/%3E%3Cellipse cx='256' cy='370' rx='96' ry='52' fill='none' stroke='white' stroke-width='16'/%3E%3Cline x1='256' y1='422' x2='256' y2='462' stroke='white' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='206' y1='462' x2='306' y2='462' stroke='white' stroke-width='16' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "语音助手",
+      "url": "/app",
+      "description": "打开语音聊天界面"
+    },
+    {
+      "name": "扫码聊天",
+      "url": "/chat",
+      "description": "手机扫码快速聊天"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "prefer_related_applications": false
+}
