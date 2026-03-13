@@ -761,6 +761,82 @@ body{
 }
 .mcp-tool-chip .fav-star:hover,.mcp-tool-chip .fav-star.starred{opacity:1;color:#fbbf24}
 
+/* ─── Performance panel ─── */
+#perf-panel{
+  position:fixed;inset:0;z-index:210;background:var(--bg-primary);
+  display:flex;flex-direction:column;
+  transition:opacity .25s,transform .25s;
+}
+#perf-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+.perf-header{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  background:var(--bg-secondary);backdrop-filter:blur(12px);
+}
+.perf-header h2{flex:1;font-size:18px;font-weight:700}
+.perf-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch}
+.perf-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.perf-card{
+  padding:14px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);
+  text-align:center;
+}
+.perf-card .perf-val{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.perf-card .perf-label{font-size:11px;color:var(--text-muted);margin-top:4px}
+.perf-card.good .perf-val{color:var(--success)}
+.perf-card.warn .perf-val{color:var(--warning)}
+.perf-card.bad .perf-val{color:var(--error)}
+.perf-chart{width:100%;height:120px;position:relative;margin-top:8px}
+.perf-chart canvas{width:100%;height:100%}
+.perf-section-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 0 8px}
+
+/* ─── Voice commands panel ─── */
+#voice-cmd-panel{
+  position:fixed;inset:0;z-index:210;background:var(--bg-primary);
+  display:flex;flex-direction:column;
+  transition:opacity .25s,transform .25s;
+}
+#voice-cmd-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+.vcmd-header{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  background:var(--bg-secondary);backdrop-filter:blur(12px);
+}
+.vcmd-header h2{flex:1;font-size:18px;font-weight:700}
+.vcmd-search{
+  margin:12px 20px;padding:10px 14px;
+  background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);
+  color:var(--text-primary);font-size:13px;font-family:inherit;outline:none;width:calc(100% - 40px);
+}
+.vcmd-search:focus{border-color:var(--accent)}
+.vcmd-body{flex:1;overflow-y:auto;padding:0 20px 20px;-webkit-overflow-scrolling:touch}
+.vcmd-card{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;margin-bottom:8px;
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);
+  cursor:pointer;transition:.15s;
+}
+.vcmd-card:hover{border-color:var(--accent);background:var(--bg-surface-hover)}
+.vcmd-card:active{transform:scale(.98)}
+.vcmd-card .vcmd-icon{font-size:20px;flex-shrink:0}
+.vcmd-card .vcmd-name{font-size:13px;font-weight:600}
+.vcmd-card .vcmd-desc{font-size:11px;color:var(--text-muted);margin-top:2px}
+.vcmd-card .vcmd-exec{
+  margin-left:auto;padding:4px 12px;
+  background:var(--accent);color:#fff;border:none;border-radius:6px;
+  font-size:11px;cursor:pointer;flex-shrink:0;
+}
+
+/* ─── MCP history ─── */
+.mcp-history-item{
+  padding:10px 12px;margin-bottom:6px;
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;
+  font-size:12px;
+}
+.mcp-history-item .mcp-h-tool{font-weight:600;color:var(--accent)}
+.mcp-history-item .mcp-h-time{font-size:10px;color:var(--text-muted);float:right}
+.mcp-history-item .mcp-h-result{color:var(--text-secondary);margin-top:4px;max-height:40px;overflow:hidden;text-overflow:ellipsis}
+.mcp-history-item .mcp-h-actions{margin-top:6px;display:flex;gap:6px}
+
 /* ─── Press-hold mic hint ─── */
 .mic-hold-hint{
   position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
@@ -1198,6 +1274,12 @@ body{
       <button class="icon-btn" id="mcp-panel-toggle" title="MCP 工具">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       </button>
+      <button class="icon-btn" id="perf-toggle" title="性能监控">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </button>
+      <button class="icon-btn" id="vcmd-toggle" title="语音指令">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+      </button>
       <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </button>
@@ -1524,6 +1606,14 @@ body{
         <input id="mcp-skill-input" placeholder="描述你想要的技能，如：帮我翻译邮件" style="width:100%;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
         <button class="mp-btn mp-btn-install" id="mcp-gen-skill-btn" style="margin-top:8px;width:100%;padding:10px" data-i18n="mcp.genSkill">✨ 生成技能</button>
       </div>
+    </div>
+    <div class="mcp-section">
+      <div class="mcp-section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span data-i18n="mcp.history">调用历史</span>
+        <button class="mp-btn" id="mcp-clear-history" style="font-size:10px;padding:2px 8px;background:var(--bg-surface);color:var(--text-muted)" data-i18n="mcp.clearHistory">清空</button>
+      </div>
+      <div id="mcp-history-list"></div>
+      <div class="mcp-empty hidden" id="mcp-no-history" data-i18n="mcp.noHistory">还没有调用记录</div>
     </div>
   </div>
 </div>
@@ -1934,6 +2024,43 @@ body{
   <span class="emo-text" id="emo-text"></span>
 </div>
 
+<!-- ═══════════════ PERFORMANCE PANEL ═══════════════ -->
+<div id="perf-panel" class="hidden" role="dialog" aria-label="Performance" tabindex="-1">
+  <div class="perf-header">
+    <button class="icon-btn" id="perf-back" aria-label="Close performance panel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </button>
+    <h2 data-i18n="perf.title">📊 性能监控</h2>
+  </div>
+  <div class="perf-body">
+    <div class="perf-grid">
+      <div class="perf-card" id="perf-ws"><div class="perf-val" id="perf-ws-val">—</div><div class="perf-label" data-i18n="perf.wsLatency">WebSocket 延迟</div></div>
+      <div class="perf-card" id="perf-stt"><div class="perf-val" id="perf-stt-val">—</div><div class="perf-label" data-i18n="perf.sttTime">STT 识别</div></div>
+      <div class="perf-card" id="perf-ai"><div class="perf-val" id="perf-ai-val">—</div><div class="perf-label" data-i18n="perf.aiTime">AI 响应</div></div>
+      <div class="perf-card" id="perf-tts"><div class="perf-val" id="perf-tts-val">—</div><div class="perf-label" data-i18n="perf.ttsTime">TTS 首包</div></div>
+    </div>
+    <div class="perf-section-title" data-i18n="perf.timeline">请求时间线 (最近 30 次)</div>
+    <div class="perf-chart"><canvas id="perf-canvas"></canvas></div>
+    <div class="perf-section-title" data-i18n="perf.session">本次会话</div>
+    <div class="perf-grid">
+      <div class="perf-card"><div class="perf-val" id="perf-total-reqs">0</div><div class="perf-label" data-i18n="perf.totalReqs">总请求数</div></div>
+      <div class="perf-card"><div class="perf-val" id="perf-avg-latency">—</div><div class="perf-label" data-i18n="perf.avgLatency">平均延迟</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ VOICE COMMANDS PANEL ═══════════════ -->
+<div id="voice-cmd-panel" class="hidden" role="dialog" aria-label="Voice Commands" tabindex="-1">
+  <div class="vcmd-header">
+    <button class="icon-btn" id="vcmd-back" aria-label="Close voice commands">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </button>
+    <h2 data-i18n="vcmd.title">🗣️ 语音指令</h2>
+  </div>
+  <input class="vcmd-search" id="vcmd-search" data-i18n="vcmd.searchPlaceholder" data-i18n-attr="placeholder" placeholder="搜索技能…">
+  <div class="vcmd-body" id="vcmd-list"></div>
+</div>
+
 <div class="oc-toast-container" id="oc-toast-container" aria-live="polite" aria-atomic="false"></div>
 
 <div class="shortcuts-overlay" id="shortcuts-overlay" role="dialog" aria-label="Keyboard shortcuts" tabindex="-1">
@@ -1942,6 +2069,7 @@ body{
     <div class="shortcut-row"><span data-i18n="shortcuts.models">模型管理</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">M</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.mcp">MCP 工具</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">T</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.theme">切换主题</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">Shift</span><span class="shortcut-key">D</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.perf">性能监控</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">P</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.voice">语音输入</span><div class="shortcut-keys"><span class="shortcut-key">Space</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.escape">关闭面板</span><div class="shortcut-keys"><span class="shortcut-key">Esc</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.help">此帮助</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">/</span></div></div>
@@ -2094,6 +2222,12 @@ const I18N = {
     'shortcuts.theme':'切换主题','shortcuts.voice':'语音输入','shortcuts.escape':'关闭面板',
     'shortcuts.help':'此帮助','shortcuts.close':'关闭',
     'mcp.fav':'收藏','mcp.unfav':'取消收藏',
+    'mcp.history':'调用历史','mcp.clearHistory':'清空','mcp.noHistory':'还没有调用记录','mcp.replay':'重放',
+    'perf.title':'📊 性能监控','perf.wsLatency':'WebSocket 延迟','perf.sttTime':'STT 识别',
+    'perf.aiTime':'AI 响应','perf.ttsTime':'TTS 首包','perf.timeline':'请求时间线 (最近 30 次)',
+    'perf.session':'本次会话','perf.totalReqs':'总请求数','perf.avgLatency':'平均延迟',
+    'vcmd.title':'🗣️ 语音指令','vcmd.searchPlaceholder':'搜索技能…','vcmd.execute':'执行','vcmd.noSkills':'暂无可用技能',
+    'shortcuts.perf':'性能监控',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
     'desktop.ai.clicking':'正在点击','desktop.ai.typing':'正在输入',
@@ -2219,6 +2353,12 @@ const I18N = {
     'shortcuts.theme':'Toggle Theme','shortcuts.voice':'Voice Input','shortcuts.escape':'Close Panel',
     'shortcuts.help':'This Help','shortcuts.close':'Close',
     'mcp.fav':'Favorite','mcp.unfav':'Unfavorite',
+    'mcp.history':'Call History','mcp.clearHistory':'Clear','mcp.noHistory':'No call records yet','mcp.replay':'Replay',
+    'perf.title':'📊 Performance','perf.wsLatency':'WebSocket Latency','perf.sttTime':'STT Time',
+    'perf.aiTime':'AI Response','perf.ttsTime':'TTS First Byte','perf.timeline':'Request Timeline (last 30)',
+    'perf.session':'This Session','perf.totalReqs':'Total Requests','perf.avgLatency':'Avg Latency',
+    'vcmd.title':'🗣️ Voice Commands','vcmd.searchPlaceholder':'Search skills…','vcmd.execute':'Execute','vcmd.noSkills':'No skills available',
+    'shortcuts.perf':'Performance',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
     'desktop.ai.placeholder':'Type desktop command (e.g. open WeChat, send message)...',
     'desktop.ai.clicking':'Clicking','desktop.ai.typing':'Typing',
@@ -2923,6 +3063,19 @@ let voiceSilenceTimer = null;
 let voiceResponseComplete = false;
 
 function handleVoiceMessage(msg) {
+  if (typeof ocPerf !== 'undefined') {
+    if (msg.type === 'listening_stopped') ocPerf.mark('stt_start');
+    if (msg.type === 'transcript' && !msg.partial) { ocPerf.mark('stt_end'); ocPerf.mark('ai_start'); }
+    if (msg.type === 'response_chunk' && !ocPerf._aiMarked) { ocPerf.mark('ai_end'); ocPerf._aiMarked = true; ocPerf.mark('tts_start'); }
+    if (msg.type === 'audio_chunk' && !ocPerf._ttsMarked) { ocPerf.mark('tts_end'); ocPerf._ttsMarked = true; }
+    if (msg.type === 'response_complete') {
+      const stt = ocPerf.measure('stt_start', 'stt_end');
+      const ai = ocPerf.measure('ai_start', 'ai_end');
+      const tts = ocPerf.measure('tts_start', 'tts_end');
+      ocPerf.recordCycle(stt, ai, tts);
+      ocPerf._aiMarked = false; ocPerf._ttsMarked = false;
+    }
+  }
   switch (msg.type) {
     case 'listening_started':
       setVoiceStatus(t('voice.listening'));
@@ -5760,6 +5913,10 @@ window.addEventListener('online', () => {
     _wsRetryCount = 0;
     connectVoiceWs();
   }
+  if (typeof ocToast !== 'undefined') ocToast.success('网络已恢复');
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_API_CACHE' });
+  }
 });
 if (!navigator.onLine && _offlineBanner) _offlineBanner.classList.add('show');
 
@@ -6727,8 +6884,10 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
       const d = await r.json();
       if (d.ok) {
         resultEl.textContent = typeof d.result === 'string' ? d.result : JSON.stringify(d.result, null, 2);
+        if (typeof mcpHistory !== 'undefined') mcpHistory.add(_activeToolName, params, d.result, true);
       } else {
         resultEl.textContent = '❌ ' + (d.error || '调用失败');
+        if (typeof mcpHistory !== 'undefined') mcpHistory.add(_activeToolName, params, d.error || '调用失败', false);
       }
     } catch(e) {
       resultEl.textContent = '❌ 网络错误: ' + e.message;
@@ -6736,6 +6895,21 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     resultEl.classList.add('visible');
     btn.disabled = false; btn.textContent = '▶ 调用';
   }
+
+  window._mcpReplayCallback = function(toolName, params) {
+    openToolDrawer(toolName);
+    $('mcp-tool-params').value = JSON.stringify(params, null, 2);
+    const form = $('mcp-tool-form');
+    if (form) {
+      form.querySelectorAll('.mcp-form-input').forEach(el => {
+        const key = el.dataset.key;
+        if (key && params[key] !== undefined) {
+          if (el.type === 'checkbox') el.checked = !!params[key];
+          else el.value = params[key];
+        }
+      });
+    }
+  };
 
   $('mcp-tool-run')?.addEventListener('click', runTool);
   $('mcp-tool-close')?.addEventListener('click', closeToolDrawer);
@@ -7046,12 +7220,10 @@ const ocToast = (function() {
         }
         if (p && p.classList.contains('open')) { p.classList.remove('open'); return; }
       }
-      const mp = document.getElementById('model-panel');
-      if (mp && !mp.classList.contains('hidden')) { mp.classList.add('hidden'); return; }
-      const mcp = document.getElementById('mcp-panel');
-      if (mcp && !mcp.classList.contains('hidden')) { mcp.classList.add('hidden'); return; }
-      const sm = document.getElementById('settings-modal');
-      if (sm && !sm.classList.contains('hidden')) { sm.classList.add('hidden'); return; }
+      for (const pid of ['perf-panel', 'voice-cmd-panel', 'model-panel', 'mcp-panel', 'settings-modal']) {
+        const el = document.getElementById(pid);
+        if (el && !el.classList.contains('hidden')) { el.classList.add('hidden'); return; }
+      }
     }
 
     if (e.ctrlKey && !e.shiftKey && e.key === 'm') {
@@ -7066,6 +7238,13 @@ const ocToast = (function() {
       const mcp = document.getElementById('mcp-panel');
       if (mcp.classList.contains('hidden')) { mcp.classList.remove('hidden'); mcp.focus(); }
       else mcp.classList.add('hidden');
+    }
+
+    if (e.ctrlKey && !e.shiftKey && e.key === 'p') {
+      e.preventDefault();
+      const pp = document.getElementById('perf-panel');
+      if (pp.classList.contains('hidden')) { if (typeof ocPerf !== 'undefined') ocPerf.openPanel(); }
+      else { if (typeof ocPerf !== 'undefined') ocPerf.closePanel(); }
     }
 
     if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
@@ -7123,6 +7302,241 @@ const ocToast = (function() {
   trapFocus('model-panel');
   trapFocus('mcp-panel');
   trapFocus('settings-modal');
+  trapFocus('perf-panel');
+  trapFocus('voice-cmd-panel');
+})();
+
+// ══════════════════════════════════════════════════════════════
+// PERFORMANCE PANEL
+// ══════════════════════════════════════════════════════════════
+const ocPerf = (function() {
+  const $ = id => document.getElementById(id);
+  const _history = [];
+  const MAX_POINTS = 30;
+  let _timestamps = {};
+  let _totalReqs = 0;
+  let _latencySum = 0;
+
+  function openPanel() { $('perf-panel').classList.remove('hidden'); drawChart(); }
+  function closePanel() { $('perf-panel').classList.add('hidden'); }
+
+  $('perf-toggle')?.addEventListener('click', openPanel);
+  $('perf-back')?.addEventListener('click', closePanel);
+
+  function gradeCard(el, ms) {
+    el.classList.remove('good', 'warn', 'bad');
+    if (ms < 500) el.classList.add('good');
+    else if (ms < 2000) el.classList.add('warn');
+    else el.classList.add('bad');
+  }
+
+  function formatMs(ms) { return ms < 1000 ? ms + ' ms' : (ms / 1000).toFixed(1) + ' s'; }
+
+  function mark(key) { _timestamps[key] = performance.now(); }
+
+  function measure(startKey, endKey) {
+    const s = _timestamps[startKey], e = endKey ? _timestamps[endKey] : performance.now();
+    return (s && e) ? Math.round(e - s) : null;
+  }
+
+  function recordCycle(stt, ai, tts) {
+    const total = (stt || 0) + (ai || 0) + (tts || 0);
+    _history.push({ stt: stt || 0, ai: ai || 0, tts: tts || 0, total, time: Date.now() });
+    if (_history.length > MAX_POINTS) _history.shift();
+    _totalReqs++;
+    _latencySum += total;
+
+    if (stt != null) { $('perf-stt-val').textContent = formatMs(stt); gradeCard($('perf-stt'), stt); }
+    if (ai != null) { $('perf-ai-val').textContent = formatMs(ai); gradeCard($('perf-ai'), ai); }
+    if (tts != null) { $('perf-tts-val').textContent = formatMs(tts); gradeCard($('perf-tts'), tts); }
+    $('perf-total-reqs').textContent = _totalReqs;
+    $('perf-avg-latency').textContent = formatMs(Math.round(_latencySum / _totalReqs));
+
+    if (!$('perf-panel').classList.contains('hidden')) drawChart();
+  }
+
+  function setWsLatency(ms) {
+    $('perf-ws-val').textContent = formatMs(ms);
+    gradeCard($('perf-ws'), ms);
+  }
+
+  function drawChart() {
+    const canvas = $('perf-canvas');
+    if (!canvas || _history.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.parentElement.clientWidth;
+    const h = canvas.parentElement.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const maxVal = Math.max(..._history.map(p => p.total), 500);
+    const barW = Math.max(4, (w - 20) / MAX_POINTS - 2);
+    const colors = { stt: '#4ade80', ai: '#7c6aef', tts: '#fbbf24' };
+
+    _history.forEach((p, i) => {
+      const x = 10 + i * ((w - 20) / MAX_POINTS);
+      let y = h;
+      for (const key of ['stt', 'ai', 'tts']) {
+        const segH = (p[key] / maxVal) * (h - 10);
+        y -= segH;
+        ctx.fillStyle = colors[key];
+        ctx.fillRect(x, y, barW, segH);
+      }
+    });
+
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.font = '9px sans-serif';
+    ctx.fillText('0ms', 2, h - 2);
+    ctx.fillText(formatMs(maxVal), 2, 10);
+  }
+
+  return { mark, measure, recordCycle, setWsLatency, openPanel, closePanel };
+})();
+
+// ══════════════════════════════════════════════════════════════
+// VOICE COMMANDS PANEL
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  let _skills = [];
+
+  async function openPanel() {
+    $('voice-cmd-panel').classList.remove('hidden');
+    if (_skills.length === 0) await loadSkills();
+  }
+  function closePanel() { $('voice-cmd-panel').classList.add('hidden'); }
+
+  async function loadSkills() {
+    try {
+      const r = await fetch(getBaseUrl() + '/api/desktop-skills');
+      const d = await r.json();
+      _skills = d.skills || d || [];
+      renderSkills(_skills);
+    } catch {
+      $('vcmd-list').innerHTML = '<div class="mcp-empty">暂无可用技能</div>';
+    }
+  }
+
+  function renderSkills(skills) {
+    if (skills.length === 0) {
+      $('vcmd-list').innerHTML = '<div class="mcp-empty" data-i18n="vcmd.noSkills">暂无可用技能</div>';
+      return;
+    }
+    $('vcmd-list').innerHTML = skills.map(s => `
+      <div class="vcmd-card" data-id="${s.id}">
+        <span class="vcmd-icon">${s.icon || '⚡'}</span>
+        <div style="flex:1">
+          <div class="vcmd-name">${s.name_zh || s.name || s.id}</div>
+          <div class="vcmd-desc">${s.description || ''}</div>
+        </div>
+        <button class="vcmd-exec" data-id="${s.id}" data-i18n="vcmd.execute">执行</button>
+      </div>
+    `).join('');
+    $('vcmd-list').querySelectorAll('.vcmd-exec').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); execSkill(btn.dataset.id); });
+    });
+    $('vcmd-list').querySelectorAll('.vcmd-card').forEach(card => {
+      card.addEventListener('click', () => execSkill(card.dataset.id));
+    });
+  }
+
+  async function execSkill(id) {
+    const btn = $('vcmd-list').querySelector(`.vcmd-exec[data-id="${id}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const r = await fetch(getBaseUrl() + `/api/desktop-skill/${id}`, { method: 'POST' });
+      const d = await r.json();
+      if (typeof ocToast !== 'undefined') ocToast.success(d.message || '技能已执行');
+    } catch(e) {
+      if (typeof ocToast !== 'undefined') ocToast.error('执行失败: ' + e.message);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '执行'; }
+  }
+
+  $('vcmd-search')?.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    const filtered = _skills.filter(s =>
+      (s.name_zh || s.name || s.id).toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q)
+    );
+    renderSkills(filtered);
+  });
+
+  $('vcmd-toggle')?.addEventListener('click', openPanel);
+  $('vcmd-back')?.addEventListener('click', closePanel);
+})();
+
+// ══════════════════════════════════════════════════════════════
+// MCP TOOL CALL HISTORY
+// ══════════════════════════════════════════════════════════════
+const mcpHistory = (function() {
+  const MAX = 50;
+  const KEY = 'oc-mcp-history';
+  let _records = JSON.parse(localStorage.getItem(KEY) || '[]');
+
+  function save() {
+    if (_records.length > MAX) _records = _records.slice(-MAX);
+    localStorage.setItem(KEY, JSON.stringify(_records));
+  }
+
+  function add(toolName, params, result, ok) {
+    _records.push({
+      tool: toolName,
+      params: JSON.parse(JSON.stringify(params)),
+      result: typeof result === 'string' ? result : JSON.stringify(result),
+      ok,
+      time: Date.now(),
+    });
+    save();
+    render();
+  }
+
+  function clear() {
+    _records = [];
+    localStorage.removeItem(KEY);
+    render();
+  }
+
+  function render() {
+    const list = document.getElementById('mcp-history-list');
+    const empty = document.getElementById('mcp-no-history');
+    if (!list) return;
+    if (_records.length === 0) {
+      list.innerHTML = '';
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+    if (empty) empty.classList.add('hidden');
+    list.innerHTML = [..._records].reverse().slice(0, 20).map((r, i) => {
+      const t = new Date(r.time);
+      const timeStr = t.getHours().toString().padStart(2, '0') + ':' + t.getMinutes().toString().padStart(2, '0');
+      const preview = (r.result || '').slice(0, 80);
+      return `<div class="mcp-history-item">
+        <span class="mcp-h-tool">${r.tool}</span><span class="mcp-h-time">${timeStr}</span>
+        <div class="mcp-h-result">${r.ok ? '' : '❌ '}${preview}${(r.result || '').length > 80 ? '…' : ''}</div>
+        <div class="mcp-h-actions">
+          <button class="mp-btn" style="font-size:10px;padding:2px 8px;background:var(--bg-surface);color:var(--accent)" data-replay="${_records.length - 1 - i}" data-i18n="mcp.replay">重放</button>
+        </div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-replay]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.replay);
+        const rec = _records[idx];
+        if (rec && window._mcpReplayCallback) window._mcpReplayCallback(rec.tool, rec.params);
+      });
+    });
+  }
+
+  document.getElementById('mcp-clear-history')?.addEventListener('click', () => {
+    if (confirm('清空所有调用历史？')) clear();
+  });
+
+  setTimeout(render, 500);
+
+  return { add, clear, render };
 })();
 
 // ══════════════════════════════════════════════════════════════
