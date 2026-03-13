@@ -640,6 +640,67 @@ body{
 .mp-btn-cancel{background:var(--bg-surface);color:var(--warning);border:1px solid var(--warning);font-size:11px;padding:4px 10px}
 .mp-btn-cancel:hover{background:rgba(251,191,36,.1)}
 
+/* ─── MCP Tool Test Drawer ─── */
+.mcp-tool-drawer{
+  margin-top:12px;padding:14px;
+  background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);
+  display:none;
+}
+.mcp-tool-drawer.open{display:block}
+.mcp-tool-drawer h4{font-size:13px;font-weight:600;margin-bottom:8px}
+.mcp-tool-params{
+  width:100%;min-height:60px;padding:10px 12px;
+  background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;
+  color:var(--text-primary);font-family:'Consolas','Monaco',monospace;font-size:12px;
+  resize:vertical;outline:none;
+}
+.mcp-tool-result{
+  margin-top:8px;padding:10px 12px;
+  background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;
+  font-family:'Consolas','Monaco',monospace;font-size:12px;color:var(--text-secondary);
+  max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all;
+  display:none;
+}
+.mcp-tool-result.visible{display:block}
+.mcp-tool-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(124,106,239,.08)}
+
+/* ─── Batch install ─── */
+.mp-batch-bar{
+  display:none;align-items:center;gap:8px;
+  margin-bottom:12px;padding:10px 14px;
+  background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:var(--radius-md);
+}
+.mp-batch-bar.visible{display:flex}
+.mp-batch-count{font-size:13px;color:var(--text-secondary);flex:1}
+.mp-check{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.mp-queue-progress{margin-top:6px;font-size:11px;color:var(--text-muted)}
+
+/* ─── Light theme ─── */
+:root[data-theme="light"]{
+  --bg-primary:#f5f5fa;--bg-secondary:#ffffff;--bg-tertiary:#eeeef5;
+  --bg-surface:rgba(0,0,0,0.03);--bg-surface-hover:rgba(0,0,0,0.06);
+  --accent:#6c5ce7;--accent-hover:#7c6aef;--accent-glow:rgba(108,92,231,0.15);
+  --user-bg:#e8e6f8;--text-primary:#1a1a2e;--text-secondary:#5a5a72;--text-muted:#9090a8;
+  --border:rgba(0,0,0,0.06);--border-strong:rgba(0,0,0,0.12);
+  --success:#16a34a;--error:#dc2626;--warning:#d97706;
+}
+:root[data-theme="light"] body{background:var(--bg-primary);color:var(--text-primary)}
+:root[data-theme="light"] .chat-header{background:rgba(255,255,255,.85);border-color:rgba(0,0,0,.06)}
+:root[data-theme="light"] .msg.user .msg-text{background:var(--user-bg);color:var(--text-primary)}
+:root[data-theme="light"] .setup-card{background:#fff}
+:root[data-theme="light"] #model-panel,:root[data-theme="light"] #mcp-panel{background:var(--bg-primary)}
+:root[data-theme="light"] .mp-header,:root[data-theme="light"] .mcp-header{background:rgba(255,255,255,.9);border-color:rgba(0,0,0,.06)}
+:root[data-theme="light"] .settings-sheet{background:#fff;border-color:rgba(0,0,0,.06)}
+
+/* ─── Press-hold mic hint ─── */
+.mic-hold-hint{
+  position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  padding:4px 10px;border-radius:8px;
+  background:var(--bg-tertiary);color:var(--text-muted);font-size:10px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.mic-hold-hint.visible{opacity:1}
+
 /* ─── Mobile responsive — new panels ─── */
 @media(max-width:480px){
   .mp-sys-bar{gap:6px}
@@ -649,6 +710,8 @@ body{
   .mp-model-card > div:last-child{width:100%;display:flex;justify-content:flex-end}
   .mcp-header h2, .mp-header h2{font-size:16px}
   .emotion-badge{font-size:11px;padding:3px 10px;top:calc(var(--header-h) + var(--safe-top) + 4px);left:8px}
+  .mcp-tool-drawer{padding:10px}
+  .mcp-tool-params{min-height:40px;font-size:11px}
 }
 @media(max-width:374px){
   .mp-sys-bar{flex-direction:column}
@@ -1182,8 +1245,9 @@ body{
         </div>
       </div>
       <div class="input-actions">
-        <button class="icon-btn" id="mic-btn" data-i18n="input.voice" data-i18n-attr="title" title="语音输入">
+        <button class="icon-btn" id="mic-btn" data-i18n="input.voice" data-i18n-attr="title" title="语音输入" style="position:relative">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <span class="mic-hold-hint" id="mic-hold-hint">长按说话，松开结束</span>
         </button>
       </div>
     </div>
@@ -1281,6 +1345,13 @@ body{
     <div class="settings-group">
       <h3 data-i18n="settings.display">显示</h3>
       <div class="settings-row">
+        <span class="settings-label">主题</span>
+        <select id="theme-select" style="padding:5px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
+          <option value="dark">🌙 深色</option>
+          <option value="light">☀️ 浅色</option>
+        </select>
+      </div>
+      <div class="settings-row">
         <span class="settings-label" data-i18n="settings.fullscreen">全屏</span>
         <button class="btn" id="fullscreen-settings-btn" data-i18n="settings.enterFs" style="padding:6px 16px;background:var(--bg-surface);color:var(--text-primary);font-size:13px">进入全屏</button>
       </div>
@@ -1319,7 +1390,13 @@ body{
       <div class="mp-sys-card"><div class="sys-num" id="mp-vram">—</div><div class="sys-label">显存</div></div>
       <div class="mp-sys-card"><div class="sys-num" id="mp-disk">—</div><div class="sys-label">可用磁盘</div></div>
     </div>
+    <div class="mp-batch-bar" id="mp-batch-bar">
+      <span class="mp-batch-count" id="mp-batch-count">已选 0 个模型</span>
+      <button class="mp-btn mp-btn-install" id="mp-batch-install" style="padding:6px 16px;font-size:12px">批量安装</button>
+      <button class="mp-btn mp-btn-cancel" id="mp-batch-clear" style="padding:6px 12px;font-size:12px">取消</button>
+    </div>
     <div id="mp-models-list"></div>
+    <div id="mp-queue-status" class="mp-queue-progress" style="display:none"></div>
   </div>
 </div>
 
@@ -1351,9 +1428,19 @@ body{
       </details>
     </div>
     <div class="mcp-section">
-      <div class="mcp-section-title">可用工具</div>
+      <div class="mcp-section-title">可用工具 <span style="font-size:11px;color:var(--text-muted)">— 点击工具可测试</span></div>
       <div id="mcp-tools-list" style="display:flex;flex-wrap:wrap;gap:4px"></div>
       <div class="mcp-empty hidden" id="mcp-no-tools">连接服务器后将自动发现工具</div>
+      <div class="mcp-tool-drawer" id="mcp-tool-drawer">
+        <h4 id="mcp-drawer-title">—</h4>
+        <p id="mcp-drawer-desc" style="font-size:11px;color:var(--text-muted);margin-bottom:8px"></p>
+        <textarea class="mcp-tool-params" id="mcp-tool-params" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="mp-btn mp-btn-install" id="mcp-tool-run" style="flex:1;padding:8px">▶ 调用</button>
+          <button class="mp-btn mp-btn-cancel" id="mcp-tool-close" style="padding:8px 14px">关闭</button>
+        </div>
+        <div class="mcp-tool-result" id="mcp-tool-result"></div>
+      </div>
     </div>
     <div class="mcp-section">
       <div class="mcp-section-title">用户技能</div>
@@ -4625,14 +4712,59 @@ $$('.suggestion').forEach(btn => {
   });
 });
 
-// Voice
-dom.micBtn.addEventListener('click', () => {
-  if (!dom.voiceOverlay.classList.contains('hidden')) {
-    closeVoiceOverlay();
-  } else {
-    startVoiceRecording();
+// Voice — click and press-and-hold support
+(function() {
+  let _holdTimer = null, _isHolding = false, _holdFired = false;
+  const HOLD_MS = 400;
+  const hint = document.getElementById('mic-hold-hint');
+
+  function onHoldStart(e) {
+    e.preventDefault();
+    _holdFired = false;
+    _holdTimer = setTimeout(() => {
+      _holdFired = true;
+      _isHolding = true;
+      if (hint) hint.classList.remove('visible');
+      startVoiceRecording();
+    }, HOLD_MS);
   }
-});
+
+  function onHoldEnd(e) {
+    clearTimeout(_holdTimer);
+    if (_isHolding) {
+      _isHolding = false;
+      if (S.isRecording) stopVoiceRecording();
+      closeVoiceOverlay();
+      return;
+    }
+    if (_holdFired) return;
+    if (!dom.voiceOverlay.classList.contains('hidden')) {
+      closeVoiceOverlay();
+    } else {
+      startVoiceRecording();
+    }
+  }
+
+  function onHoldCancel() { clearTimeout(_holdTimer); _isHolding = false; }
+
+  dom.micBtn.addEventListener('touchstart', onHoldStart, { passive: false });
+  dom.micBtn.addEventListener('touchend', onHoldEnd);
+  dom.micBtn.addEventListener('touchcancel', onHoldCancel);
+  dom.micBtn.addEventListener('mousedown', onHoldStart);
+  dom.micBtn.addEventListener('mouseup', onHoldEnd);
+  dom.micBtn.addEventListener('mouseleave', onHoldCancel);
+
+  dom.micBtn.addEventListener('click', (e) => { e.preventDefault(); });
+
+  let _hintShown = false;
+  if ('ontouchstart' in window && !_hintShown) {
+    dom.micBtn.addEventListener('touchstart', function showHint() {
+      if (!_hintShown) { _hintShown = true; if (hint) { hint.classList.add('visible'); setTimeout(() => hint.classList.remove('visible'), 2500); } }
+      dom.micBtn.removeEventListener('touchstart', showHint);
+    }, { once: true });
+  }
+})();
+
 function handleVoiceStopClick() {
   if (S.isRecording) stopVoiceRecording();
   closeVoiceOverlay();
@@ -6029,11 +6161,15 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     }
   }
 
+  let _batchSelected = new Set();
+
   function renderModels(models) {
     const cats = {};
     models.forEach(m => {
       (cats[m.category] = cats[m.category] || []).push(m);
     });
+    _batchSelected.clear();
+    updateBatchBar();
     const catNames = { stt: '🎤 语音识别', runtime: '⚡ 运行时', vad: '🔊 语音检测', vision: '👁️ 视觉控制' };
     let html = '';
     for (const [cat, list] of Object.entries(cats)) {
@@ -6045,7 +6181,8 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
           btn = `<button class="mp-btn mp-btn-installed">✓ 已安装</button>
                  <button class="mp-btn mp-btn-uninstall" data-id="${m.id}" style="margin-left:4px">卸载</button>`;
         } else {
-          btn = `<button class="mp-btn mp-btn-install" data-id="${m.id}">安装</button>`;
+          btn = `<input type="checkbox" class="mp-check mp-batch-check" data-id="${m.id}">
+                 <button class="mp-btn mp-btn-install" data-id="${m.id}">安装</button>`;
         }
         html += `<div class="mp-model-card" id="mp-card-${m.id}">
           <div class="mp-model-info">
@@ -6065,7 +6202,52 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     $('mp-models-list').querySelectorAll('.mp-btn-uninstall').forEach(btn => {
       btn.addEventListener('click', () => uninstallModel(btn.dataset.id));
     });
+    $('mp-models-list').querySelectorAll('.mp-batch-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) _batchSelected.add(cb.dataset.id);
+        else _batchSelected.delete(cb.dataset.id);
+        updateBatchBar();
+      });
+    });
   }
+
+  function updateBatchBar() {
+    const bar = $('mp-batch-bar');
+    if (_batchSelected.size > 0) {
+      bar.classList.add('visible');
+      $('mp-batch-count').textContent = `已选 ${_batchSelected.size} 个模型`;
+    } else {
+      bar.classList.remove('visible');
+    }
+  }
+
+  async function batchInstall() {
+    const ids = [..._batchSelected];
+    if (ids.length === 0) return;
+    const status = $('mp-queue-status');
+    status.style.display = 'block';
+    $('mp-batch-install').disabled = true;
+    for (let i = 0; i < ids.length; i++) {
+      status.textContent = `队列进度: ${i + 1}/${ids.length} — 正在安装 ${ids[i]}…`;
+      const card = $('mp-card-' + ids[i]);
+      const btn = card?.querySelector('.mp-btn-install');
+      if (btn) await installModel(ids[i], btn);
+    }
+    status.textContent = `✓ 队列完成: ${ids.length} 个模型`;
+    $('mp-batch-install').disabled = false;
+    _batchSelected.clear();
+    updateBatchBar();
+    setTimeout(() => { status.style.display = 'none'; }, 3000);
+  }
+
+  function clearBatchSelection() {
+    _batchSelected.clear();
+    $('mp-models-list').querySelectorAll('.mp-batch-check').forEach(cb => cb.checked = false);
+    updateBatchBar();
+  }
+
+  $('mp-batch-install')?.addEventListener('click', batchInstall);
+  $('mp-batch-clear')?.addEventListener('click', clearBatchSelection);
 
   let _installAbort = null;
 
@@ -6223,26 +6405,84 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     } catch(e) { console.warn('mcp connect:', e); }
   };
 
+  let _toolsData = [];
+  let _activeToolName = null;
+
   async function loadTools() {
     try {
       const r = await fetch(getBaseUrl() + '/api/mcp/tools');
       const d = await r.json();
+      _toolsData = d.tools || [];
       const list = $('mcp-tools-list');
       const noTools = $('mcp-no-tools');
       $('mcp-tools-count').textContent = d.count ? `${d.count} 个工具` : '';
-      if (!d.tools || d.tools.length === 0) {
+      if (_toolsData.length === 0) {
         list.innerHTML = '';
         noTools.classList.remove('hidden');
         return;
       }
       noTools.classList.add('hidden');
-      list.innerHTML = d.tools.map(t =>
-        `<span class="mcp-tool-chip" title="${t.description || t.name}">⚙️ ${t.name}</span>`
+      list.innerHTML = _toolsData.map(t =>
+        `<span class="mcp-tool-chip" data-tool="${t.name}" title="${(t.description || t.name).replace(/"/g,'&quot;')}">⚙️ ${t.name}</span>`
       ).join('');
+      list.querySelectorAll('.mcp-tool-chip').forEach(chip => {
+        chip.addEventListener('click', () => openToolDrawer(chip.dataset.tool));
+      });
     } catch(e) {
       $('mcp-no-tools').classList.remove('hidden');
     }
   }
+
+  function openToolDrawer(name) {
+    const tool = _toolsData.find(t => t.name === name);
+    if (!tool) return;
+    _activeToolName = name;
+    $('mcp-drawer-title').textContent = '⚙️ ' + name;
+    $('mcp-drawer-desc').textContent = tool.description || '';
+    const schema = tool.input_schema || tool.parameters || {};
+    $('mcp-tool-params').value = Object.keys(schema).length
+      ? JSON.stringify(schema.properties ? Object.fromEntries(Object.entries(schema.properties).map(([k,v]) => [k, v.default ?? ''])) : {}, null, 2)
+      : '{}';
+    $('mcp-tool-result').textContent = '';
+    $('mcp-tool-result').classList.remove('visible');
+    $('mcp-tool-drawer').classList.add('open');
+    $('mcp-tools-list').querySelectorAll('.mcp-tool-chip').forEach(c => c.classList.toggle('active', c.dataset.tool === name));
+  }
+
+  function closeToolDrawer() {
+    $('mcp-tool-drawer').classList.remove('open');
+    _activeToolName = null;
+    $('mcp-tools-list').querySelectorAll('.mcp-tool-chip').forEach(c => c.classList.remove('active'));
+  }
+
+  async function runTool() {
+    if (!_activeToolName) return;
+    const btn = $('mcp-tool-run');
+    const resultEl = $('mcp-tool-result');
+    btn.disabled = true; btn.textContent = '调用中…';
+    let params = {};
+    try { params = JSON.parse($('mcp-tool-params').value || '{}'); } catch { resultEl.textContent = '⚠️ JSON 参数格式错误'; resultEl.classList.add('visible'); btn.disabled = false; btn.textContent = '▶ 调用'; return; }
+    try {
+      const r = await fetch(getBaseUrl() + '/api/mcp/tool/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool_name: _activeToolName, arguments: params }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        resultEl.textContent = typeof d.result === 'string' ? d.result : JSON.stringify(d.result, null, 2);
+      } else {
+        resultEl.textContent = '❌ ' + (d.error || '调用失败');
+      }
+    } catch(e) {
+      resultEl.textContent = '❌ 网络错误: ' + e.message;
+    }
+    resultEl.classList.add('visible');
+    btn.disabled = false; btn.textContent = '▶ 调用';
+  }
+
+  $('mcp-tool-run')?.addEventListener('click', runTool);
+  $('mcp-tool-close')?.addEventListener('click', closeToolDrawer);
 
   async function loadSkills() {
     try {
@@ -6402,6 +6642,81 @@ function showEmotionBadge(emotion, dominant) {
   if (origSettings) {
     origSettings.addEventListener('click', () => setTimeout(syncEmotionState, 300));
   }
+})();
+
+// ══════════════════════════════════════════════════════════════
+// THEME SWITCHER
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const sel = document.getElementById('theme-select');
+  if (!sel) return;
+
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if (mc) mc.content = t === 'light' ? '#f5f5fa' : '#0a0a14';
+  }
+
+  const saved = localStorage.getItem('oc-theme') || 'dark';
+  sel.value = saved;
+  if (saved !== 'dark') applyTheme(saved);
+
+  sel.addEventListener('change', () => {
+    const v = sel.value;
+    applyTheme(v);
+    localStorage.setItem('oc-theme', v);
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// PULL-TO-REFRESH (Model / MCP panels)
+// ══════════════════════════════════════════════════════════════
+(function() {
+  function pullToRefresh(panelId, refreshFn) {
+    const body = document.querySelector('#' + panelId + ' .mp-body, #' + panelId + ' .mcp-body');
+    if (!body) return;
+    let _startY = 0, _pulling = false;
+
+    body.addEventListener('touchstart', (e) => {
+      if (body.scrollTop <= 0) {
+        _startY = e.touches[0].clientY;
+        _pulling = true;
+      }
+    }, { passive: true });
+
+    body.addEventListener('touchmove', (e) => {
+      if (!_pulling) return;
+      const dy = e.touches[0].clientY - _startY;
+      if (dy > 80 && body.scrollTop <= 0) {
+        _pulling = false;
+        body.style.opacity = '0.5';
+        refreshFn().finally(() => { body.style.opacity = '1'; });
+      }
+    }, { passive: true });
+
+    body.addEventListener('touchend', () => { _pulling = false; });
+  }
+
+  window.addEventListener('load', () => {
+    pullToRefresh('model-panel', async () => {
+      try {
+        const r = await fetch(getBaseUrl() + '/api/models');
+        const d = await r.json();
+        document.getElementById('mp-mode-badge').textContent = d.mode === 'full' ? '完整模式' : '极简模式';
+        document.dispatchEvent(new CustomEvent('oc:models-refresh', { detail: d.models || [] }));
+      } catch {}
+    });
+    pullToRefresh('mcp-panel', async () => {
+      try {
+        await Promise.all([
+          fetch(getBaseUrl() + '/api/mcp/servers'),
+          fetch(getBaseUrl() + '/api/mcp/tools'),
+          fetch(getBaseUrl() + '/api/mcp/skills'),
+        ]);
+        document.dispatchEvent(new CustomEvent('oc:mcp-refresh'));
+      } catch {}
+    });
+  });
 })();
 
 // ══════════════════════════════════════════════════════════════
