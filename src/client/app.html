@@ -841,6 +841,67 @@ body{
   font-size:11px;cursor:pointer;flex-shrink:0;
 }
 
+/* ─── Wake word config ─── */
+.wakeword-config{margin-top:8px;padding:8px 0}
+.wakeword-input{
+  width:100%;padding:8px 10px;font-size:12px;font-family:inherit;
+  background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;
+  color:var(--text-primary);outline:none;margin-bottom:8px;
+}
+.wakeword-input:focus{border-color:var(--accent)}
+.sensitivity-bar{display:flex;align-items:center;gap:8px}
+.sensitivity-bar .settings-label{font-size:12px;flex-shrink:0}
+.sensitivity-bar input[type=range]{flex:1;accent-color:var(--accent)}
+.sensitivity-val{font-size:11px;min-width:24px;color:var(--text-muted);text-align:center}
+
+/* ─── Message search bar ─── */
+.msg-search-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 16px;background:var(--bg-secondary);border-bottom:1px solid var(--border);
+  transform:translateY(-100%);opacity:0;transition:transform .2s,opacity .2s;
+  position:absolute;top:0;left:0;right:0;z-index:20;
+}
+.msg-search-bar.open{transform:translateY(0);opacity:1}
+.msg-search-input{
+  flex:1;padding:6px 12px;font-size:13px;font-family:inherit;
+  background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;
+  color:var(--text-primary);outline:none;
+}
+.msg-search-input:focus{border-color:var(--accent)}
+.msg-search-nav{display:flex;align-items:center;gap:4px}
+.msg-search-nav button{
+  background:none;border:none;color:var(--text-secondary);cursor:pointer;
+  font-size:14px;padding:4px;border-radius:4px;
+}
+.msg-search-nav button:hover{background:var(--bg-surface-hover);color:var(--text-primary)}
+.msg-search-count{font-size:11px;color:var(--text-muted);white-space:nowrap;min-width:48px;text-align:center}
+.msg-search-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px}
+mark.search-hl{background:var(--warning);color:#000;border-radius:2px;padding:0 1px}
+mark.search-hl.active{background:var(--accent);color:#fff}
+
+/* ─── Quick Actions editor ─── */
+.qa-editor-list{margin:8px 0}
+.qa-editor-item{
+  display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:4px;
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;
+  font-size:12px;cursor:grab;transition:opacity .15s;
+}
+.qa-editor-item.dragging{opacity:.4}
+.qa-editor-item .qa-e-icon{font-size:14px;width:22px;text-align:center}
+.qa-editor-item .qa-e-name{flex:1}
+.qa-editor-item .qa-e-del{
+  background:none;border:none;color:var(--error);cursor:pointer;font-size:12px;padding:2px 4px;
+  opacity:.6;transition:opacity .15s;
+}
+.qa-editor-item .qa-e-del:hover{opacity:1}
+.qa-editor-item .qa-e-del:disabled{color:var(--text-muted);cursor:not-allowed;opacity:.3}
+.qa-add-form{display:flex;gap:4px;margin-top:6px}
+.qa-add-form input{
+  flex:1;padding:6px 8px;font-size:11px;font-family:inherit;
+  background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:4px;
+  color:var(--text-primary);outline:none;
+}
+
 /* ─── Quick Actions bar ─── */
 .quick-actions{
   display:flex;gap:6px;padding:6px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;
@@ -1356,6 +1417,25 @@ body{
   .camera-pip{width:130px;height:130px;bottom:100px;right:20px}
 }
 
+/* ─── chat-main-col default ─── */
+.chat-main-col{position:relative}
+/* ─── Tablet landscape: dual-column layout ─── */
+@media(min-width:768px) and (orientation:landscape){
+  #chat-page{display:flex;flex-direction:row}
+  #sessions-panel{
+    position:relative;transform:none;width:280px;flex-shrink:0;
+    border-right:1px solid var(--border);z-index:auto;
+  }
+  #sessions-panel.open{transform:none}
+  .chat-main-col{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+  .chat-header{position:relative}
+  #sessions-toggle{display:none}
+  .messages-area{flex:1}
+}
+@media(max-width:767px),(orientation:portrait){
+  .chat-main-col{display:contents}
+}
+
 /* Offline indicator */
 .offline-banner{
   position:fixed;top:0;left:0;right:0;z-index:500;
@@ -1468,6 +1548,29 @@ body{
     </div>
   </header>
 
+  <!-- Sessions Sidebar (inside chat-page for dual-column layout) -->
+  <div id="sessions-panel" role="dialog" aria-label="Sessions">
+    <div class="sess-header">
+      <h3 data-i18n="sess.title">💬 会话</h3>
+      <button class="mp-btn" id="sess-new" style="font-size:10px;padding:3px 10px;background:var(--accent);color:#fff" data-i18n="sess.new">+ 新建</button>
+      <button class="icon-btn" id="sess-close" aria-label="Close sessions" style="font-size:14px">✕</button>
+    </div>
+    <div class="sess-list" id="sess-list">
+      <div class="notif-empty" data-i18n="sess.empty">暂无历史会话</div>
+    </div>
+  </div>
+
+  <div class="chat-main-col">
+  <!-- Message Search -->
+  <div class="msg-search-bar" id="msg-search-bar">
+    <input class="msg-search-input" id="msg-search-input" placeholder="搜索消息…" data-i18n="search.placeholder" data-i18n-attr="placeholder" autocomplete="off">
+    <div class="msg-search-nav">
+      <button id="msg-search-prev" title="Previous">▲</button>
+      <span class="msg-search-count" id="msg-search-count"></span>
+      <button id="msg-search-next" title="Next">▼</button>
+    </div>
+    <button class="msg-search-close" id="msg-search-close">✕</button>
+  </div>
   <!-- Messages Area -->
   <div class="messages-area" id="messages-area">
     <div class="welcome" id="welcome-screen">
@@ -1582,6 +1685,7 @@ body{
       </div>
     </div>
   </footer>
+  </div><!-- /.chat-main-col -->
 </div>
 
 <!-- ═══════════════ SETTINGS MODAL ═══════════════ -->
@@ -1654,6 +1758,14 @@ body{
           <span id="wake-knob" style="position:absolute;width:20px;height:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s"></span>
         </label>
       </div>
+      <div class="wakeword-config" id="wakeword-config">
+        <input class="wakeword-input" id="wakeword-text" data-i18n="settings.wakewordPlaceholder" data-i18n-attr="placeholder" placeholder="自定义唤醒词（多个用逗号分隔）" value="">
+        <div class="sensitivity-bar">
+          <span class="settings-label" data-i18n="settings.sensitivity">灵敏度</span>
+          <input type="range" id="wakeword-sensitivity" min="1" max="3" value="2" step="1">
+          <span class="sensitivity-val" id="sensitivity-val" data-i18n="settings.sensitivityMed">中</span>
+        </div>
+      </div>
       <div class="settings-row">
         <span class="settings-label" data-i18n="settings.gestureWake">手势唤醒 (挥手)</span>
         <label style="position:relative;width:48px;height:26px">
@@ -1708,6 +1820,16 @@ body{
         </label>
       </div>
       <p style="font-size:10px;color:var(--text-muted);margin-top:4px" data-i18n="settings.dataHint">导出/导入主题、收藏、历史等本地设置</p>
+    </div>
+    <div class="settings-group">
+      <h3 data-i18n="settings.qaEditor">快捷操作</h3>
+      <div class="qa-editor-list" id="qa-editor-list"></div>
+      <div class="qa-add-form" id="qa-add-form">
+        <input id="qa-add-icon" placeholder="📌" style="max-width:36px;text-align:center" maxlength="4">
+        <input id="qa-add-name" data-i18n="settings.qaNamePlaceholder" data-i18n-attr="placeholder" placeholder="名称">
+        <input id="qa-add-skill" data-i18n="settings.qaSkillPlaceholder" data-i18n-attr="placeholder" placeholder="技能 ID">
+        <button class="mp-btn mp-btn-install" id="qa-add-btn" style="font-size:10px;padding:4px 10px;flex-shrink:0" data-i18n="settings.qaAdd">添加</button>
+      </div>
     </div>
     <div class="settings-group">
       <h3 data-i18n="settings.advTheme">高级主题</h3>
@@ -2300,18 +2422,6 @@ body{
   </div>
 </div>
 
-<!-- ═══════════════ SESSIONS SIDEBAR ═══════════════ -->
-<div id="sessions-panel" role="dialog" aria-label="Sessions">
-  <div class="sess-header">
-    <h3 data-i18n="sess.title">💬 会话</h3>
-    <button class="mp-btn" id="sess-new" style="font-size:10px;padding:3px 10px;background:var(--accent);color:#fff" data-i18n="sess.new">+ 新建</button>
-    <button class="icon-btn" id="sess-close" aria-label="Close sessions" style="font-size:14px">✕</button>
-  </div>
-  <div class="sess-list" id="sess-list">
-    <div class="notif-empty" data-i18n="sess.empty">暂无历史会话</div>
-  </div>
-</div>
-
 <!-- ═══════════════ WS RECONNECT BAR ═══════════════ -->
 <div class="ws-reconnect-bar" id="ws-reconnect-bar"></div>
 
@@ -2516,6 +2626,11 @@ const I18N = {
     'model.benchSpeed':'推理速度','model.benchTTFT':'首 token','model.benchTokens':'token/s',
     'qa.screenshot':'📸 截图','qa.translate':'🌐 翻译','qa.summarize':'📝 总结','qa.wechat':'💬 微信','qa.desktop':'🖥️ 桌面',
     'sess.title':'💬 会话','sess.new':'+ 新建','sess.empty':'暂无历史会话','sess.deleteConfirm':'确认删除此会话？','sess.current':'当前',
+    'settings.wakewordPlaceholder':'自定义唤醒词（多个用逗号分隔）','settings.sensitivity':'灵敏度',
+    'settings.sensitivityLow':'低','settings.sensitivityMed':'中','settings.sensitivityHigh':'高',
+    'search.placeholder':'搜索消息…','search.count':'{x}/{y}','search.noResults':'无结果',
+    'settings.qaEditor':'快捷操作','settings.qaNamePlaceholder':'名称','settings.qaSkillPlaceholder':'技能 ID','settings.qaAdd':'添加',
+    'settings.qaPreset':'预设','settings.qaDeleteConfirm':'删除此快捷操作？',
     'settings.advTheme':'高级主题','settings.accentColor':'强调色','settings.fontSize':'字体大小','settings.resetTheme':'重置为默认',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
@@ -2660,6 +2775,11 @@ const I18N = {
     'model.benchSpeed':'Speed','model.benchTTFT':'TTFT','model.benchTokens':'token/s',
     'qa.screenshot':'📸 Screenshot','qa.translate':'🌐 Translate','qa.summarize':'📝 Summarize','qa.wechat':'💬 WeChat','qa.desktop':'🖥️ Desktop',
     'sess.title':'💬 Sessions','sess.new':'+ New','sess.empty':'No sessions yet','sess.deleteConfirm':'Delete this session?','sess.current':'Current',
+    'settings.wakewordPlaceholder':'Custom wake words (comma separated)','settings.sensitivity':'Sensitivity',
+    'settings.sensitivityLow':'Low','settings.sensitivityMed':'Mid','settings.sensitivityHigh':'High',
+    'search.placeholder':'Search messages…','search.count':'{x}/{y}','search.noResults':'No results',
+    'settings.qaEditor':'Quick Actions','settings.qaNamePlaceholder':'Name','settings.qaSkillPlaceholder':'Skill ID','settings.qaAdd':'Add',
+    'settings.qaPreset':'Preset','settings.qaDeleteConfirm':'Delete this quick action?',
     'settings.advTheme':'Advanced Theme','settings.accentColor':'Accent Color','settings.fontSize':'Font Size','settings.resetTheme':'Reset to Default',
     'shortcuts.perf':'Performance',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
@@ -7602,6 +7722,16 @@ const ocToast = (function() {
       return;
     }
 
+    // Ctrl+F for message search
+    if (e.ctrlKey && !e.shiftKey && e.key === 'f') {
+      const chatPage = document.getElementById('chat-page');
+      if (chatPage && !chatPage.classList.contains('hidden')) {
+        e.preventDefault();
+        if (typeof ocMsgSearch !== 'undefined') ocMsgSearch.open();
+        return;
+      }
+    }
+
     // Escape closes command palette first, then other panels
     if (e.key === 'Escape') {
       const overlay = document.getElementById('cmd-overlay');
@@ -8959,13 +9089,18 @@ const ocCmdPalette = (function() {
     }
   }
 
-  // Allow command palette to add custom quick actions
   window.addQuickAction = function(action) {
     const actions = getActions();
     if (actions.find(a => a.id === action.id)) return;
     actions.push(action);
     localStorage.setItem(QAKEY, JSON.stringify(actions));
     render();
+  };
+
+  window.ocQuickActions = {
+    getActions, defaultActions, QAKEY,
+    save(actions) { localStorage.setItem(QAKEY, JSON.stringify(actions)); },
+    render,
   };
 
   render();
@@ -9065,6 +9200,11 @@ const ocCmdPalette = (function() {
   });
   $('sess-close')?.addEventListener('click', closePanel);
   $('sess-new')?.addEventListener('click', newSession);
+
+  // Auto-load sessions on tablet landscape (panel is always visible)
+  if (window.matchMedia('(min-width:768px) and (orientation:landscape)').matches) {
+    loadSessions();
+  }
 })();
 
 // ══════════════════════════════════════════════════════════════
@@ -9144,6 +9284,231 @@ const ocCmdPalette = (function() {
     updatePresets(DEFAULT_ACCENT);
     if (typeof ocToast !== 'undefined') ocToast.info('主题已重置');
   });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// WAKE WORD CUSTOMIZER
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  const WKEY = 'oc-wakeword-text';
+  const SKEY = 'oc-wakeword-sensitivity';
+  const sensLabels = { 1: t('settings.sensitivityLow') || '低', 2: t('settings.sensitivityMed') || '中', 3: t('settings.sensitivityHigh') || '高' };
+
+  const saved = localStorage.getItem(WKEY);
+  const savedSens = localStorage.getItem(SKEY);
+  const input = $('wakeword-text');
+  const slider = $('wakeword-sensitivity');
+  const valEl = $('sensitivity-val');
+
+  if (input && saved) input.value = saved;
+  if (slider && savedSens) slider.value = savedSens;
+  if (valEl) valEl.textContent = sensLabels[+(savedSens || 2)];
+
+  // Sync custom words to the wake word system
+  function applyWakeWords() {
+    const text = input?.value?.trim();
+    if (!text) return;
+    const words = text.split(/[,，、\s]+/).filter(Boolean).map(w => w.toLowerCase());
+    if (typeof _wakeWordsCache !== 'undefined' && words.length) {
+      const defaults = ['你好', '小龙', '龙虾', '唤醒', '开始', '在吗', 'hey claw', 'hello'];
+      window._wakeWordsCache = [...new Set([...words, ...defaults])];
+    }
+  }
+
+  input?.addEventListener('change', () => {
+    localStorage.setItem(WKEY, input.value);
+    applyWakeWords();
+  });
+
+  slider?.addEventListener('input', () => {
+    const v = +slider.value;
+    localStorage.setItem(SKEY, v);
+    if (valEl) valEl.textContent = sensLabels[v];
+    // Sensitivity affects monitor chunk size: lower = longer chunks (more accurate), higher = shorter (faster)
+    if (typeof MONITOR_CHUNK_SECONDS !== 'undefined') {
+      const map = { 1: 1.5, 2: 1.0, 3: 0.6 };
+      window.MONITOR_CHUNK_SECONDS = map[v] || 1.0;
+    }
+  });
+
+  // Restore on page load
+  if (saved) setTimeout(applyWakeWords, 1000);
+  if (savedSens && typeof MONITOR_CHUNK_SECONDS !== 'undefined') {
+    const map = { 1: 1.5, 2: 1.0, 3: 0.6 };
+    window.MONITOR_CHUNK_SECONDS = map[+savedSens] || 1.0;
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════
+// MESSAGE SEARCH (Ctrl+F)
+// ══════════════════════════════════════════════════════════════
+const ocMsgSearch = (function() {
+  const $ = id => document.getElementById(id);
+  let _matches = [];
+  let _currentIdx = -1;
+  let _originalContents = new Map();
+
+  function open() {
+    $('msg-search-bar')?.classList.add('open');
+    const input = $('msg-search-input');
+    if (input) { input.value = ''; input.focus(); }
+    $('msg-search-count').textContent = '';
+    clearHighlights();
+  }
+
+  function close() {
+    $('msg-search-bar')?.classList.remove('open');
+    clearHighlights();
+    _matches = []; _currentIdx = -1;
+  }
+
+  function clearHighlights() {
+    _originalContents.forEach((html, el) => { el.innerHTML = html; });
+    _originalContents.clear();
+  }
+
+  function search(query) {
+    clearHighlights();
+    _matches = []; _currentIdx = -1;
+    if (!query.trim()) { $('msg-search-count').textContent = ''; return; }
+
+    const q = query.toLowerCase();
+    const msgs = document.querySelectorAll('#messages-area .msg .msg-text, #messages-area .msg .msg-content');
+    msgs.forEach(el => {
+      const text = el.textContent;
+      if (text.toLowerCase().includes(q)) {
+        _originalContents.set(el, el.innerHTML);
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        el.innerHTML = el.innerHTML.replace(regex, '<mark class="search-hl">$1</mark>');
+        el.querySelectorAll('mark.search-hl').forEach(m => _matches.push(m));
+      }
+    });
+
+    const countEl = $('msg-search-count');
+    if (_matches.length === 0) {
+      countEl.textContent = t('search.noResults');
+    } else {
+      _currentIdx = 0;
+      highlightCurrent();
+    }
+  }
+
+  function highlightCurrent() {
+    _matches.forEach((m, i) => m.classList.toggle('active', i === _currentIdx));
+    if (_matches[_currentIdx]) {
+      _matches[_currentIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const countEl = $('msg-search-count');
+    countEl.textContent = t('search.count').replace('{x}', _currentIdx + 1).replace('{y}', _matches.length);
+  }
+
+  function next() {
+    if (_matches.length === 0) return;
+    _currentIdx = (_currentIdx + 1) % _matches.length;
+    highlightCurrent();
+  }
+
+  function prev() {
+    if (_matches.length === 0) return;
+    _currentIdx = (_currentIdx - 1 + _matches.length) % _matches.length;
+    highlightCurrent();
+  }
+
+  $('msg-search-input')?.addEventListener('input', (e) => search(e.target.value));
+  $('msg-search-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.shiftKey ? prev() : next(); e.preventDefault(); }
+    if (e.key === 'Escape') { close(); e.preventDefault(); }
+  });
+  $('msg-search-prev')?.addEventListener('click', prev);
+  $('msg-search-next')?.addEventListener('click', next);
+  $('msg-search-close')?.addEventListener('click', close);
+
+  return { open, close };
+})();
+
+// ══════════════════════════════════════════════════════════════
+// QUICK ACTIONS EDITOR (Settings)
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  if (!window.ocQuickActions) return;
+  const qa = window.ocQuickActions;
+  const defaultIds = new Set(qa.defaultActions.map(a => a.id));
+  let _dragEl = null;
+
+  function render() {
+    const actions = qa.getActions();
+    const list = $('qa-editor-list');
+    if (!list) return;
+    list.innerHTML = actions.map((a, i) => {
+      const isPreset = defaultIds.has(a.id);
+      return `<div class="qa-editor-item" draggable="true" data-idx="${i}">
+        <span class="qa-e-icon">${a.icon}</span>
+        <span class="qa-e-name">${t(a.label) || a.label || a.id}</span>
+        ${isPreset ? `<span style="font-size:9px;color:var(--text-muted)">${t('settings.qaPreset')}</span>` : ''}
+        <button class="qa-e-del" data-idx="${i}" ${isPreset ? 'disabled' : ''}>✕</button>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.qa-e-del:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!confirm(t('settings.qaDeleteConfirm'))) return;
+        const actions = qa.getActions();
+        actions.splice(+btn.dataset.idx, 1);
+        qa.save(actions); render(); qa.render();
+      });
+    });
+
+    // Drag & drop
+    list.querySelectorAll('.qa-editor-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        _dragEl = item;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        _dragEl = null;
+      });
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!_dragEl || _dragEl === item) return;
+        const fromIdx = +_dragEl.dataset.idx;
+        const toIdx = +item.dataset.idx;
+        const actions = qa.getActions();
+        const [moved] = actions.splice(fromIdx, 1);
+        actions.splice(toIdx, 0, moved);
+        qa.save(actions); render(); qa.render();
+      });
+    });
+  }
+
+  $('qa-add-btn')?.addEventListener('click', () => {
+    const icon = $('qa-add-icon')?.value?.trim() || '📌';
+    const name = $('qa-add-name')?.value?.trim();
+    const skill = $('qa-add-skill')?.value?.trim();
+    if (!name || !skill) { if (typeof ocToast !== 'undefined') ocToast.warning('名称和技能 ID 不能为空'); return; }
+    const id = 'custom_' + Date.now();
+    const actions = qa.getActions();
+    actions.push({ id, icon, label: name, skill });
+    qa.save(actions); render(); qa.render();
+    $('qa-add-icon').value = ''; $('qa-add-name').value = ''; $('qa-add-skill').value = '';
+    if (typeof ocToast !== 'undefined') ocToast.success('已添加');
+  });
+
+  // Render on settings panel open
+  const observer = new MutationObserver(() => {
+    const modal = $('settings-modal');
+    if (modal && !modal.classList.contains('hidden')) render();
+  });
+  const sm = $('settings-modal');
+  if (sm) observer.observe(sm, { attributes: true, attributeFilter: ['class'] });
+  render();
 })();
 </script>
 </body>
