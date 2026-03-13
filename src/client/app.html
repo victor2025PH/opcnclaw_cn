@@ -826,6 +826,48 @@ body{
   font-size:11px;cursor:pointer;flex-shrink:0;
 }
 
+/* ─── Command Palette ─── */
+.cmd-palette-overlay{
+  position:fixed;inset:0;z-index:700;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
+  display:flex;align-items:flex-start;justify-content:center;padding-top:min(18vh,120px);
+  opacity:0;pointer-events:none;transition:opacity .15s;
+}
+.cmd-palette-overlay.open{opacity:1;pointer-events:auto}
+.cmd-palette{
+  width:90%;max-width:480px;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);
+  box-shadow:0 16px 48px rgba(0,0,0,.4);overflow:hidden;
+}
+.cmd-input{
+  width:100%;padding:14px 18px;
+  background:transparent;border:none;border-bottom:1px solid var(--border);
+  color:var(--text-primary);font-size:15px;font-family:inherit;outline:none;
+}
+.cmd-input::placeholder{color:var(--text-muted)}
+.cmd-results{max-height:320px;overflow-y:auto}
+.cmd-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 18px;cursor:pointer;transition:background .1s;
+  font-size:13px;color:var(--text-primary);
+}
+.cmd-item:hover,.cmd-item.selected{background:var(--bg-surface-hover)}
+.cmd-item.selected{border-left:3px solid var(--accent)}
+.cmd-item .cmd-icon{font-size:16px;width:24px;text-align:center;flex-shrink:0}
+.cmd-item .cmd-label{flex:1}
+.cmd-item .cmd-hint{font-size:10px;color:var(--text-muted)}
+.cmd-empty{padding:20px;text-align:center;font-size:13px;color:var(--text-muted)}
+
+/* ─── Custom voice commands ─── */
+.vcmd-custom-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.vcmd-custom-card{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;margin-bottom:6px;
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;
+}
+.vcmd-custom-card .vcmd-c-name{font-size:13px;font-weight:600;flex:1}
+.vcmd-custom-card .vcmd-c-steps{font-size:10px;color:var(--text-muted)}
+
 /* ─── MCP history ─── */
 .mcp-history-item{
   padding:10px 12px;margin-bottom:6px;
@@ -1519,6 +1561,17 @@ body{
         🗑️ 清除记忆
       </button>
     </div>
+    <div class="settings-group">
+      <h3 data-i18n="settings.dataTitle">数据</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="settings-export" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px" data-i18n="settings.export">📤 导出设置</button>
+        <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;cursor:pointer;text-align:center" data-i18n="settings.import">
+          📥 导入设置
+          <input type="file" id="settings-import" accept=".json" style="display:none">
+        </label>
+      </div>
+      <p style="font-size:10px;color:var(--text-muted);margin-top:4px" data-i18n="settings.dataHint">导出/导入主题、收藏、历史等本地设置</p>
+    </div>
     <button class="btn btn-primary" id="disconnect-btn" data-i18n="settings.disconnect" style="background:var(--error);margin-top:8px">断开连接</button>
     <button class="btn" id="settings-back-btn" style="margin-top:12px;background:var(--bg-surface);color:var(--text-primary)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
@@ -2058,7 +2111,34 @@ body{
     <h2 data-i18n="vcmd.title">🗣️ 语音指令</h2>
   </div>
   <input class="vcmd-search" id="vcmd-search" data-i18n="vcmd.searchPlaceholder" data-i18n-attr="placeholder" placeholder="搜索技能…">
-  <div class="vcmd-body" id="vcmd-list"></div>
+  <div class="vcmd-body">
+    <div id="vcmd-list"></div>
+    <div class="vcmd-custom-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600" data-i18n="vcmd.customTitle">🔗 自定义指令</span>
+        <button class="mp-btn" id="vcmd-add-custom" style="font-size:10px;padding:3px 10px;background:var(--bg-surface);color:var(--accent)" data-i18n="vcmd.addCustom">+ 新建</button>
+      </div>
+      <div id="vcmd-custom-list"></div>
+      <div class="hidden" id="vcmd-custom-form" style="margin-top:8px">
+        <input id="vcmd-custom-name" placeholder="指令名称" style="width:100%;padding:8px 10px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;color:var(--text-primary);font-size:12px;font-family:inherit;outline:none;margin-bottom:6px">
+        <div id="vcmd-custom-steps" style="margin-bottom:6px"></div>
+        <select id="vcmd-step-select" style="width:100%;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;color:var(--text-primary);font-size:12px;font-family:inherit;margin-bottom:6px"></select>
+        <div style="display:flex;gap:6px">
+          <button class="mp-btn" id="vcmd-add-step" style="font-size:11px;padding:4px 10px;background:var(--bg-surface);color:var(--text-primary)">+ 添加步骤</button>
+          <button class="mp-btn mp-btn-install" id="vcmd-save-custom" style="flex:1;font-size:11px;padding:4px 10px" data-i18n="vcmd.save">保存</button>
+          <button class="mp-btn mp-btn-cancel" id="vcmd-cancel-custom" style="font-size:11px;padding:4px 10px">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ COMMAND PALETTE ═══════════════ -->
+<div class="cmd-palette-overlay" id="cmd-overlay" role="dialog" aria-label="Command Palette">
+  <div class="cmd-palette">
+    <input class="cmd-input" id="cmd-input" placeholder="输入命令…" autocomplete="off" spellcheck="false">
+    <div class="cmd-results" id="cmd-results"></div>
+  </div>
 </div>
 
 <div class="oc-toast-container" id="oc-toast-container" aria-live="polite" aria-atomic="false"></div>
@@ -2070,6 +2150,7 @@ body{
     <div class="shortcut-row"><span data-i18n="shortcuts.mcp">MCP 工具</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">T</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.theme">切换主题</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">Shift</span><span class="shortcut-key">D</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.perf">性能监控</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">P</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.palette">命令面板</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">K</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.voice">语音输入</span><div class="shortcut-keys"><span class="shortcut-key">Space</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.escape">关闭面板</span><div class="shortcut-keys"><span class="shortcut-key">Esc</span></div></div>
     <div class="shortcut-row"><span data-i18n="shortcuts.help">此帮助</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">/</span></div></div>
@@ -2227,7 +2308,12 @@ const I18N = {
     'perf.aiTime':'AI 响应','perf.ttsTime':'TTS 首包','perf.timeline':'请求时间线 (最近 30 次)',
     'perf.session':'本次会话','perf.totalReqs':'总请求数','perf.avgLatency':'平均延迟',
     'vcmd.title':'🗣️ 语音指令','vcmd.searchPlaceholder':'搜索技能…','vcmd.execute':'执行','vcmd.noSkills':'暂无可用技能',
-    'shortcuts.perf':'性能监控',
+    'vcmd.customTitle':'🔗 自定义指令','vcmd.addCustom':'+ 新建','vcmd.save':'保存','vcmd.deleteConfirm':'确认删除此自定义指令？',
+    'vcmd.customEmpty':'暂无自定义指令，点击新建创建组合指令','vcmd.namePlaceholder':'指令名称','vcmd.runningStep':'正在执行步骤',
+    'shortcuts.perf':'性能监控','shortcuts.palette':'命令面板',
+    'settings.dataTitle':'数据','settings.export':'📤 导出设置','settings.import':'📥 导入设置','settings.dataHint':'导出/导入主题、收藏、历史等本地设置',
+    'settings.exportOk':'设置已导出','settings.importOk':'设置已导入，页面将刷新','settings.importFail':'导入失败：无效的设置文件',
+    'cmd.placeholder':'输入命令…','cmd.empty':'无匹配结果','cmd.recent':'最近使用',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
     'desktop.ai.clicking':'正在点击','desktop.ai.typing':'正在输入',
@@ -2358,6 +2444,12 @@ const I18N = {
     'perf.aiTime':'AI Response','perf.ttsTime':'TTS First Byte','perf.timeline':'Request Timeline (last 30)',
     'perf.session':'This Session','perf.totalReqs':'Total Requests','perf.avgLatency':'Avg Latency',
     'vcmd.title':'🗣️ Voice Commands','vcmd.searchPlaceholder':'Search skills…','vcmd.execute':'Execute','vcmd.noSkills':'No skills available',
+    'vcmd.customTitle':'🔗 Custom Commands','vcmd.addCustom':'+ New','vcmd.save':'Save','vcmd.deleteConfirm':'Delete this custom command?',
+    'vcmd.customEmpty':'No custom commands yet, create one to combine skills','vcmd.namePlaceholder':'Command name','vcmd.runningStep':'Running step',
+    'shortcuts.palette':'Command Palette',
+    'settings.dataTitle':'Data','settings.export':'📤 Export Settings','settings.import':'📥 Import Settings','settings.dataHint':'Export/import theme, favorites, history and other local settings',
+    'settings.exportOk':'Settings exported','settings.importOk':'Settings imported, page will reload','settings.importFail':'Import failed: invalid settings file',
+    'cmd.placeholder':'Type a command…','cmd.empty':'No matches','cmd.recent':'Recently used',
     'shortcuts.perf':'Performance',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
     'desktop.ai.placeholder':'Type desktop command (e.g. open WeChat, send message)...',
@@ -3018,9 +3110,10 @@ function connectVoiceWs() {
     if (S._wsPingInterval) clearInterval(S._wsPingInterval);
     S._wsPingInterval = setInterval(() => {
       if (S.voiceWs?.readyState === 1) {
-        try { S.voiceWs.send(JSON.stringify({type: 'ping'})); } catch {}
+        S._pingTs = performance.now();
+        try { S.voiceWs.send(JSON.stringify({type: 'ping', ts: Date.now()})); } catch {}
       }
-    }, 15000);
+    }, 5000);
     if (_pendingVoiceStart) {
       _pendingVoiceStart = false;
       setTimeout(() => startVoiceRecording(), 300);
@@ -3063,6 +3156,12 @@ let voiceSilenceTimer = null;
 let voiceResponseComplete = false;
 
 function handleVoiceMessage(msg) {
+  if (msg.type === 'pong' && S._pingTs) {
+    const latency = Math.round(performance.now() - S._pingTs);
+    S._pingTs = null;
+    if (typeof ocPerf !== 'undefined') ocPerf.setWsLatency(latency);
+    return;
+  }
   if (typeof ocPerf !== 'undefined') {
     if (msg.type === 'listening_stopped') ocPerf.mark('stt_start');
     if (msg.type === 'transcript' && !msg.partial) { ocPerf.mark('stt_end'); ocPerf.mark('ai_start'); }
@@ -7208,6 +7307,22 @@ const ocToast = (function() {
   shortcuts?.addEventListener('click', (e) => { if (e.target === shortcuts) shortcuts.classList.remove('open'); });
 
   document.addEventListener('keydown', (e) => {
+    // Ctrl+K for command palette works even when in inputs
+    if (e.ctrlKey && !e.shiftKey && e.key === 'k') {
+      e.preventDefault();
+      if (typeof ocCmdPalette !== 'undefined') ocCmdPalette.toggle();
+      return;
+    }
+
+    // Escape closes command palette first, then other panels
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('cmd-overlay');
+      if (overlay && overlay.classList.contains('open')) {
+        if (typeof ocCmdPalette !== 'undefined') ocCmdPalette.close();
+        return;
+      }
+    }
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
 
     if (e.key === 'Escape') {
@@ -7464,7 +7579,103 @@ const ocPerf = (function() {
     renderSkills(filtered);
   });
 
-  $('vcmd-toggle')?.addEventListener('click', openPanel);
+  // Custom voice commands
+  const CKEY = 'oc-custom-vcmd';
+  let _customs = JSON.parse(localStorage.getItem(CKEY) || '[]');
+  let _formSteps = [];
+  let _editing = false;
+
+  function saveCmds() { localStorage.setItem(CKEY, JSON.stringify(_customs)); }
+
+  function renderCustomList() {
+    const el = $('vcmd-custom-list');
+    if (!el) return;
+    if (_customs.length === 0) {
+      el.innerHTML = `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px" data-i18n="vcmd.customEmpty">${t('vcmd.customEmpty')}</div>`;
+      return;
+    }
+    el.innerHTML = _customs.map((c, i) => `
+      <div class="vcmd-custom-card">
+        <div class="vcmd-c-name">${c.name}</div>
+        <span class="vcmd-c-steps">${c.steps.length} steps</span>
+        <button class="vcmd-exec" data-idx="${i}" style="font-size:10px;padding:3px 8px">▶</button>
+        <button class="mp-btn" data-del="${i}" style="font-size:10px;padding:3px 6px;background:none;color:var(--error)">✕</button>
+      </div>
+    `).join('');
+    el.querySelectorAll('.vcmd-exec').forEach(btn => btn.addEventListener('click', () => runCustom(+btn.dataset.idx)));
+    el.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => {
+      if (confirm(t('vcmd.deleteConfirm'))) { _customs.splice(+btn.dataset.del, 1); saveCmds(); renderCustomList(); }
+    }));
+  }
+
+  async function runCustom(idx) {
+    const cmd = _customs[idx];
+    if (!cmd) return;
+    for (let i = 0; i < cmd.steps.length; i++) {
+      if (typeof ocToast !== 'undefined') ocToast.info(`${t('vcmd.runningStep')} ${i+1}/${cmd.steps.length}: ${cmd.steps[i].name}`);
+      await execSkill(cmd.steps[i].id);
+      if (i < cmd.steps.length - 1) await new Promise(r => setTimeout(r, 500));
+    }
+    if (typeof ocToast !== 'undefined') ocToast.success(`${cmd.name} ✓`);
+  }
+
+  function populateStepSelect() {
+    const sel = $('vcmd-step-select');
+    if (!sel) return;
+    sel.innerHTML = _skills.map(s => `<option value="${s.id}">${s.icon || '⚡'} ${s.name_zh || s.name || s.id}</option>`).join('');
+  }
+
+  function renderFormSteps() {
+    const el = $('vcmd-custom-steps');
+    if (!el) return;
+    el.innerHTML = _formSteps.map((s, i) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px;padding:4px 8px;background:var(--bg-surface);border-radius:4px">
+        <span style="color:var(--text-muted)">${i+1}.</span>
+        <span style="flex:1">${s.icon || '⚡'} ${s.name}</span>
+        <button onclick="this.parentElement.remove();window._vcmdRemoveStep(${i})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:11px">✕</button>
+      </div>
+    `).join('');
+  }
+  window._vcmdRemoveStep = (i) => { _formSteps.splice(i, 1); renderFormSteps(); };
+
+  $('vcmd-add-custom')?.addEventListener('click', () => {
+    _formSteps = [];
+    _editing = true;
+    $('vcmd-custom-form').classList.remove('hidden');
+    $('vcmd-custom-name').value = '';
+    populateStepSelect();
+    renderFormSteps();
+  });
+
+  $('vcmd-add-step')?.addEventListener('click', () => {
+    const sel = $('vcmd-step-select');
+    const sk = _skills.find(s => s.id === sel.value);
+    if (sk) { _formSteps.push({ id: sk.id, name: sk.name_zh || sk.name || sk.id, icon: sk.icon }); renderFormSteps(); }
+  });
+
+  $('vcmd-save-custom')?.addEventListener('click', () => {
+    const name = $('vcmd-custom-name').value.trim();
+    if (!name || _formSteps.length === 0) { if (typeof ocToast !== 'undefined') ocToast.warning('名称和步骤不能为空'); return; }
+    _customs.push({ name, steps: [..._formSteps] });
+    saveCmds();
+    _editing = false;
+    $('vcmd-custom-form').classList.add('hidden');
+    renderCustomList();
+  });
+
+  $('vcmd-cancel-custom')?.addEventListener('click', () => {
+    _editing = false;
+    $('vcmd-custom-form').classList.add('hidden');
+  });
+
+  const _origOpen = openPanel;
+  async function openPanelWithCustom() {
+    await _origOpen();
+    populateStepSelect();
+    renderCustomList();
+  }
+
+  $('vcmd-toggle')?.addEventListener('click', openPanelWithCustom);
   $('vcmd-back')?.addEventListener('click', closePanel);
 })();
 
@@ -7902,6 +8113,217 @@ const mcpHistory = (function() {
     );
   };
 
+})();
+
+// ══════════════════════════════════════════════════════════════
+// COMMAND PALETTE (Ctrl+K)
+// ══════════════════════════════════════════════════════════════
+const ocCmdPalette = (function() {
+  const $ = id => document.getElementById(id);
+  const RKEY = 'oc-cmd-recent';
+  let _open = false;
+  let _idx = 0;
+  let _items = [];
+  let _recent = JSON.parse(localStorage.getItem(RKEY) || '[]');
+
+  function buildRegistry() {
+    const items = [
+      { id: 'panel:model',   icon: '📦', label: t('model.title') || '模型管理',     hint: 'Ctrl+M',       action: () => { const p = $('model-panel'); p.classList.toggle('hidden'); if(!p.classList.contains('hidden')) p.focus(); } },
+      { id: 'panel:mcp',     icon: '🔧', label: t('mcp.title') || 'MCP 工具',       hint: 'Ctrl+T',       action: () => { const p = $('mcp-panel'); p.classList.toggle('hidden'); if(!p.classList.contains('hidden')) p.focus(); } },
+      { id: 'panel:perf',    icon: '📊', label: t('perf.title') || '性能监控',       hint: 'Ctrl+P',       action: () => { if(typeof ocPerf !== 'undefined') ocPerf.openPanel(); } },
+      { id: 'panel:vcmd',    icon: '🗣️', label: t('vcmd.title') || '语音指令',       hint: '',             action: () => $('voice-cmd-panel')?.classList.remove('hidden') },
+      { id: 'panel:settings', icon: '⚙️', label: t('settings.title') || '设置',       hint: '',             action: () => $('settings-modal')?.classList.remove('hidden') },
+      { id: 'theme:dark',    icon: '🌑', label: 'Dark Theme',                        hint: 'Ctrl+Shift+D', action: () => { const s = $('theme-select'); if(s){s.value='dark';s.dispatchEvent(new Event('change'));} } },
+      { id: 'theme:light',   icon: '☀️', label: 'Light Theme',                       hint: 'Ctrl+Shift+D', action: () => { const s = $('theme-select'); if(s){s.value='light';s.dispatchEvent(new Event('change'));} } },
+      { id: 'theme:auto',    icon: '🌗', label: 'Auto Theme',                        hint: 'Ctrl+Shift+D', action: () => { const s = $('theme-select'); if(s){s.value='auto';s.dispatchEvent(new Event('change'));} } },
+      { id: 'action:voice',  icon: '🎙️', label: t('shortcuts.voice') || '语音输入',   hint: 'Space',        action: () => { if(typeof startVoiceRecording === 'function') startVoiceRecording(); } },
+      { id: 'action:shortcuts', icon: '⌨️', label: t('shortcuts.title') || '快捷键', hint: 'Ctrl+/',       action: () => $('shortcuts-overlay')?.classList.add('open') },
+      { id: 'action:export', icon: '📤', label: t('settings.export') || '导出设置',   hint: '',             action: () => $('settings-export')?.click() },
+      { id: 'action:import', icon: '📥', label: t('settings.import') || '导入设置',   hint: '',             action: () => $('settings-import')?.click() },
+    ];
+
+    // Add desktop skills
+    try {
+      const vcmdList = $('vcmd-list');
+      if (vcmdList) {
+        vcmdList.querySelectorAll('.vcmd-card').forEach(card => {
+          const id = card.dataset.id;
+          const name = card.querySelector('.vcmd-name')?.textContent || id;
+          items.push({ id: 'skill:' + id, icon: '⚡', label: name, hint: '', action: () => {
+            fetch(getBaseUrl() + `/api/desktop-skill/${id}`, { method: 'POST' }).then(r => r.json())
+              .then(d => ocToast.success(d.message || 'OK')).catch(e => ocToast.error(e.message));
+          }});
+        });
+      }
+    } catch {}
+
+    // Add MCP tools
+    try {
+      document.querySelectorAll('.mcp-tool-chip').forEach(chip => {
+        const name = chip.dataset.toolName || chip.textContent.trim().replace(/★|☆/g, '').trim();
+        if (name) items.push({ id: 'mcp:' + name, icon: '🔧', label: 'MCP: ' + name, hint: '', action: () => chip.click() });
+      });
+    } catch {}
+
+    return items;
+  }
+
+  function fuzzyMatch(query, text) {
+    const q = query.toLowerCase();
+    const t = text.toLowerCase();
+    if (t.includes(q)) return true;
+    let qi = 0;
+    for (let i = 0; i < t.length && qi < q.length; i++) {
+      if (t[i] === q[qi]) qi++;
+    }
+    return qi === q.length;
+  }
+
+  function render(filtered) {
+    _items = filtered;
+    const el = $('cmd-results');
+    if (!filtered.length) {
+      el.innerHTML = `<div class="cmd-empty" data-i18n="cmd.empty">${t('cmd.empty')}</div>`;
+      return;
+    }
+    el.innerHTML = filtered.map((it, i) => `
+      <div class="cmd-item${i === _idx ? ' selected' : ''}" data-i="${i}">
+        <span class="cmd-icon">${it.icon}</span>
+        <span class="cmd-label">${it.label}</span>
+        ${it.hint ? `<span class="cmd-hint">${it.hint}</span>` : ''}
+      </div>
+    `).join('');
+    el.querySelectorAll('.cmd-item').forEach(row => {
+      row.addEventListener('click', () => execute(+row.dataset.i));
+      row.addEventListener('mouseenter', () => {
+        _idx = +row.dataset.i;
+        el.querySelectorAll('.cmd-item').forEach((r, j) => r.classList.toggle('selected', j === _idx));
+      });
+    });
+  }
+
+  function execute(i) {
+    const item = _items[i];
+    if (!item) return;
+    close();
+    _recent = _recent.filter(r => r !== item.id);
+    _recent.unshift(item.id);
+    if (_recent.length > 8) _recent = _recent.slice(0, 8);
+    localStorage.setItem(RKEY, JSON.stringify(_recent));
+    item.action();
+  }
+
+  function open() {
+    _open = true;
+    _idx = 0;
+    const registry = buildRegistry();
+    // Sort: recent items first
+    const recentSet = new Set(_recent);
+    const sorted = [
+      ...registry.filter(it => recentSet.has(it.id)),
+      ...registry.filter(it => !recentSet.has(it.id))
+    ];
+    render(sorted);
+    $('cmd-overlay').classList.add('open');
+    const input = $('cmd-input');
+    input.value = '';
+    input.placeholder = t('cmd.placeholder');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function close() {
+    _open = false;
+    $('cmd-overlay').classList.remove('open');
+  }
+
+  function toggle() { _open ? close() : open(); }
+
+  $('cmd-input')?.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    const registry = buildRegistry();
+    _idx = 0;
+    if (!q) {
+      const recentSet = new Set(_recent);
+      render([...registry.filter(it => recentSet.has(it.id)), ...registry.filter(it => !recentSet.has(it.id))]);
+    } else {
+      render(registry.filter(it => fuzzyMatch(q, it.label + ' ' + (it.hint || ''))));
+    }
+  });
+
+  $('cmd-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); _idx = Math.min(_idx + 1, _items.length - 1); highlightIdx(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _idx = Math.max(_idx - 1, 0); highlightIdx(); }
+    else if (e.key === 'Enter') { e.preventDefault(); execute(_idx); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+
+  function highlightIdx() {
+    $('cmd-results').querySelectorAll('.cmd-item').forEach((r, j) => {
+      r.classList.toggle('selected', j === _idx);
+      if (j === _idx) r.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  $('cmd-overlay')?.addEventListener('click', (e) => { if (e.target.id === 'cmd-overlay') close(); });
+
+  return { open, close, toggle };
+})();
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS EXPORT / IMPORT
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const SETTINGS_KEYS = [
+    'oc-theme', 'oc-lang', 'oc-fav-tools', 'oc-mcp-history', 'oc-cmd-recent',
+    'oc-custom-vcmd', 'oc-perf-data', 'oc-emotion-enabled', 'oc-mic-hint'
+  ];
+
+  function collectAll() {
+    const data = { _version: 1, _exportedAt: new Date().toISOString() };
+    for (const k of SETTINGS_KEYS) {
+      const v = localStorage.getItem(k);
+      if (v != null) data[k] = v;
+    }
+    // Also collect any oc- prefixed keys we might have missed
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith('oc-') && !(k in data)) data[k] = localStorage.getItem(k);
+    }
+    return data;
+  }
+
+  document.getElementById('settings-export')?.addEventListener('click', () => {
+    const data = collectAll();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `openclaw-settings-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    if (typeof ocToast !== 'undefined') ocToast.success(t('settings.exportOk'));
+  });
+
+  document.getElementById('settings-import')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data._version) throw new Error('Invalid');
+        for (const [k, v] of Object.entries(data)) {
+          if (k.startsWith('_')) continue;
+          localStorage.setItem(k, v);
+        }
+        if (typeof ocToast !== 'undefined') ocToast.success(t('settings.importOk'));
+        setTimeout(() => location.reload(), 1200);
+      } catch {
+        if (typeof ocToast !== 'undefined') ocToast.error(t('settings.importFail'));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
 })();
 </script>
 </body>
