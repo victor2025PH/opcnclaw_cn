@@ -841,6 +841,70 @@ body{
   font-size:11px;cursor:pointer;flex-shrink:0;
 }
 
+/* ─── Quick Actions bar ─── */
+.quick-actions{
+  display:flex;gap:6px;padding:6px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;border-bottom:1px solid var(--border);
+}
+.quick-actions::-webkit-scrollbar{display:none}
+.qa-chip{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:4px;
+  padding:5px 12px;border-radius:16px;font-size:11px;cursor:pointer;
+  background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);
+  transition:all .15s;white-space:nowrap;
+}
+.qa-chip:hover{border-color:var(--accent);color:var(--accent)}
+.qa-chip:active{transform:scale(.95)}
+
+/* ─── Sessions sidebar ─── */
+#sessions-panel{
+  position:fixed;top:0;left:0;bottom:0;width:min(300px,80vw);z-index:260;
+  background:var(--bg-secondary);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  transform:translateX(-100%);transition:transform .25s;
+}
+#sessions-panel.open{transform:translateX(0)}
+.sess-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.sess-header h3{flex:1;font-size:15px;font-weight:700;margin:0}
+.sess-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sess-item{
+  display:flex;align-items:center;gap:8px;padding:10px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;
+  font-size:12px;
+}
+.sess-item:hover{background:var(--bg-surface-hover)}
+.sess-item.active{background:color-mix(in srgb, var(--accent) 12%, transparent);border-left:3px solid var(--accent)}
+.sess-item .sess-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sess-item .sess-time{font-size:10px;color:var(--text-muted);flex-shrink:0}
+.sess-item .sess-del{
+  opacity:0;transition:opacity .15s;background:none;border:none;color:var(--error);cursor:pointer;font-size:12px;padding:2px 4px;
+}
+.sess-item:hover .sess-del{opacity:1}
+
+/* ─── Model benchmark ─── */
+.bench-result{
+  margin-top:6px;padding:6px 10px;font-size:11px;border-radius:6px;
+  background:var(--bg-surface);border:1px solid var(--border);
+}
+.bench-result .bench-metric{display:inline-block;margin-right:12px}
+.bench-result .bench-val{font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ─── Theme customizer ─── */
+.theme-custom-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.theme-custom-row .settings-label{flex:1;font-size:13px}
+.accent-picker{
+  width:32px;height:32px;border:2px solid var(--border);border-radius:8px;
+  cursor:pointer;-webkit-appearance:none;padding:0;background:none;
+}
+.accent-picker::-webkit-color-swatch-wrapper{padding:0}
+.accent-picker::-webkit-color-swatch{border:none;border-radius:6px}
+.font-slider{width:120px;accent-color:var(--accent)}
+.accent-presets{display:flex;gap:6px;margin-top:6px}
+.accent-preset{
+  width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:border-color .15s;
+}
+.accent-preset:hover,.accent-preset.active{border-color:var(--text-primary)}
+
 /* ─── Notification center ─── */
 #notif-panel{
   position:fixed;top:0;right:0;bottom:0;width:min(340px,85vw);z-index:250;
@@ -1360,6 +1424,9 @@ body{
   <!-- Header -->
   <header class="chat-header">
     <div class="header-left">
+      <button class="icon-btn" id="sessions-toggle" title="会话" style="margin-right:4px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      </button>
       <div class="status-dot" id="status-dot"></div>
       <span class="ws-latency-badge" id="ws-latency-badge" title="WebSocket RTT">—</span>
       <span class="header-title" data-i18n="header.title">OpenClaw AI</span>
@@ -1476,6 +1543,7 @@ body{
 
   <!-- Input Area -->
   <footer class="input-area">
+    <div class="quick-actions" id="quick-actions"></div>
     <div class="skill-bar hidden" id="skill-bar"></div>
     <div class="preview-bar" id="preview-bar"></div>
     <div class="input-row">
@@ -1640,6 +1708,28 @@ body{
         </label>
       </div>
       <p style="font-size:10px;color:var(--text-muted);margin-top:4px" data-i18n="settings.dataHint">导出/导入主题、收藏、历史等本地设置</p>
+    </div>
+    <div class="settings-group">
+      <h3 data-i18n="settings.advTheme">高级主题</h3>
+      <div class="theme-custom-row">
+        <span class="settings-label" data-i18n="settings.accentColor">强调色</span>
+        <input type="color" class="accent-picker" id="accent-picker" value="#6366f1">
+      </div>
+      <div class="accent-presets" id="accent-presets">
+        <div class="accent-preset" style="background:#6366f1" data-color="#6366f1"></div>
+        <div class="accent-preset" style="background:#8b5cf6" data-color="#8b5cf6"></div>
+        <div class="accent-preset" style="background:#06b6d4" data-color="#06b6d4"></div>
+        <div class="accent-preset" style="background:#10b981" data-color="#10b981"></div>
+        <div class="accent-preset" style="background:#f59e0b" data-color="#f59e0b"></div>
+        <div class="accent-preset" style="background:#ef4444" data-color="#ef4444"></div>
+        <div class="accent-preset" style="background:#ec4899" data-color="#ec4899"></div>
+      </div>
+      <div class="theme-custom-row" style="margin-top:10px">
+        <span class="settings-label" data-i18n="settings.fontSize">字体大小</span>
+        <input type="range" class="font-slider" id="font-slider" min="12" max="20" value="14" step="1">
+        <span id="font-size-val" style="font-size:12px;color:var(--text-muted);min-width:30px">14px</span>
+      </div>
+      <button class="btn" id="theme-reset" style="margin-top:8px;background:var(--bg-surface);color:var(--text-secondary);font-size:11px;width:100%;padding:6px" data-i18n="settings.resetTheme">重置为默认</button>
     </div>
     <button class="btn btn-primary" id="disconnect-btn" data-i18n="settings.disconnect" style="background:var(--error);margin-top:8px">断开连接</button>
     <button class="btn" id="settings-back-btn" style="margin-top:12px;background:var(--bg-surface);color:var(--text-primary)">
@@ -2210,6 +2300,18 @@ body{
   </div>
 </div>
 
+<!-- ═══════════════ SESSIONS SIDEBAR ═══════════════ -->
+<div id="sessions-panel" role="dialog" aria-label="Sessions">
+  <div class="sess-header">
+    <h3 data-i18n="sess.title">💬 会话</h3>
+    <button class="mp-btn" id="sess-new" style="font-size:10px;padding:3px 10px;background:var(--accent);color:#fff" data-i18n="sess.new">+ 新建</button>
+    <button class="icon-btn" id="sess-close" aria-label="Close sessions" style="font-size:14px">✕</button>
+  </div>
+  <div class="sess-list" id="sess-list">
+    <div class="notif-empty" data-i18n="sess.empty">暂无历史会话</div>
+  </div>
+</div>
+
 <!-- ═══════════════ WS RECONNECT BAR ═══════════════ -->
 <div class="ws-reconnect-bar" id="ws-reconnect-bar"></div>
 
@@ -2410,6 +2512,11 @@ const I18N = {
     'ws.excellent':'优秀','ws.good':'良好','ws.fair':'一般','ws.poor':'较差','ws.reconnecting':'重新连接中… {s}s','ws.degraded':'连接不稳定，部分功能可能受影响',
     'notif.title':'🔔 通知','notif.readAll':'全部已读','notif.clearAll':'清空','notif.empty':'暂无通知',
     'model.viewList':'📋 列表','model.viewDeps':'🔗 依赖关系','model.depTitle':'模型依赖关系','model.depMissing':'缺少前置依赖','model.depOk':'依赖已就绪',
+    'model.bench':'⚡ 测试','model.benching':'测试中…','model.benchDone':'测试完成','model.benchFail':'测试失败',
+    'model.benchSpeed':'推理速度','model.benchTTFT':'首 token','model.benchTokens':'token/s',
+    'qa.screenshot':'📸 截图','qa.translate':'🌐 翻译','qa.summarize':'📝 总结','qa.wechat':'💬 微信','qa.desktop':'🖥️ 桌面',
+    'sess.title':'💬 会话','sess.new':'+ 新建','sess.empty':'暂无历史会话','sess.deleteConfirm':'确认删除此会话？','sess.current':'当前',
+    'settings.advTheme':'高级主题','settings.accentColor':'强调色','settings.fontSize':'字体大小','settings.resetTheme':'重置为默认',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
     'desktop.ai.clicking':'正在点击','desktop.ai.typing':'正在输入',
@@ -2549,6 +2656,11 @@ const I18N = {
     'ws.excellent':'Excellent','ws.good':'Good','ws.fair':'Fair','ws.poor':'Poor','ws.reconnecting':'Reconnecting… {s}s','ws.degraded':'Unstable connection, some features may be affected',
     'notif.title':'🔔 Notifications','notif.readAll':'Mark all read','notif.clearAll':'Clear all','notif.empty':'No notifications',
     'model.viewList':'📋 List','model.viewDeps':'🔗 Dependencies','model.depTitle':'Model Dependencies','model.depMissing':'Missing prerequisites','model.depOk':'Dependencies ready',
+    'model.bench':'⚡ Bench','model.benching':'Testing…','model.benchDone':'Benchmark done','model.benchFail':'Benchmark failed',
+    'model.benchSpeed':'Speed','model.benchTTFT':'TTFT','model.benchTokens':'token/s',
+    'qa.screenshot':'📸 Screenshot','qa.translate':'🌐 Translate','qa.summarize':'📝 Summarize','qa.wechat':'💬 WeChat','qa.desktop':'🖥️ Desktop',
+    'sess.title':'💬 Sessions','sess.new':'+ New','sess.empty':'No sessions yet','sess.deleteConfirm':'Delete this session?','sess.current':'Current',
+    'settings.advTheme':'Advanced Theme','settings.accentColor':'Accent Color','settings.fontSize':'Font Size','settings.resetTheme':'Reset to Default',
     'shortcuts.perf':'Performance',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
     'desktop.ai.placeholder':'Type desktop command (e.g. open WeChat, send message)...',
@@ -6701,6 +6813,7 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
         let btn;
         if (m.installed) {
           btn = `<button class="mp-btn mp-btn-installed">✓ 已安装</button>
+                 <button class="mp-btn mp-btn-bench" data-id="${m.id}" style="margin-left:4px;font-size:10px" data-i18n="model.bench">⚡ 测试</button>
                  <button class="mp-btn mp-btn-uninstall" data-id="${m.id}" style="margin-left:4px">卸载</button>`;
         } else {
           btn = `<input type="checkbox" class="mp-check mp-batch-check" data-id="${m.id}">
@@ -6724,6 +6837,9 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     $('mp-models-list').querySelectorAll('.mp-btn-uninstall').forEach(btn => {
       btn.addEventListener('click', () => uninstallModel(btn.dataset.id));
     });
+    $('mp-models-list').querySelectorAll('.mp-btn-bench').forEach(btn => {
+      btn.addEventListener('click', () => benchmarkModel(btn.dataset.id, btn));
+    });
     $('mp-models-list').querySelectorAll('.mp-batch-check').forEach(cb => {
       cb.addEventListener('change', () => {
         if (cb.checked) _batchSelected.add(cb.dataset.id);
@@ -6731,6 +6847,41 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
         updateBatchBar();
       });
     });
+  }
+
+  const BENCH_KEY = 'oc-bench-cache';
+  let _benchCache = JSON.parse(localStorage.getItem(BENCH_KEY) || '{}');
+
+  async function benchmarkModel(id, btn) {
+    if (_benchCache[id]) {
+      showBenchResult(id, _benchCache[id], btn);
+      return;
+    }
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = t('model.benching');
+    try {
+      const r = await fetch(getBaseUrl() + `/api/ollama/benchmark`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({model_id: id}) });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      _benchCache[id] = d;
+      localStorage.setItem(BENCH_KEY, JSON.stringify(_benchCache));
+      showBenchResult(id, d, btn);
+      if (typeof ocToast !== 'undefined') ocToast.success(t('model.benchDone'));
+    } catch(e) {
+      if (typeof ocToast !== 'undefined') ocToast.error(t('model.benchFail') + ': ' + e.message);
+    }
+    btn.disabled = false; btn.textContent = orig;
+  }
+
+  function showBenchResult(id, data, btn) {
+    const card = btn.closest('.mp-model-card');
+    if (!card) return;
+    let el = card.querySelector('.bench-result');
+    if (!el) { el = document.createElement('div'); el.className = 'bench-result'; card.appendChild(el); }
+    const speed = data.tokens_per_second ?? data.speed ?? '—';
+    const ttft = data.time_to_first_token ?? data.ttft ?? '—';
+    el.innerHTML = `<span class="bench-metric">${t('model.benchSpeed')}: <span class="bench-val">${typeof speed === 'number' ? speed.toFixed(1) : speed} ${t('model.benchTokens')}</span></span>`
+      + `<span class="bench-metric">${t('model.benchTTFT')}: <span class="bench-val">${typeof ttft === 'number' ? ttft.toFixed(0) + 'ms' : ttft}</span></span>`;
   }
 
   function updateBatchBar() {
@@ -8765,6 +8916,234 @@ const ocCmdPalette = (function() {
   });
   const ml = $('mp-models-list');
   if (ml) observer.observe(ml, { childList: true, subtree: true });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// QUICK ACTIONS BAR
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const container = document.getElementById('quick-actions');
+  if (!container) return;
+  const QAKEY = 'oc-quick-actions';
+
+  const defaultActions = [
+    { id: 'screenshot',  icon: '📸', label: 'qa.screenshot',  skill: 'screenshot' },
+    { id: 'translate',   icon: '🌐', label: 'qa.translate',   skill: 'translate_clipboard' },
+    { id: 'summarize',   icon: '📝', label: 'qa.summarize',   skill: 'summarize_clipboard' },
+    { id: 'wechat',      icon: '💬', label: 'qa.wechat',      skill: 'open_wechat' },
+    { id: 'desktop',     icon: '🖥️', label: 'qa.desktop',     skill: 'show_desktop' },
+  ];
+
+  function getActions() {
+    const saved = JSON.parse(localStorage.getItem(QAKEY) || 'null');
+    return saved || defaultActions;
+  }
+
+  function render() {
+    const actions = getActions();
+    container.innerHTML = actions.map(a =>
+      `<div class="qa-chip" data-skill="${a.skill}" data-id="${a.id}">${a.icon} <span>${t(a.label) || a.label}</span></div>`
+    ).join('');
+    container.querySelectorAll('.qa-chip').forEach(chip => {
+      chip.addEventListener('click', () => executeQA(chip.dataset.skill));
+    });
+  }
+
+  async function executeQA(skillId) {
+    try {
+      const r = await fetch(getBaseUrl() + `/api/desktop-skill/${skillId}`, { method: 'POST' });
+      const d = await r.json();
+      if (typeof ocToast !== 'undefined') ocToast.success(d.message || skillId + ' ✓');
+    } catch(e) {
+      if (typeof ocToast !== 'undefined') ocToast.error(e.message);
+    }
+  }
+
+  // Allow command palette to add custom quick actions
+  window.addQuickAction = function(action) {
+    const actions = getActions();
+    if (actions.find(a => a.id === action.id)) return;
+    actions.push(action);
+    localStorage.setItem(QAKEY, JSON.stringify(actions));
+    render();
+  };
+
+  render();
+})();
+
+// ══════════════════════════════════════════════════════════════
+// SESSIONS MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  let _sessions = [];
+  let _currentId = null;
+
+  function openPanel() { $('sessions-panel').classList.add('open'); loadSessions(); }
+  function closePanel() { $('sessions-panel').classList.remove('open'); }
+
+  async function loadSessions() {
+    try {
+      const r = await fetch(getBaseUrl() + '/api/history/sessions');
+      const d = await r.json();
+      _sessions = d.sessions || d || [];
+      _currentId = d.current_id || (_sessions[0]?.id);
+      renderList();
+    } catch {
+      $('sess-list').innerHTML = `<div class="notif-empty">${t('sess.empty')}</div>`;
+    }
+  }
+
+  function renderList() {
+    const list = $('sess-list');
+    if (!_sessions.length) {
+      list.innerHTML = `<div class="notif-empty" data-i18n="sess.empty">${t('sess.empty')}</div>`;
+      return;
+    }
+    list.innerHTML = _sessions.map(s => {
+      const d = new Date(s.updated_at || s.created_at || Date.now());
+      const ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const isActive = s.id === _currentId;
+      return `<div class="sess-item${isActive ? ' active' : ''}" data-id="${s.id}">
+        <div class="sess-title">${s.title || s.id}</div>
+        ${isActive ? `<span style="font-size:9px;color:var(--accent);font-weight:600">${t('sess.current')}</span>` : ''}
+        <span class="sess-time">${ts}</span>
+        <button class="sess-del" data-id="${s.id}" title="Delete">✕</button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.sess-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('sess-del')) return;
+        switchSession(el.dataset.id);
+      });
+    });
+    list.querySelectorAll('.sess-del').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); deleteSession(btn.dataset.id); });
+    });
+  }
+
+  async function switchSession(id) {
+    try {
+      await fetch(getBaseUrl() + `/api/history/sessions/${id}/switch`, { method: 'POST' });
+      _currentId = id;
+      renderList();
+      closePanel();
+      if (typeof ocToast !== 'undefined') ocToast.info('会话已切换');
+      // Reload messages
+      const area = $('messages-area');
+      if (area) area.innerHTML = '';
+    } catch(e) {
+      if (typeof ocToast !== 'undefined') ocToast.error(e.message);
+    }
+  }
+
+  async function newSession() {
+    try {
+      const r = await fetch(getBaseUrl() + '/api/history/sessions', { method: 'POST' });
+      const d = await r.json();
+      if (typeof ocToast !== 'undefined') ocToast.success('新会话已创建');
+      await loadSessions();
+      if (d.id) switchSession(d.id);
+    } catch(e) {
+      if (typeof ocToast !== 'undefined') ocToast.error(e.message);
+    }
+  }
+
+  async function deleteSession(id) {
+    if (!confirm(t('sess.deleteConfirm'))) return;
+    try {
+      await fetch(getBaseUrl() + `/api/history/sessions/${id}`, { method: 'DELETE' });
+      await loadSessions();
+    } catch(e) {
+      if (typeof ocToast !== 'undefined') ocToast.error(e.message);
+    }
+  }
+
+  $('sessions-toggle')?.addEventListener('click', () => {
+    const p = $('sessions-panel');
+    p.classList.contains('open') ? closePanel() : openPanel();
+  });
+  $('sess-close')?.addEventListener('click', closePanel);
+  $('sess-new')?.addEventListener('click', newSession);
+})();
+
+// ══════════════════════════════════════════════════════════════
+// ADVANCED THEME CUSTOMIZER
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  const AKEY = 'oc-accent-color';
+  const FKEY = 'oc-font-size';
+  const DEFAULT_ACCENT = '#6366f1';
+  const DEFAULT_FONT = 14;
+
+  function applyAccent(color) {
+    document.documentElement.style.setProperty('--accent', color);
+    document.documentElement.style.setProperty('--accent-soft', color + '22');
+  }
+
+  function applyFont(size) {
+    document.documentElement.style.setProperty('font-size', size + 'px');
+  }
+
+  // Restore on load
+  const savedAccent = localStorage.getItem(AKEY);
+  const savedFont = localStorage.getItem(FKEY);
+  if (savedAccent) applyAccent(savedAccent);
+  if (savedFont) applyFont(+savedFont);
+
+  const picker = $('accent-picker');
+  const slider = $('font-slider');
+  const sizeVal = $('font-size-val');
+
+  if (picker) {
+    picker.value = savedAccent || DEFAULT_ACCENT;
+    picker.addEventListener('input', (e) => {
+      applyAccent(e.target.value);
+      localStorage.setItem(AKEY, e.target.value);
+      updatePresets(e.target.value);
+    });
+  }
+
+  if (slider) {
+    slider.value = savedFont || DEFAULT_FONT;
+    if (sizeVal) sizeVal.textContent = (savedFont || DEFAULT_FONT) + 'px';
+    slider.addEventListener('input', (e) => {
+      const v = +e.target.value;
+      applyFont(v);
+      localStorage.setItem(FKEY, v);
+      if (sizeVal) sizeVal.textContent = v + 'px';
+    });
+  }
+
+  function updatePresets(active) {
+    document.querySelectorAll('.accent-preset').forEach(p => {
+      p.classList.toggle('active', p.dataset.color === active);
+    });
+  }
+
+  document.querySelectorAll('.accent-preset').forEach(p => {
+    p.addEventListener('click', () => {
+      const c = p.dataset.color;
+      applyAccent(c);
+      localStorage.setItem(AKEY, c);
+      if (picker) picker.value = c;
+      updatePresets(c);
+    });
+  });
+  updatePresets(savedAccent || DEFAULT_ACCENT);
+
+  $('theme-reset')?.addEventListener('click', () => {
+    localStorage.removeItem(AKEY);
+    localStorage.removeItem(FKEY);
+    applyAccent(DEFAULT_ACCENT);
+    applyFont(DEFAULT_FONT);
+    if (picker) picker.value = DEFAULT_ACCENT;
+    if (slider) slider.value = DEFAULT_FONT;
+    if (sizeVal) sizeVal.textContent = DEFAULT_FONT + 'px';
+    updatePresets(DEFAULT_ACCENT);
+    if (typeof ocToast !== 'undefined') ocToast.info('主题已重置');
+  });
 })();
 </script>
 </body>
