@@ -874,6 +874,82 @@ body{
 .bm-item .bm-remove:hover{opacity:1}
 .bm-empty{padding:40px 20px;text-align:center;color:var(--text-muted);font-size:13px}
 
+/* ─── Export menu ─── */
+.export-menu{
+  position:absolute;top:100%;right:0;z-index:30;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-md);
+  box-shadow:0 8px 24px rgba(0,0,0,.3);padding:8px 0;min-width:180px;
+  opacity:0;transform:translateY(-8px);pointer-events:none;transition:all .15s;
+}
+.export-menu.open{opacity:1;transform:translateY(4px);pointer-events:auto}
+.export-menu-item{
+  display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:12px;
+  cursor:pointer;color:var(--text-primary);transition:background .1s;width:100%;background:none;border:none;font-family:inherit;
+}
+.export-menu-item:hover{background:var(--bg-surface-hover)}
+.export-menu-sep{height:1px;background:var(--border);margin:4px 0}
+.export-opt{display:flex;align-items:center;gap:6px;padding:6px 16px;font-size:11px;color:var(--text-muted)}
+.export-opt input[type=checkbox]{accent-color:var(--accent)}
+
+/* ─── Live subtitle ─── */
+.live-subtitle{
+  position:sticky;bottom:0;z-index:10;
+  padding:8px 16px;
+  opacity:0;transform:translateY(10px);transition:all .2s;pointer-events:none;
+}
+.live-subtitle.visible{opacity:1;transform:translateY(0)}
+.live-subtitle-bubble{
+  display:inline-block;padding:8px 14px;border-radius:16px;
+  background:color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
+  border:1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  font-size:13px;color:var(--text-primary);max-width:80%;
+  backdrop-filter:blur(8px);
+}
+.live-subtitle-dots span{
+  display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);
+  margin:0 2px;animation:dot-bounce .6s infinite ease-in-out;
+}
+.live-subtitle-dots span:nth-child(2){animation-delay:.15s}
+.live-subtitle-dots span:nth-child(3){animation-delay:.3s}
+@keyframes dot-bounce{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+
+/* ─── Skill chain editor ─── */
+#skill-chain-panel{
+  position:fixed;inset:0;z-index:220;background:var(--bg-primary);
+  display:flex;flex-direction:column;
+  transition:opacity .25s,transform .25s;
+}
+#skill-chain-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+.sc-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary)}
+.sc-header h2{flex:1;font-size:16px;font-weight:700}
+.sc-body{flex:1;display:flex;overflow:hidden}
+.sc-sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch}
+.sc-skill-item{
+  padding:6px 8px;margin-bottom:4px;font-size:11px;border-radius:6px;cursor:grab;
+  background:var(--bg-surface);border:1px solid var(--border);transition:all .15s;
+}
+.sc-skill-item:hover{border-color:var(--accent)}
+.sc-canvas-wrap{flex:1;position:relative;overflow:hidden}
+.sc-canvas-wrap canvas{display:block;width:100%;height:100%}
+.sc-node{
+  position:absolute;padding:6px 12px;border-radius:8px;font-size:11px;cursor:move;
+  background:var(--bg-surface);border:2px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.2);
+  user-select:none;min-width:80px;text-align:center;z-index:2;
+}
+.sc-node .sc-node-del{
+  position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;
+  background:var(--error);color:#fff;font-size:10px;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;
+}
+.sc-node:hover .sc-node-del{opacity:1}
+.sc-node .sc-port{
+  position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);
+  border:2px solid var(--bg-surface);cursor:crosshair;
+}
+.sc-node .sc-port-out{bottom:-5px;left:50%;transform:translateX(-50%)}
+.sc-node .sc-port-in{top:-5px;left:50%;transform:translateX(-50%)}
+.sc-footer{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-secondary)}
+
 /* ─── Audio visualizer ─── */
 #audio-viz-canvas{
   display:block;width:100%;height:60px;
@@ -1600,6 +1676,16 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </button>
+      <button class="icon-btn" id="export-toggle" title="导出" style="position:relative">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <div class="export-menu" id="export-menu">
+          <button class="export-menu-item" data-fmt="md">📝 Markdown</button>
+          <button class="export-menu-item" data-fmt="txt">📄 TXT</button>
+          <button class="export-menu-item" data-fmt="json">🔧 JSON</button>
+          <div class="export-menu-sep"></div>
+          <label class="export-opt"><input type="checkbox" id="export-fav-only"> <span data-i18n="export.favOnly">仅收藏消息</span></label>
+        </div>
+      </button>
       <button class="icon-btn" id="bookmark-toggle" title="收藏">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
@@ -1667,6 +1753,12 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       </div>
     </div>
     <div id="messages"></div>
+    <!-- Live subtitle during recording -->
+    <div class="live-subtitle" id="live-subtitle">
+      <div class="live-subtitle-bubble" id="live-subtitle-text">
+        <span class="live-subtitle-dots"><span></span><span></span><span></span></span>
+      </div>
+    </div>
   </div>
 
   <!-- Camera Panel -->
@@ -2483,6 +2575,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     </button>
     <h2 data-i18n="vcmd.title">🗣️ 语音指令</h2>
+    <button class="mp-btn" id="sc-open" style="font-size:10px;padding:3px 10px;background:var(--bg-surface);color:var(--accent)" data-i18n="sc.open">🔗 技能链</button>
   </div>
   <input class="vcmd-search" id="vcmd-search" data-i18n="vcmd.searchPlaceholder" data-i18n-attr="placeholder" placeholder="搜索技能…">
   <div class="vcmd-body">
@@ -2504,6 +2597,27 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SKILL CHAIN EDITOR ═══════════════ -->
+<div id="skill-chain-panel" class="hidden" role="dialog" aria-label="Skill Chain Editor" tabindex="-1">
+  <div class="sc-header">
+    <button class="icon-btn" id="sc-back" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <h2 data-i18n="sc.title">🔗 技能链编辑器</h2>
+    <select id="sc-chain-select" style="padding:4px 10px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;color:var(--text-primary);font-size:11px;font-family:inherit"></select>
+  </div>
+  <div class="sc-body">
+    <div class="sc-sidebar" id="sc-sidebar"></div>
+    <div class="sc-canvas-wrap" id="sc-canvas-wrap">
+      <canvas id="sc-canvas"></canvas>
+    </div>
+  </div>
+  <div class="sc-footer">
+    <button class="mp-btn" id="sc-new" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--text-primary)" data-i18n="sc.new">+ 新建</button>
+    <button class="mp-btn" id="sc-save" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--accent)" data-i18n="sc.save">💾 保存</button>
+    <button class="mp-btn mp-btn-install" id="sc-run" style="flex:1;font-size:11px;padding:5px 12px" data-i18n="sc.run">▶ 运行</button>
+    <button class="mp-btn" id="sc-delete" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--error)" data-i18n="sc.delete">🗑️</button>
   </div>
 </div>
 
@@ -2730,6 +2844,12 @@ const I18N = {
     'bm.title':'⭐ 收藏','bm.empty':'暂无收藏消息','bm.remove':'取消收藏','bm.added':'已收藏','bm.removed':'已取消收藏',
     'settings.ttsPreview':'🔊 试听 TTS','settings.ttsPlaying':'⏹ 停止','settings.ttsPreviewing':'播放中…',
     'settings.vizMode':'音频可视化','settings.vizWave':'波形','settings.vizBars':'频谱条',
+    'export.favOnly':'仅收藏消息','export.done':'导出完成','export.noData':'无消息可导出',
+    'subtitle.listening':'正在聆听…',
+    'sc.title':'🔗 技能链编辑器','sc.open':'🔗 技能链','sc.new':'+ 新建','sc.save':'💾 保存','sc.run':'▶ 运行','sc.delete':'🗑️',
+    'sc.running':'运行中…','sc.done':'技能链执行完成','sc.saved':'已保存','sc.deleted':'已删除','sc.noNodes':'请先添加技能节点',
+    'sc.dragHint':'从左侧拖入技能','sc.namePrompt':'技能链名称：',
+    'sandbox.blocked':'插件请求被安全策略拒绝',
     'settings.plugins':'插件','settings.noPlugins':'暂无已注册插件','settings.pluginHint':'通过 window.ocPlugins.register() 注册插件',
     'settings.advTheme':'高级主题','settings.accentColor':'强调色','settings.fontSize':'字体大小','settings.resetTheme':'重置为默认',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
@@ -2883,6 +3003,12 @@ const I18N = {
     'bm.title':'⭐ Bookmarks','bm.empty':'No bookmarked messages','bm.remove':'Remove','bm.added':'Bookmarked','bm.removed':'Bookmark removed',
     'settings.ttsPreview':'🔊 Preview TTS','settings.ttsPlaying':'⏹ Stop','settings.ttsPreviewing':'Playing…',
     'settings.vizMode':'Audio Visualization','settings.vizWave':'Waveform','settings.vizBars':'Frequency Bars',
+    'export.favOnly':'Bookmarked only','export.done':'Export complete','export.noData':'No messages to export',
+    'subtitle.listening':'Listening…',
+    'sc.title':'🔗 Skill Chain Editor','sc.open':'🔗 Chains','sc.new':'+ New','sc.save':'💾 Save','sc.run':'▶ Run','sc.delete':'🗑️',
+    'sc.running':'Running…','sc.done':'Skill chain complete','sc.saved':'Saved','sc.deleted':'Deleted','sc.noNodes':'Add skill nodes first',
+    'sc.dragHint':'Drag skills from the left','sc.namePrompt':'Chain name:',
+    'sandbox.blocked':'Plugin request blocked by security policy',
     'settings.plugins':'Plugins','settings.noPlugins':'No registered plugins','settings.pluginHint':'Register via window.ocPlugins.register()',
     'settings.advTheme':'Advanced Theme','settings.accentColor':'Accent Color','settings.fontSize':'Font Size','settings.resetTheme':'Reset to Default',
     'shortcuts.perf':'Performance',
@@ -3645,17 +3771,17 @@ function handleVoiceMessage(msg) {
   switch (msg.type) {
     case 'listening_started':
       setVoiceStatus(t('voice.listening'));
+      if (window.ocLiveSubtitle) window.ocLiveSubtitle.show('');
       break;
     case 'listening_stopped':
       setVoiceStatus(t('voice.processing'));
       break;
     case 'transcript':
       if (msg.partial && !msg.final) {
-        // Streaming partial result — update display only, don't append message yet
         const accum = msg.accumulated || msg.text;
         setVoiceTranscript(accum);
         setVoiceStatus('🎤 ' + (accum?.slice(0, 40) || '...'));
-        // Show a live preview in the chat (update or create a pending bubble)
+        if (window.ocLiveSubtitle) window.ocLiveSubtitle.typeText(accum);
         if (!window._partialUserEl) {
           hideWelcome();
           window._partialUserEl = appendMessage({ role: 'user', content: accum, voice: true }, false);
@@ -3665,9 +3791,9 @@ function handleVoiceMessage(msg) {
           if (textEl) textEl.textContent = accum;
         }
       } else {
-        // Final transcript
         const finalText = msg.accumulated || msg.text;
         window._partialUserEl = null;
+        if (window.ocLiveSubtitle) window.ocLiveSubtitle.hide();
         setVoiceTranscript(finalText);
         if (finalText?.trim()) {
           hideWelcome();
@@ -9907,6 +10033,349 @@ const ocAudioViz = (function() {
 })();
 
 // ══════════════════════════════════════════════════════════════
+// MESSAGE EXPORT
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const toggle = $('export-toggle');
+  const menu = $('export-menu');
+  if (!toggle || !menu) return;
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => menu.classList.remove('open'));
+  menu.addEventListener('click', e => e.stopPropagation());
+
+  function gatherMessages(favOnly) {
+    const bookmarks = JSON.parse(localStorage.getItem('oc-bookmarks') || '[]');
+    const bmSet = new Set(bookmarks.map(b => b.idx));
+    const area = $('messages');
+    if (!area) return [];
+    const msgs = [];
+    area.querySelectorAll('.msg').forEach((el, idx) => {
+      if (favOnly && !bmSet.has(idx)) return;
+      const role = el.classList.contains('user') ? 'user' : 'assistant';
+      const textEl = el.querySelector('.msg-text');
+      const content = textEl ? textEl.textContent : '';
+      const timeEl = el.querySelector('.msg-meta');
+      const ts = timeEl ? timeEl.textContent.trim() : new Date().toLocaleString();
+      msgs.push({ role, content, timestamp: ts });
+    });
+    return msgs;
+  }
+
+  function exportMd(msgs) {
+    return msgs.map(m => `**${m.role === 'user' ? '🧑 User' : '🤖 Assistant'}** _${m.timestamp}_\n\n${m.content}\n\n---`).join('\n\n');
+  }
+  function exportTxt(msgs) {
+    return msgs.map(m => `[${m.role} ${m.timestamp}] ${m.content}`).join('\n\n');
+  }
+  function exportJson(msgs) {
+    return JSON.stringify(msgs, null, 2);
+  }
+
+  function download(content, ext, mime) {
+    const now = new Date();
+    const ds = now.getFullYear().toString() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+    const blob = new Blob([content], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `openclaw-chat-${ds}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  menu.querySelectorAll('.export-menu-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const fmt = btn.dataset.fmt;
+      const favOnly = $('export-fav-only')?.checked || false;
+      const msgs = gatherMessages(favOnly);
+      if (!msgs.length) {
+        if (typeof ocToast !== 'undefined') ocToast.info(t('export.noData'));
+        menu.classList.remove('open');
+        return;
+      }
+      const map = {
+        md: { fn: exportMd, ext: 'md', mime: 'text/markdown' },
+        txt: { fn: exportTxt, ext: 'txt', mime: 'text/plain' },
+        json: { fn: exportJson, ext: 'json', mime: 'application/json' },
+      };
+      const cfg = map[fmt];
+      if (cfg) {
+        download(cfg.fn(msgs), cfg.ext, cfg.mime);
+        if (typeof ocToast !== 'undefined') ocToast.success(t('export.done'));
+      }
+      menu.classList.remove('open');
+    });
+  });
+})();
+
+// LIVE SUBTITLE
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const el = $('live-subtitle');
+  const textEl = $('live-subtitle-text');
+  if (!el || !textEl) return;
+  let _typingTimer = null;
+  const dots = `<span class="live-subtitle-dots"><span></span><span></span><span></span></span>`;
+
+  window.ocLiveSubtitle = {
+    show(text) {
+      el.classList.add('visible');
+      if (!text) {
+        textEl.innerHTML = `${t('subtitle.listening')} ${dots}`;
+      } else {
+        textEl.textContent = text;
+      }
+      const area = $('messages-area');
+      if (area) area.scrollTop = area.scrollHeight;
+    },
+    hide() {
+      el.classList.remove('visible');
+      textEl.innerHTML = dots;
+    },
+    typeText(text) {
+      el.classList.add('visible');
+      clearInterval(_typingTimer);
+      let i = 0;
+      textEl.textContent = '';
+      _typingTimer = setInterval(() => {
+        if (i >= text.length) { clearInterval(_typingTimer); return; }
+        textEl.textContent += text[i++];
+      }, 30);
+    }
+  };
+})();
+
+// SKILL CHAIN EDITOR
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const SKEY = 'oc-skill-chains';
+  const panel = $('skill-chain-panel');
+  const sidebar = $('sc-sidebar');
+  const canvasWrap = $('sc-canvas-wrap');
+  const canvas = $('sc-canvas');
+  if (!panel || !canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let _chains = JSON.parse(localStorage.getItem(SKEY) || '[]');
+  let _currentIdx = 0;
+  let _nodes = [];
+  let _edges = [];
+  let _skills = [];
+  let _nextId = 1;
+  let _draggingNode = null;
+  let _dragOfs = { x: 0, y: 0 };
+  let _connecting = null;
+
+  function save() { localStorage.setItem(SKEY, JSON.stringify(_chains)); }
+
+  function resizeCanvas() {
+    const r = canvasWrap.getBoundingClientRect();
+    canvas.width = r.width * devicePixelRatio;
+    canvas.height = r.height * devicePixelRatio;
+    canvas.style.width = r.width + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    drawEdges();
+  }
+
+  function drawEdges() {
+    const r = canvasWrap.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#7c5cfc';
+    ctx.lineWidth = 2;
+    _edges.forEach(e => {
+      const fromNode = _nodes.find(n => n.id === e.from);
+      const toNode = _nodes.find(n => n.id === e.to);
+      if (!fromNode || !toNode) return;
+      const fx = fromNode.x + 40, fy = fromNode.y + 30;
+      const tx = toNode.x + 40, ty = toNode.y;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      const cy1 = fy + (ty - fy) * 0.4, cy2 = fy + (ty - fy) * 0.6;
+      ctx.bezierCurveTo(fx, cy1, tx, cy2, tx, ty);
+      ctx.stroke();
+      const angle = Math.atan2(ty - cy2, tx - tx);
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx - 5, ty - 8);
+      ctx.lineTo(tx + 5, ty - 8);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  function renderNodes() {
+    canvasWrap.querySelectorAll('.sc-node').forEach(n => n.remove());
+    _nodes.forEach(n => {
+      const skill = _skills.find(s => s.id === n.skillId);
+      const div = document.createElement('div');
+      div.className = 'sc-node';
+      div.dataset.nid = n.id;
+      div.style.left = n.x + 'px';
+      div.style.top = n.y + 'px';
+      div.innerHTML = `<div class="sc-port sc-port-in" data-nid="${n.id}" data-role="in"></div>${skill?.name || n.skillId}<div class="sc-port sc-port-out" data-nid="${n.id}" data-role="out"></div><button class="sc-node-del" data-nid="${n.id}">&times;</button>`;
+      canvasWrap.appendChild(div);
+
+      div.addEventListener('pointerdown', (e) => {
+        if (e.target.classList.contains('sc-port') || e.target.classList.contains('sc-node-del')) return;
+        _draggingNode = n;
+        _dragOfs = { x: e.clientX - n.x, y: e.clientY - n.y };
+        e.preventDefault();
+      });
+      div.querySelector('.sc-node-del').addEventListener('click', () => {
+        _nodes = _nodes.filter(nd => nd.id !== n.id);
+        _edges = _edges.filter(ed => ed.from !== n.id && ed.to !== n.id);
+        renderNodes();
+        drawEdges();
+      });
+      div.querySelectorAll('.sc-port').forEach(port => {
+        port.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          const nid = parseInt(port.dataset.nid);
+          const role = port.dataset.role;
+          if (role === 'out') {
+            _connecting = nid;
+          }
+        });
+        port.addEventListener('pointerup', (e) => {
+          const nid = parseInt(port.dataset.nid);
+          const role = port.dataset.role;
+          if (_connecting !== null && role === 'in' && _connecting !== nid) {
+            if (!_edges.find(ed => ed.from === _connecting && ed.to === nid)) {
+              _edges.push({ from: _connecting, to: nid });
+              drawEdges();
+            }
+          }
+          _connecting = null;
+        });
+      });
+    });
+    drawEdges();
+  }
+
+  document.addEventListener('pointermove', (e) => {
+    if (!_draggingNode) return;
+    _draggingNode.x = e.clientX - _dragOfs.x;
+    _draggingNode.y = e.clientY - _dragOfs.y;
+    const el = canvasWrap.querySelector(`[data-nid="${_draggingNode.id}"]`);
+    if (el) { el.style.left = _draggingNode.x + 'px'; el.style.top = _draggingNode.y + 'px'; }
+    drawEdges();
+  });
+  document.addEventListener('pointerup', () => { _draggingNode = null; _connecting = null; });
+
+  async function loadSkills() {
+    try {
+      const r = await fetch(getBaseUrl() + '/api/desktop-skills');
+      if (r.ok) _skills = await r.json();
+    } catch {}
+    sidebar.innerHTML = _skills.map(s => `<div class="sc-skill-item" draggable="true" data-sid="${s.id}">${s.icon || '🔧'} ${s.name}</div>`).join('') ||
+      `<div style="color:var(--text-muted);font-size:11px;padding:8px">${t('sc.dragHint')}</div>`;
+    sidebar.querySelectorAll('.sc-skill-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', item.dataset.sid);
+      });
+    });
+  }
+
+  canvasWrap.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  canvasWrap.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const sid = e.dataTransfer.getData('text/plain');
+    if (!sid) return;
+    const rect = canvasWrap.getBoundingClientRect();
+    _nodes.push({ id: _nextId++, skillId: sid, x: e.clientX - rect.left - 40, y: e.clientY - rect.top - 15 });
+    renderNodes();
+  });
+
+  function renderChainSelect() {
+    const sel = $('sc-chain-select');
+    if (!sel) return;
+    sel.innerHTML = _chains.map((c, i) => `<option value="${i}"${i === _currentIdx ? ' selected' : ''}>${c.name || 'Chain ' + (i + 1)}</option>`).join('') || '<option>—</option>';
+  }
+
+  function loadChain(idx) {
+    _currentIdx = idx;
+    const chain = _chains[idx];
+    if (!chain) { _nodes = []; _edges = []; _nextId = 1; } else {
+      _nodes = JSON.parse(JSON.stringify(chain.nodes || []));
+      _edges = JSON.parse(JSON.stringify(chain.edges || []));
+      _nextId = _nodes.reduce((m, n) => Math.max(m, n.id + 1), 1);
+    }
+    renderNodes();
+  }
+
+  $('sc-chain-select')?.addEventListener('change', function() { loadChain(parseInt(this.value) || 0); });
+
+  $('sc-new')?.addEventListener('click', () => {
+    const name = prompt(t('sc.namePrompt'), 'Chain ' + (_chains.length + 1));
+    if (!name) return;
+    _chains.push({ name, nodes: [], edges: [] });
+    save();
+    _currentIdx = _chains.length - 1;
+    renderChainSelect();
+    loadChain(_currentIdx);
+  });
+
+  $('sc-save')?.addEventListener('click', () => {
+    if (!_chains.length) return;
+    _chains[_currentIdx] = { name: _chains[_currentIdx]?.name || 'Chain', nodes: _nodes.map(n => ({ id: n.id, skillId: n.skillId, x: n.x, y: n.y })), edges: [..._edges] };
+    save();
+    if (typeof ocToast !== 'undefined') ocToast.success(t('sc.saved'));
+  });
+
+  $('sc-delete')?.addEventListener('click', () => {
+    if (!_chains.length) return;
+    _chains.splice(_currentIdx, 1);
+    save();
+    _currentIdx = Math.max(0, _currentIdx - 1);
+    renderChainSelect();
+    loadChain(_currentIdx);
+    if (typeof ocToast !== 'undefined') ocToast.info(t('sc.deleted'));
+  });
+
+  $('sc-run')?.addEventListener('click', async () => {
+    if (!_nodes.length) { if (typeof ocToast !== 'undefined') ocToast.warning(t('sc.noNodes')); return; }
+    const inDegree = {};
+    _nodes.forEach(n => inDegree[n.id] = 0);
+    _edges.forEach(e => { if (inDegree[e.to] !== undefined) inDegree[e.to]++; });
+    const queue = _nodes.filter(n => inDegree[n.id] === 0).map(n => n.id);
+    const order = [];
+    const adj = {};
+    _edges.forEach(e => { if (!adj[e.from]) adj[e.from] = []; adj[e.from].push(e.to); });
+    while (queue.length) {
+      const cur = queue.shift();
+      order.push(cur);
+      (adj[cur] || []).forEach(next => { inDegree[next]--; if (inDegree[next] === 0) queue.push(next); });
+    }
+    if (typeof ocToast !== 'undefined') ocToast.info(t('sc.running'));
+    for (const nid of order) {
+      const node = _nodes.find(n => n.id === nid);
+      if (!node) continue;
+      try {
+        await fetch(getBaseUrl() + '/api/desktop-skill/' + node.skillId, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      } catch {}
+    }
+    if (typeof ocToast !== 'undefined') ocToast.success(t('sc.done'));
+  });
+
+  function open() {
+    panel.classList.remove('hidden');
+    loadSkills();
+    renderChainSelect();
+    loadChain(_currentIdx);
+    setTimeout(resizeCanvas, 50);
+  }
+  function close() { panel.classList.add('hidden'); }
+
+  $('sc-open')?.addEventListener('click', open);
+  $('sc-back')?.addEventListener('click', close);
+  window.addEventListener('resize', () => { if (!panel.classList.contains('hidden')) resizeCanvas(); });
+})();
+
 // PLUGIN SYSTEM
 // ══════════════════════════════════════════════════════════════
 const ocPlugins = (function() {
@@ -9936,15 +10405,75 @@ const ocPlugins = (function() {
     renderPluginList();
   }
 
+  const _sandboxes = {};
+  const API_WHITELIST = new Set(['toast.show','toast.success','toast.error','toast.warning','toast.info','addQuickAction','t','getBaseUrl']);
+
+  function createSandbox(plugin) {
+    const iframe = document.createElement('iframe');
+    iframe.sandbox = 'allow-scripts';
+    iframe.style.cssText = 'display:none;width:0;height:0;border:none';
+    iframe.srcdoc = `<!DOCTYPE html><html><head><script>
+      const _id='${plugin.id}';
+      window.addEventListener('message',e=>{
+        if(e.data?.type==='oc-plugin-response'&&e.data.pluginId===_id){
+          const cb=window['_cb_'+e.data.callId];if(cb){cb(e.data.result);delete window['_cb_'+e.data.callId];}
+        }
+      });
+      let _callCounter=0;
+      function callHost(method,...args){
+        return new Promise(resolve=>{
+          const callId=++_callCounter;
+          window['_cb_'+callId]=resolve;
+          parent.postMessage({type:'oc-plugin-call',pluginId:_id,method,args,callId},'*');
+        });
+      }
+      const api={toast:{show:(...a)=>callHost('toast.show',...a),success:(...a)=>callHost('toast.success',...a),error:(...a)=>callHost('toast.error',...a),warning:(...a)=>callHost('toast.warning',...a),info:(...a)=>callHost('toast.info',...a)},addQuickAction:(...a)=>callHost('addQuickAction',...a),t:(...a)=>callHost('t',...a),getBaseUrl:()=>callHost('getBaseUrl')};
+      ${typeof plugin.sandboxCode === 'string' ? plugin.sandboxCode : ''}
+    <\/script></head><body></body></html>`;
+    document.body.appendChild(iframe);
+    _sandboxes[plugin.id] = iframe;
+  }
+
+  function destroySandbox(id) {
+    if (_sandboxes[id]) { _sandboxes[id].remove(); delete _sandboxes[id]; }
+  }
+
+  // Listen for sandbox messages
+  window.addEventListener('message', (e) => {
+    if (e.data?.type !== 'oc-plugin-call') return;
+    const { pluginId, method, args, callId } = e.data;
+    if (!API_WHITELIST.has(method)) {
+      console.warn('Plugin sandbox: blocked method', method, 'from', pluginId);
+      if (typeof ocToast !== 'undefined') ocToast.warning(t('sandbox.blocked'));
+      return;
+    }
+    const api = getAPI();
+    const parts = method.split('.');
+    let fn = api;
+    for (const p of parts) fn = fn?.[p];
+    let result = undefined;
+    if (typeof fn === 'function') { try { result = fn(...(args || [])); } catch {} }
+    const iframe = _sandboxes[pluginId];
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'oc-plugin-response', pluginId, callId, result }, '*');
+    }
+  });
+
   function setEnabled(id, enabled) {
     _states[id] = enabled;
     saveStates();
     const plugin = _registry.find(p => p.id === id);
     if (!plugin) return;
-    if (enabled && typeof plugin.init === 'function') {
-      try { plugin.init(getAPI()); } catch(e) { console.error('Plugin init error:', id, e); }
-    } else if (!enabled && typeof plugin.destroy === 'function') {
-      try { plugin.destroy(); } catch(e) { console.error('Plugin destroy error:', id, e); }
+    if (enabled) {
+      if (plugin.sandboxCode) { createSandbox(plugin); }
+      else if (typeof plugin.init === 'function') {
+        try { plugin.init(getAPI()); } catch(e) { console.error('Plugin init error:', id, e); }
+      }
+    } else {
+      destroySandbox(id);
+      if (typeof plugin.destroy === 'function') {
+        try { plugin.destroy(); } catch(e) { console.error('Plugin destroy error:', id, e); }
+      }
     }
   }
 
@@ -9973,16 +10502,17 @@ const ocPlugins = (function() {
     });
   }
 
-  // Init enabled plugins on load
   setTimeout(() => {
     _registry.forEach(p => {
-      if (_states[p.id] && typeof p.init === 'function') {
+      if (!_states[p.id]) return;
+      if (p.sandboxCode) { createSandbox(p); }
+      else if (typeof p.init === 'function') {
         try { p.init(getAPI()); } catch(e) { console.error('Plugin init error:', p.id, e); }
       }
     });
   }, 500);
 
-  return { register, getAPI, list: () => [..._registry], setEnabled };
+  return { register, getAPI, list: () => [..._registry], setEnabled, destroySandbox };
 })();
 window.ocPlugins = ocPlugins;
 </script>
