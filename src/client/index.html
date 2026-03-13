@@ -322,11 +322,14 @@
             return urlParams.get('api_key') || localStorage.getItem('openclaw_api_key') || '';
         }
         
-        // Connect to WebSocket
+        // WebSocket reconnect with exponential backoff
+        let _reconnectAttempt = 0;
+        const _MAX_RECONNECT_DELAY = 30000;
+        let _heartbeatTimer = null;
+
         function connect() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const apiKey = getApiKey();
-            // Support serving from subdirectory (e.g., /voice)
             const basePath = window.location.pathname.replace(/\/$/, '');
             const wsPath = basePath ? `${basePath}/ws` : '/ws';
             const wsUrl = apiKey 
@@ -336,34 +339,57 @@
             ws = new WebSocket(wsUrl);
             
             ws.onopen = () => {
+                _reconnectAttempt = 0;
                 setStatus('Connected');
                 errorEl.textContent = '';
+                _startHeartbeat();
             };
             
             ws.onclose = (event) => {
+                _stopHeartbeat();
                 if (event.code === 4001) {
                     setStatus('❌ API key required');
                     errorEl.textContent = 'This server requires an API key. Add ?api_key=YOUR_KEY to the URL.';
+                    return;
                 } else if (event.code === 4002) {
                     setStatus('❌ Invalid API key');
                     errorEl.textContent = 'Your API key is invalid or expired.';
+                    return;
                 } else if (event.code === 4003) {
                     setStatus('❌ Rate limited');
                     errorEl.textContent = 'Too many requests. Please wait and try again.';
-                } else {
-                    setStatus('Disconnected - reconnecting...');
-                    setTimeout(connect, 2000);
+                    return;
                 }
+                _reconnectAttempt++;
+                const delay = Math.min(1000 * Math.pow(2, _reconnectAttempt - 1), _MAX_RECONNECT_DELAY);
+                setStatus(`Disconnected — reconnecting in ${Math.round(delay/1000)}s (attempt ${_reconnectAttempt})...`);
+                setTimeout(connect, delay);
             };
             
-            ws.onerror = (e) => {
-                errorEl.textContent = 'WebSocket error. Is the server running?';
+            ws.onerror = () => {
+                errorEl.textContent = 'WebSocket error. Reconnecting...';
             };
             
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
                 handleMessage(msg);
             };
+        }
+
+        function _startHeartbeat() {
+            _stopHeartbeat();
+            _heartbeatTimer = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({type: 'ping'}));
+                }
+            }, 25000);
+        }
+
+        function _stopHeartbeat() {
+            if (_heartbeatTimer) {
+                clearInterval(_heartbeatTimer);
+                _heartbeatTimer = null;
+            }
         }
         
         // Audio queue for streaming playback

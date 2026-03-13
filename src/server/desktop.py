@@ -2,8 +2,12 @@
 
 import base64
 import io
+import os
 import re
+import sys
 import time
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import mss
@@ -163,6 +167,114 @@ class DesktopStreamer:
         pyautogui.hotkey("ctrl", "v", _pause=False)
         time.sleep(0.1)
 
+    # ── Screenshot saving ──
+
+    def save_screenshot(self, filepath: Optional[str] = None) -> str:
+        """Save a full-resolution screenshot to disk. Returns the saved file path."""
+        img = self._capture_raw()
+        if not filepath:
+            screenshots_dir = Path("data/screenshots")
+            screenshots_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = str(screenshots_dir / f"screenshot_{ts}.png")
+        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+        img.save(filepath, format="PNG")
+        logger.info(f"Screenshot saved: {filepath} ({img.width}x{img.height})")
+        return filepath
+
+    # ── Window management ──
+
+    def get_window_list(self) -> list[dict]:
+        """List all visible windows with title and hwnd (Windows only)."""
+        windows = []
+        if sys.platform != "win32":
+            return windows
+        import ctypes
+        import ctypes.wintypes
+        user32 = ctypes.windll.user32
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+        def enum_cb(hwnd, _):
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            length = user32.GetWindowTextLengthW(hwnd)
+            if length == 0:
+                return True
+            buf = ctypes.create_unicode_buffer(length + 1)
+            user32.GetWindowTextW(hwnd, buf, length + 1)
+            title = buf.value.strip()
+            if title:
+                windows.append({"hwnd": hwnd, "title": title})
+            return True
+
+        user32.EnumWindows(enum_cb, 0)
+        return windows
+
+    def focus_window(self, title_contains: str) -> bool:
+        """Find and focus a window by partial title match."""
+        if sys.platform != "win32":
+            return False
+        import ctypes
+        user32 = ctypes.windll.user32
+        windows = self.get_window_list()
+        lower_target = title_contains.lower()
+        for w in windows:
+            if lower_target in w["title"].lower():
+                hwnd = w["hwnd"]
+                if user32.IsIconic(hwnd):
+                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                    time.sleep(0.3)
+                user32.SetForegroundWindow(hwnd)
+                logger.info(f"Focused window: {w['title']}")
+                return True
+        return False
+
+    def minimize_all(self):
+        """Minimize all windows (show desktop)."""
+        pyautogui.hotkey("win", "d", _pause=False)
+
+    def switch_window(self):
+        """Switch to next window (Alt+Tab)."""
+        pyautogui.hotkey("alt", "tab", _pause=False)
+
+    def close_window(self):
+        """Close the current foreground window."""
+        pyautogui.hotkey("alt", "F4", _pause=False)
+
+    def ocr_region(self, x1: float, y1: float, x2: float, y2: float) -> list[dict]:
+        """OCR a specific region of the screen (normalized coords 0~1)."""
+        img = self._capture_raw()
+        w, h = img.width, img.height
+        left = int(x1 * w)
+        top = int(y1 * h)
+        right = int(x2 * w)
+        bottom = int(y2 * h)
+        cropped = img.crop((left, top, right, bottom))
+        img_np = np.array(cropped)
+        ocr = self._get_ocr()
+        result, _ = ocr(img_np)
+        if not result:
+            return []
+
+        cw, ch = cropped.width, cropped.height
+        items = []
+        for line in result:
+            bbox, text, score = line
+            score_f = float(score) if not isinstance(score, float) else score
+            if score_f < 0.4 or not text.strip():
+                continue
+            bx1, by1 = bbox[0]
+            bx3, by3 = bbox[2]
+            cx = x1 + ((bx1 + bx3) / 2) / w
+            cy = y1 + ((by1 + by3) / 2) / h
+            items.append({
+                "text": text.strip(),
+                "x": round(cx, 4),
+                "y": round(cy, 4),
+                "score": round(score_f, 2),
+            })
+        return items
+
     # ── AI Action Executor ──
 
     def execute_actions(self, actions: list[dict]) -> list[str]:
@@ -222,6 +334,39 @@ class DesktopStreamer:
                         log.append(f"[{i+1}] find_and_double_click \"{target}\" → ({found['x']:.2f}, {found['y']:.2f})")
                     else:
                         log.append(f"[{i+1}] find_and_double_click \"{target}\" → NOT FOUND")
+
+                elif a == "screenshot":
+                    path = self.save_screenshot(act.get("path"))
+                    log.append(f"[{i+1}] screenshot → {path}")
+
+                elif a == "focus_window":
+                    title = act.get("title", "")
+                    ok = self.focus_window(title)
+                    log.append(f"[{i+1}] focus_window \"{title}\" → {'OK' if ok else 'NOT FOUND'}")
+
+                elif a == "minimize_all":
+                    self.minimize_all()
+                    log.append(f"[{i+1}] minimize_all")
+
+                elif a == "close_window":
+                    self.close_window()
+                    log.append(f"[{i+1}] close_window")
+
+                elif a == "find_and_type":
+                    target = act.get("target", "")
+                    text = act.get("text", "")
+                    found = self.find_text(target)
+                    if found:
+                        self.mouse_click(found["x"], found["y"])
+                        time.sleep(0.3)
+                        has_cjk = any("\u4e00" <= c <= "\u9fff" for c in text)
+                        if has_cjk:
+                            self.type_chinese(text)
+                        else:
+                            self.type_text(text)
+                        log.append(f"[{i+1}] find_and_type \"{target}\" → \"{text[:20]}\"")
+                    else:
+                        log.append(f"[{i+1}] find_and_type \"{target}\" → NOT FOUND")
 
                 else:
                     log.append(f"[{i+1}] unknown action: {a}")

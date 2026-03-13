@@ -1,56 +1,31 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  openclaw-voice:
+  openclaw:
     build: .
+    container_name: openclaw-ai
+    restart: unless-stopped
     ports:
       - "8765:8765"
+      - "8766:8766"
+    volumes:
+      - openclaw-data:/app/data
+      - openclaw-logs:/app/logs
+      - openclaw-ssl:/app/ssl
+    env_file:
+      - .env
     environment:
       - OPENCLAW_HOST=0.0.0.0
       - OPENCLAW_PORT=8765
-      - OPENCLAW_STT_MODEL=${OPENCLAW_STT_MODEL:-base}
-      - OPENCLAW_STT_DEVICE=${OPENCLAW_STT_DEVICE:-cuda}
-      - OPENCLAW_REQUIRE_AUTH=${OPENCLAW_REQUIRE_AUTH:-false}
-      - OPENCLAW_MASTER_KEY=${OPENCLAW_MASTER_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-    volumes:
-      # Persist downloaded models
-      - whisper-models:/root/.cache/huggingface
-      - ./voices:/app/voices
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    restart: unless-stopped
+      - OPENCLAW_HTTP_PORT=8766
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8765/"]
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8766/api/health',timeout=3); exit(0 if r.status_code==200 else 1)"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 60s
-
-  # CPU-only version (no GPU required)
-  openclaw-voice-cpu:
-    build: .
-    ports:
-      - "8766:8765"
-    environment:
-      - OPENCLAW_HOST=0.0.0.0
-      - OPENCLAW_PORT=8765
-      - OPENCLAW_STT_MODEL=${OPENCLAW_STT_MODEL:-tiny}
-      - OPENCLAW_STT_DEVICE=cpu
-      - OPENCLAW_REQUIRE_AUTH=${OPENCLAW_REQUIRE_AUTH:-false}
-      - OPENCLAW_MASTER_KEY=${OPENCLAW_MASTER_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-    volumes:
-      - whisper-models:/root/.cache/huggingface
-      - ./voices:/app/voices
-    profiles:
-      - cpu
-    restart: unless-stopped
+      start_period: 30s
 
 volumes:
-  whisper-models:
+  openclaw-data:
+  openclaw-logs:
+  openclaw-ssl:

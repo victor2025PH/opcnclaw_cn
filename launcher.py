@@ -1,11 +1,12 @@
 """
-OpenClaw 统一启动器
+OpenClaw v3.0 统一启动器
 
 功能：
 1. 初始化配置（首次运行向导）
 2. 启动 FastAPI 服务（子线程）
-3. 启动系统托盘图标
+3. 启动系统托盘图标 + 上下文感知引擎
 4. 管理生命周期（优雅退出）
+5. S2S 模式自动检测 + 情感引擎初始化
 
 用法：
   python launcher.py          # 正常启动
@@ -29,6 +30,7 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
+import asyncio
 import threading
 import time
 import webbrowser
@@ -44,10 +46,20 @@ from loguru import logger
 # 日志配置
 # ──────────────────────────────────────────────────────
 Path("logs").mkdir(exist_ok=True)
+_LOG_LEVEL = os.environ.get("OPENCLAW_LOG_LEVEL", "DEBUG").upper()
+_LOG_ROTATION = os.environ.get("OPENCLAW_LOG_ROTATION", "5 MB")
+_LOG_RETENTION = os.environ.get("OPENCLAW_LOG_RETENTION", "14 days")
+
 logger.remove()
-logger.add(sys.stdout, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{level:8}</level> | {message}")
-logger.add("logs/openclaw.log", level="DEBUG", rotation="5 MB", retention="7 days",
-           encoding="utf-8", enqueue=True)
+if sys.stdout:
+    logger.add(sys.stdout, level="INFO",
+               format="<green>{time:HH:mm:ss}</green> | <level>{level:8}</level> | {message}")
+logger.add("logs/openclaw.log", level=_LOG_LEVEL,
+           rotation=_LOG_ROTATION, retention=_LOG_RETENTION,
+           compression="zip", encoding="utf-8", enqueue=True)
+logger.add("logs/error.log", level="ERROR",
+           rotation="2 MB", retention="30 days",
+           compression="zip", encoding="utf-8", enqueue=True)
 
 
 def _print_banner():
@@ -55,12 +67,65 @@ def _print_banner():
     try:
         print("""
 ╔═══════════════════════════════════════╗
-║   OpenClaw AI 语音助手  v2.0          ║
+║   OpenClaw AI 语音助手  v3.0          ║
 ║   全双工 · 多平台 · 技能增强          ║
 ╚═══════════════════════════════════════╝
 """)
     except UnicodeEncodeError:
-        print("OpenClaw AI v2.0 - Starting...")
+        print("OpenClaw AI v3.0 - Starting...")
+
+
+# ──────────────────────────────────────────────────────
+# 全局快捷键（Windows RegisterHotKey，无第三方依赖）
+# ──────────────────────────────────────────────────────
+
+def _start_hotkeys(cfg, on_settings, on_quit):
+    """Register global hotkeys via Windows API in a dedicated thread."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    _SHORTCUTS_MAP = {
+        "settings": (1, 0x0002 | 0x0004, 0x4F),   # Ctrl+Shift+O
+        "quit":     (2, 0x0002 | 0x0004, 0x58),   # Ctrl+Shift+X
+    }
+    _CALLBACKS = {"settings": on_settings, "quit": on_quit}
+
+    enabled = set(cfg.shortcuts_enabled)
+
+    def _loop():
+        user32 = ctypes.windll.user32
+        registered = []
+        for sid, (hid, mods, vk) in _SHORTCUTS_MAP.items():
+            if sid in enabled:
+                if user32.RegisterHotKey(None, hid, mods, vk):
+                    registered.append((hid, sid))
+                    logger.info(f"⌨️  快捷键已注册: {sid}")
+                else:
+                    logger.warning(f"快捷键注册失败: {sid} (可能已被占用)")
+
+        if not registered:
+            return
+
+        msg = wintypes.MSG()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
+            if msg.message == 0x0312:  # WM_HOTKEY
+                for hid, sid in registered:
+                    if msg.wParam == hid:
+                        cb = _CALLBACKS.get(sid)
+                        if cb:
+                            try:
+                                cb()
+                            except Exception as e:
+                                logger.debug(f"快捷键回调异常: {e}")
+
+        for hid, _ in registered:
+            user32.UnregisterHotKey(None, hid)
+
+    t = threading.Thread(target=_loop, name="hotkeys", daemon=True)
+    t.start()
+    return t
 
 
 # ──────────────────────────────────────────────────────
@@ -83,9 +148,26 @@ def _start_server(cfg, tray=None) -> threading.Thread:
 
             logger.info(f"🚀 启动服务器 HTTP:{http_port} HTTPS:{https_port}")
 
-            # 双端口配置
-            ssl_cert = Path("ssl/server.crt")
-            ssl_key = Path("ssl/server.key")
+            # 双端口配置 — 按优先级检查证书路径
+            ssl_cert = ssl_key = None
+            for cert_path, key_path in [
+                (Path("certs/server.crt"), Path("certs/server.key")),
+                (Path("ssl/server.crt"), Path("ssl/server.key")),
+                (Path("ssl/cert.pem"), Path("ssl/key.pem")),
+            ]:
+                if cert_path.exists() and key_path.exists():
+                    ssl_cert, ssl_key = cert_path, key_path
+                    break
+
+            if not ssl_cert:
+                try:
+                    from src.server.certs import ensure_certs
+                    _, cert_str, key_str = ensure_certs("certs")
+                    ssl_cert, ssl_key = Path(cert_str), Path(key_str)
+                    logger.info(f"SSL certificates generated: {ssl_cert}")
+                except Exception as e:
+                    logger.warning(f"SSL cert generation failed: {e} — HTTPS disabled")
+                    ssl_cert = ssl_key = None
 
             import asyncio
             from uvicorn import Config, Server
@@ -94,7 +176,7 @@ def _start_server(cfg, tray=None) -> threading.Thread:
             async def _run_both():
                 servers = []
                 # HTTPS
-                if ssl_cert.exists() and ssl_key.exists():
+                if ssl_cert and ssl_key and ssl_cert.exists() and ssl_key.exists():
                     https_config = Config(
                         app, host="0.0.0.0", port=https_port,
                         ssl_certfile=str(ssl_cert), ssl_keyfile=str(ssl_key),
@@ -283,6 +365,35 @@ def main():
             https_port=cfg.https_port,
         )
         tray.run()
+
+    # 全局快捷键
+    if not args.nogui:
+        _start_hotkeys(
+            cfg,
+            on_settings=lambda: open_settings(router=router),
+            on_quit=lambda: os._exit(0),
+        )
+
+    # 上下文感知引擎
+    try:
+        from src.server.context import ContextEngine
+        ctx_engine = ContextEngine()
+
+        def _on_ctx_event(ev):
+            logger.info(f"💡 Context: [{ev.type}] {ev.message}")
+        ctx_engine.on_event(_on_ctx_event)
+        import threading as _threading
+        _threading.Thread(target=lambda: asyncio.run(ctx_engine.start()),
+                          daemon=True).start()
+        logger.info("🧠 上下文感知引擎已启动")
+    except Exception as e:
+        logger.debug(f"Context engine not started: {e}")
+
+    # S2S 模式检测
+    if router.s2s_available:
+        logger.info(f"⚡ S2S 端到端语音模式可用: {router.s2s.backend_name}")
+    else:
+        logger.info("📡 使用 STT → LLM → TTS 管道模式")
 
     # 启动服务器
     logger.info("🚀 正在启动服务器...")

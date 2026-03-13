@@ -714,6 +714,261 @@ _register(DesktopSkill(
 ))
 
 
+## ── Screenshot skill ──────────────────────────────────────────
+
+def execute_screenshot(desktop) -> SkillResult:
+    """Save a screenshot to data/screenshots/ and return the path."""
+    steps = []
+    s = SkillStep("截取屏幕")
+    steps.append(s)
+    s.status = "running"
+    try:
+        filepath = desktop.save_screenshot()
+        s.status = "success"
+        s.detail = f"截图已保存: {filepath}"
+        return SkillResult(True, steps, f"截图已保存到 {filepath}",
+                           desktop.capture_screenshot_b64())
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"截图失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="screenshot",
+    name_zh="截图保存",
+    name_en="Save Screenshot",
+    desc_zh="截取当前屏幕并保存为 PNG 文件到 data/screenshots/ 目录",
+    desc_en="Capture and save current screen as PNG",
+    icon="📸",
+    execute=execute_screenshot,
+))
+
+
+# ── Open browser skill ──────────────────────────────────────────
+
+def execute_open_browser(desktop) -> SkillResult:
+    """Open the default web browser."""
+    steps = []
+    s = SkillStep("打开默认浏览器")
+    steps.append(s)
+    s.status = "running"
+    try:
+        import webbrowser
+        webbrowser.open("about:blank")
+        time.sleep(2.0)
+        s.status = "success"
+        s.detail = "默认浏览器已启动"
+        return SkillResult(True, steps, "浏览器已打开",
+                           desktop.capture_screenshot_b64())
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"打开浏览器失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="open_browser",
+    name_zh="打开浏览器",
+    name_en="Open Browser",
+    desc_zh="打开默认网页浏览器",
+    desc_en="Open the default web browser",
+    icon="🌐",
+    execute=execute_open_browser,
+))
+
+
+# ── Open file explorer skill ───────────────────────────────────
+
+def execute_open_explorer(desktop) -> SkillResult:
+    """Open File Explorer (Windows) or Finder (macOS)."""
+    steps = []
+    s = SkillStep("打开文件管理器")
+    steps.append(s)
+    s.status = "running"
+    try:
+        if IS_WINDOWS:
+            subprocess.Popen(["explorer.exe"])
+        elif IS_MACOS:
+            subprocess.Popen(["open", "-a", "Finder"])
+        else:
+            subprocess.Popen(["xdg-open", "."])
+        time.sleep(1.5)
+        s.status = "success"
+        s.detail = "文件管理器已打开"
+        return SkillResult(True, steps, "文件管理器已打开",
+                           desktop.capture_screenshot_b64())
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"打开失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="open_explorer",
+    name_zh="打开文件管理器",
+    name_en="Open File Explorer",
+    desc_zh="打开 Windows 资源管理器 / macOS Finder / Linux 文件管理器",
+    desc_en="Open File Explorer / Finder",
+    icon="📂",
+    execute=execute_open_explorer,
+))
+
+
+# ── Open Notepad skill ──────────────────────────────────────────
+
+def execute_open_notepad(desktop) -> SkillResult:
+    """Open a text editor."""
+    steps = []
+    s = SkillStep("打开文本编辑器")
+    steps.append(s)
+    s.status = "running"
+    try:
+        if IS_WINDOWS:
+            subprocess.Popen(["notepad.exe"])
+        elif IS_MACOS:
+            subprocess.Popen(["open", "-a", "TextEdit"])
+        else:
+            for editor in ["gedit", "xed", "kate", "nano"]:
+                try:
+                    subprocess.Popen([editor])
+                    break
+                except FileNotFoundError:
+                    continue
+        time.sleep(1.0)
+        s.status = "success"
+        s.detail = "文本编辑器已打开"
+        return SkillResult(True, steps, "文本编辑器已打开",
+                           desktop.capture_screenshot_b64())
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"打开失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="open_notepad",
+    name_zh="打开记事本",
+    name_en="Open Notepad",
+    desc_zh="打开文本编辑器（Windows 记事本 / macOS TextEdit）",
+    desc_en="Open text editor",
+    icon="📝",
+    execute=execute_open_notepad,
+))
+
+
+# ── Window management: Show Desktop ────────────────────────────
+
+def execute_show_desktop(desktop) -> SkillResult:
+    """Minimize all windows to show the desktop."""
+    steps = []
+    s = SkillStep("显示桌面（最小化所有窗口）")
+    steps.append(s)
+    s.status = "running"
+    try:
+        pyautogui.hotkey("win", "d", _pause=False)
+        time.sleep(1.0)
+        s.status = "success"
+        s.detail = "所有窗口已最小化"
+        return SkillResult(True, steps, "已显示桌面",
+                           desktop.capture_screenshot_b64())
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"操作失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="show_desktop",
+    name_zh="显示桌面",
+    name_en="Show Desktop",
+    desc_zh="最小化所有窗口，显示桌面（Win+D）",
+    desc_en="Minimize all windows to show desktop",
+    icon="🖥️",
+    execute=execute_show_desktop,
+))
+
+
+# ── Window management: List windows ────────────────────────────
+
+def execute_list_windows(desktop) -> SkillResult:
+    """List all visible windows."""
+    steps = []
+    s = SkillStep("获取窗口列表")
+    steps.append(s)
+    s.status = "running"
+    try:
+        windows = desktop.get_window_list()
+        if windows:
+            titles = [w["title"] for w in windows[:20]]
+            detail = "\n".join(f"  - {t}" for t in titles)
+            s.status = "success"
+            s.detail = f"找到 {len(windows)} 个窗口"
+            msg = f"当前打开的窗口 ({len(windows)}):\n" + "\n".join(f"• {t}" for t in titles)
+            return SkillResult(True, steps, msg, None)
+        else:
+            s.status = "success"
+            s.detail = "未找到可见窗口"
+            return SkillResult(True, steps, "当前没有打开的窗口", None)
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"获取窗口列表失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="list_windows",
+    name_zh="列出窗口",
+    name_en="List Windows",
+    desc_zh="列出当前所有打开的窗口标题",
+    desc_en="List all open window titles",
+    icon="🪟",
+    execute=execute_list_windows,
+))
+
+
+# ── Lock screen skill ──────────────────────────────────────────
+
+def execute_lock_screen(desktop) -> SkillResult:
+    """Lock the computer screen."""
+    steps = []
+    s = SkillStep("锁定屏幕")
+    steps.append(s)
+    s.status = "running"
+    try:
+        if IS_WINDOWS:
+            import ctypes
+            ctypes.windll.user32.LockWorkStation()
+        elif IS_MACOS:
+            subprocess.run(
+                ["osascript", "-e",
+                 'tell application "System Events" to keystroke "q" using {control down, command down}'],
+                timeout=5
+            )
+        else:
+            subprocess.run(["loginctl", "lock-session"], timeout=5)
+        s.status = "success"
+        s.detail = "屏幕已锁定"
+        return SkillResult(True, steps, "屏幕已锁定", None)
+    except Exception as e:
+        s.status = "failed"
+        s.detail = str(e)
+        return SkillResult(False, steps, f"锁屏失败: {e}", None)
+
+
+_register(DesktopSkill(
+    id="lock_screen",
+    name_zh="锁定屏幕",
+    name_en="Lock Screen",
+    desc_zh="锁定电脑屏幕（Win+L / macOS Ctrl+Cmd+Q）",
+    desc_en="Lock the computer screen",
+    icon="🔒",
+    execute=execute_lock_screen,
+))
+
+
+# ── Skill accessors ──
+
 def get_skill(skill_id: str) -> Optional[DesktopSkill]:
     return SKILL_REGISTRY.get(skill_id)
 
@@ -742,6 +997,6 @@ def get_skills_prompt_section() -> str:
         lines.append(f"- [{s.icon} {s.name_zh}] (skill:{s.id}) — {s.desc_zh}")
     lines.append(
         "\n当用户的指令涉及以上应用时，建议用户先使用对应技能包打开应用，"
-        "或者告诉用户：「建议先点击技能包按钮打开微信，再执行后续操作」。"
+        "或者告诉用户：「建议先点击技能按钮执行操作」。"
     )
     return "\n".join(lines)

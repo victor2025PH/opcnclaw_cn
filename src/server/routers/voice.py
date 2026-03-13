@@ -521,15 +521,18 @@ async def websocket_endpoint(websocket: WebSocket):
                                         # Clean and synthesize this sentence
                                         speech_text = clean_for_speech(sentence)
                                         if speech_text:
-                                            logger.debug(f"Synthesizing: {speech_text[:50]}...")
-                                            async for audio_chunk in tts.synthesize_stream(speech_text):
-                                                audio_b64 = base64.b64encode(audio_chunk).decode()
-                                                await websocket.send_json({
-                                                    "type": "audio_chunk",
-                                                    "data": audio_b64,
-                                                    "sample_rate": 24000,
-                                                    "format": tts.audio_format,
-                                                })
+                                            try:
+                                                logger.debug(f"Synthesizing: {speech_text[:50]}...")
+                                                async for audio_chunk in tts.synthesize_stream(speech_text):
+                                                    audio_b64 = base64.b64encode(audio_chunk).decode()
+                                                    await websocket.send_json({
+                                                        "type": "audio_chunk",
+                                                        "data": audio_b64,
+                                                        "sample_rate": 24000,
+                                                        "format": tts.audio_format,
+                                                    })
+                                            except Exception as tts_err:
+                                                logger.warning(f"TTS stream error: {tts_err}")
                                 else:
                                     break
                         
@@ -537,14 +540,17 @@ async def websocket_endpoint(websocket: WebSocket):
                         if sentence_buffer.strip():
                             speech_text = clean_for_speech(sentence_buffer.strip())
                             if speech_text:
-                                async for audio_chunk in tts.synthesize_stream(speech_text):
-                                    audio_b64 = base64.b64encode(audio_chunk).decode()
-                                    await websocket.send_json({
-                                        "type": "audio_chunk",
-                                        "data": audio_b64,
-                                        "sample_rate": 24000,
-                                        "format": tts.audio_format,
-                                    })
+                                try:
+                                    async for audio_chunk in tts.synthesize_stream(speech_text):
+                                        audio_b64 = base64.b64encode(audio_chunk).decode()
+                                        await websocket.send_json({
+                                            "type": "audio_chunk",
+                                            "data": audio_b64,
+                                            "sample_rate": 24000,
+                                            "format": tts.audio_format,
+                                        })
+                                except Exception as tts_err:
+                                    logger.warning(f"TTS error on remaining text: {tts_err}")
                         
                         # Signal end of response
                         await websocket.send_json({

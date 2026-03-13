@@ -812,7 +812,32 @@ body{
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Responsive */
+/* Responsive — small phones */
+@media(max-width:374px){
+  .msg-text{font-size:13px;padding:10px 12px}
+  .welcome-icon{font-size:48px}
+  .welcome h2{font-size:20px}
+  .suggestion{padding:8px 12px;font-size:12px}
+  .setup-card{padding:28px 16px}
+  .setup-card h1{font-size:20px}
+  .sc-grid{grid-template-columns:1fr}
+  .voice-circle{width:110px;height:110px}
+  #voice-status{font-size:16px}
+  #voice-transcript{font-size:13px}
+}
+
+/* Responsive — landscape phones */
+@media(max-height:500px) and (orientation:landscape){
+  .chat-header{height:42px}
+  :root{--header-h:42px}
+  .voice-circle{width:80px;height:80px;margin-bottom:12px}
+  .voice-stop{margin-top:12px;padding:8px 24px;font-size:13px}
+  #voice-overlay{flex-direction:row;gap:24px}
+  .welcome{padding:20px}
+  .welcome-icon{font-size:36px;margin-bottom:8px}
+}
+
+/* Responsive — tablets and desktops */
 @media(min-width:768px){
   .messages-area{padding:24px 10%}
   .msg{max-width:70%}
@@ -822,9 +847,45 @@ body{
   #camera-panel.hidden{transform:translateY(20px)}
   .camera-pip{width:130px;height:130px;bottom:100px;right:20px}
 }
+
+/* Offline indicator */
+.offline-banner{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  background:var(--error);color:#fff;text-align:center;
+  padding:4px 12px;font-size:12px;font-weight:600;
+  transform:translateY(-100%);transition:transform .3s;
+}
+.offline-banner.show{transform:translateY(0)}
+
+/* PWA install banner */
+.pwa-install-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:300;
+  background:var(--bg-secondary);border-top:1px solid var(--accent);
+  padding:12px 16px;padding-bottom:calc(12px + var(--safe-bottom));
+  display:flex;align-items:center;gap:12px;
+  transform:translateY(100%);transition:transform .3s;
+}
+.pwa-install-bar.show{transform:translateY(0)}
+.pwa-install-bar .pwa-text{flex:1;font-size:13px;color:var(--text-secondary)}
+.pwa-install-bar .pwa-btn{
+  padding:8px 16px;border:none;border-radius:var(--radius-sm);
+  background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;
+}
+.pwa-install-bar .pwa-dismiss{
+  background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px;
+}
 </style>
 </head>
 <body>
+
+<!-- ═══════════════ GLOBAL OVERLAYS ═══════════════ -->
+<div class="offline-banner" id="offline-banner">网络已断开，部分功能不可用</div>
+<div class="pwa-install-bar" id="pwa-install-bar">
+  <span style="font-size:24px">🦞</span>
+  <span class="pwa-text">安装 OpenClaw 到桌面，体验更流畅</span>
+  <button class="pwa-btn" id="pwa-install-btn">安装</button>
+  <button class="pwa-dismiss" id="pwa-dismiss-btn">&times;</button>
+</div>
 
 <!-- ═══════════════ SETUP PAGE ═══════════════ -->
 <div id="setup-page" class="page">
@@ -869,9 +930,6 @@ body{
         💬
         <span id="wxp-badge" class="hidden" style="position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#fc8181"></span>
       </button>
-      <button class="icon-btn" title="工作流管理" onclick="window.open('/admin','_blank')" style="position:relative">
-        ⚡
-      </button>
       <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </button>
@@ -889,10 +947,12 @@ body{
       <h2 data-i18n="welcome.hello">你好！</h2>
       <p data-i18n="welcome.subtitle">今天我能帮你做什么？</p>
       <div class="suggestions">
-        <button class="suggestion" data-i18n="welcome.s1" data-i18n-msg="welcome.s1" data-msg="你能做什么？">你能做什么？</button>
-        <button class="suggestion" data-i18n="welcome.s2" data-i18n-msg="welcome.s2" data-msg="给我讲个笑话">给我讲个笑话</button>
-        <button class="suggestion" data-i18n="welcome.s3" data-i18n-msg="welcome.s3" data-msg="帮我写代码">帮我写代码</button>
-        <button class="suggestion" data-i18n="welcome.s4" data-i18n-msg="welcome.s4" data-msg="给我解释一下">给我解释一下</button>
+        <button class="suggestion" data-i18n="welcome.s1" data-i18n-msg="welcome.s1" data-msg="你能做什么？有哪些功能？">你能做什么？</button>
+        <button class="suggestion" data-i18n="welcome.s2" data-i18n-msg="welcome.s2" data-msg="帮我打开微信">打开微信</button>
+        <button class="suggestion" data-i18n="welcome.s3" data-i18n-msg="welcome.s3" data-msg="帮我截个屏保存下来">截图保存</button>
+        <button class="suggestion" data-i18n="welcome.s4" data-i18n-msg="welcome.s4" data-msg="今天天气怎么样？">今天天气</button>
+        <button class="suggestion" data-msg="帮我写一封邮件">写邮件</button>
+        <button class="suggestion" data-msg="给我讲个笑话吧">讲笑话</button>
       </div>
       <!-- 常用技能推荐区（动态加载） -->
       <div id="skill-recommend-area" style="margin-top:20px;width:100%;max-width:400px;display:none">
@@ -1230,10 +1290,6 @@ body{
     <div class="wxp-section">
       <div class="wxp-section-title">⚙️ 安全设置</div>
       <label class="wxp-row">
-        <span>智能模式 <span style="font-size:11px;color:#63b3ed">(意图分类+情感分析+批处理+自动升级)</span></span>
-        <input type="checkbox" id="wxp-smart-mode" class="wxp-check" checked>
-      </label>
-      <label class="wxp-row">
         <span>人工审核模式</span>
         <input type="checkbox" id="wxp-manual-review" class="wxp-check">
       </label>
@@ -1253,22 +1309,7 @@ body{
           <input type="number" id="wxp-delay-max" value="5.0" min="1" max="30" step="0.5" class="wxp-num-input" style="width:54px">
         </div>
       </div>
-      <div class="wxp-row">
-        <span>批处理等待（秒）</span>
-        <input type="number" id="wxp-batch-timeout" value="4.0" min="1" max="10" step="0.5" class="wxp-num-input" style="width:54px">
-      </div>
       <button class="wxp-btn-secondary" id="wxp-save-config" style="margin-top:6px">保存设置</button>
-    </div>
-
-    <!-- 🚨 需要人工处理（智能升级）-->
-    <div class="wxp-section" id="wxp-escalation-section">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="wxp-section-title" style="margin-bottom:0">🚨 需要人工处理</div>
-        <button class="wxp-btn-secondary" onclick="wxpRefreshEscalations()" style="padding:4px 10px;font-size:12px">刷新</button>
-      </div>
-      <div id="wxp-escalation-list">
-        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无升级</div>
-      </div>
     </div>
 
     <!-- 白名单联系人 -->
@@ -2419,12 +2460,13 @@ function connectVoiceWs() {
     S.voiceWs = null;
     if (S._wsPingInterval) { clearInterval(S._wsPingInterval); S._wsPingInterval = null; }
     _wsRetryCount++;
-    if (_wsRetryCount <= 5) {
+    if (_wsRetryCount <= 8) {
       dom.statusDot.className = 'status-dot disconnected';
-      const delay = Math.min(1000 * _wsRetryCount, 8000);
+      const delay = Math.min(1000 * Math.pow(1.5, _wsRetryCount - 1), 15000);
+      console.log(`WS reconnect in ${Math.round(delay)}ms (attempt ${_wsRetryCount})`);
       _wsReconnectTimer = setTimeout(connectVoiceWs, delay);
     } else {
-      console.log('WS failed 5 times, switching to HTTP voice mode');
+      console.log('WS failed 8 times, switching to HTTP voice mode');
       dom.statusDot.className = 'status-dot http-mode';
       dom.statusDot.title = 'HTTP voice mode';
     }
@@ -4662,18 +4704,47 @@ setInterval(() => {
 }, 30000);
 
 // ═══════════════════════════════════════════════════
-// VOICE WAKE WORD — Server-side STT monitor (no Web Speech API)
-// Works with unified audio+video stream from camera
+// VOICE WAKE WORD — Hybrid: Browser SpeechRecognition (primary) + Server STT (fallback)
+// SpeechRecognition: <300ms latency, zero server load, client-side matching
+// Server fallback: 1.0s chunks (down from 2.5s) for unsupported browsers
 // ═══════════════════════════════════════════════════
 let wakeWordActive = false;
-let wakeRecognition = null; // kept for compatibility (unused)
+let wakeRecognition = null;
+let _wakeWordsCache = [];
+let _wakeMode = 'none'; // 'browser' | 'server' | 'none'
 
-// WS monitor state
+// Server fallback state
 let _monitorCtx = null;
 let _monitorSource = null;
 let _monitorProcessor = null;
 let _monitorAccum = [];
-const MONITOR_CHUNK_SECONDS = 2.5;
+const MONITOR_CHUNK_SECONDS = 1.0;
+
+const _SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const _hasBrowserSTT = !!_SpeechRecognition;
+
+async function _fetchWakeWords() {
+  try {
+    const proto = location.protocol === 'https:' ? 'https' : 'http';
+    const resp = await fetch(`${proto}://${location.hostname}:${location.port}/api/wake-words`);
+    if (resp.ok) {
+      const data = await resp.json();
+      _wakeWordsCache = (data.wake_words || []).map(w => w.toLowerCase());
+    }
+  } catch (e) {
+    console.warn('Failed to fetch wake words, using defaults');
+    _wakeWordsCache = ['你好', '小龙', '龙虾', '唤醒', '开始', '在吗', 'hey claw', 'hello'];
+  }
+}
+
+function _matchWakeWord(text) {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  for (const w of _wakeWordsCache) {
+    if (lower.includes(w)) return w;
+  }
+  return null;
+}
 
 function _triggerWakeWord(matchedText) {
   const indicator = document.getElementById('wake-indicator');
@@ -4684,10 +4755,8 @@ function _triggerWakeWord(matchedText) {
   playGestureSound('#7c6aef');
   showGestureToast({ icon: '🎙️', label: t('gesture.voiceActivated'), color: '#7c6aef' });
 
-  pauseWakeWord(); // stop monitoring
+  pauseWakeWord();
 
-  // Camera provides unified stream — no need to restart getUserMedia
-  // Just pause the monitor and start recording immediately
   setTimeout(() => {
     S.continuousMode = true;
     document.getElementById('continuous-mode').checked = true;
@@ -4697,9 +4766,78 @@ function _triggerWakeWord(matchedText) {
   }, 200);
 }
 
-function startWakeWordMonitor() {
+// ── Browser SpeechRecognition path (primary, <300ms) ──
+function _startBrowserWakeMonitor() {
+  if (wakeRecognition) return;
+
+  const indicator = document.getElementById('wake-indicator');
+  const label = document.getElementById('wake-label');
+  indicator.classList.add('listening');
+  label.textContent = t('wake.say');
+
+  try {
+    const recog = new _SpeechRecognition();
+    recog.continuous = true;
+    recog.interimResults = true;
+    recog.lang = navigator.language || 'zh-CN';
+    recog.maxAlternatives = 1;
+
+    recog.onresult = (ev) => {
+      if (!wakeWordActive || S.isRecording) return;
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const transcript = ev.results[i][0].transcript;
+        const matched = _matchWakeWord(transcript);
+        if (matched) {
+          _triggerWakeWord(matched);
+          return;
+        }
+      }
+    };
+
+    recog.onerror = (ev) => {
+      if (ev.error === 'aborted' || ev.error === 'no-speech') return;
+      console.warn('SpeechRecognition error:', ev.error);
+      if (ev.error === 'not-allowed') {
+        label.textContent = t('wake.micNeeded');
+        return;
+      }
+      // On other errors, fall back to server mode
+      _stopBrowserWakeMonitor();
+      if (wakeWordActive) {
+        _wakeMode = 'server';
+        console.log('Falling back to server STT wake monitor');
+        _startServerWakeMonitor();
+      }
+    };
+
+    recog.onend = () => {
+      if (wakeWordActive && !S.isRecording && _wakeMode === 'browser') {
+        try { recog.start(); } catch {}
+      }
+    };
+
+    recog.start();
+    wakeRecognition = recog;
+    _wakeMode = 'browser';
+    console.log('Wake word monitor started (browser SpeechRecognition) ✅');
+  } catch (e) {
+    console.warn('Browser SpeechRecognition failed, falling back:', e);
+    _wakeMode = 'server';
+    _startServerWakeMonitor();
+  }
+}
+
+function _stopBrowserWakeMonitor() {
+  if (wakeRecognition) {
+    try { wakeRecognition.abort(); } catch {}
+    wakeRecognition = null;
+  }
+}
+
+// ── Server STT fallback path (1.0s chunks, for browsers without SpeechRecognition) ──
+function _startServerWakeMonitor() {
   if (!S.mediaStream || !S.voiceWs || S.voiceWs.readyState !== 1) return;
-  if (_monitorProcessor) return; // already running
+  if (_monitorProcessor) return;
 
   const indicator = document.getElementById('wake-indicator');
   const label = document.getElementById('wake-label');
@@ -4719,7 +4857,6 @@ function startWakeWordMonitor() {
       if (!wakeWordActive || S.isRecording) return;
       const data = e.inputBuffer.getChannelData(0);
 
-      // Downsample to 16kHz
       let samples;
       if (ratio > 1.01) {
         const newLen = Math.floor(data.length / ratio);
@@ -4732,7 +4869,6 @@ function startWakeWordMonitor() {
 
       if (_monitorAccum.length >= chunkSamples) {
         const chunk = new Float32Array(_monitorAccum.splice(0, chunkSamples));
-        // Skip silent chunks
         let maxVal = 0;
         for (let i = 0; i < chunk.length; i += 16) if (Math.abs(chunk[i]) > maxVal) maxVal = Math.abs(chunk[i]);
         if (maxVal > 0.008 && S.voiceWs && S.voiceWs.readyState === 1) {
@@ -4749,41 +4885,49 @@ function startWakeWordMonitor() {
     _monitorCtx = audioCtx;
     _monitorSource = source;
     _monitorProcessor = processor;
-    console.log('Wake word monitor started (server STT) ✅');
+    _wakeMode = 'server';
+    console.log('Wake word monitor started (server STT, 1.0s chunks) ✅');
   } catch(e) {
     console.warn('Wake word monitor failed:', e);
     label.textContent = t('wake.error', {error: e.message});
   }
 }
 
-function stopWakeWordMonitor() {
+function _stopServerWakeMonitor() {
   if (_monitorProcessor) { try { _monitorProcessor.disconnect(); } catch {} _monitorProcessor = null; }
   if (_monitorSource) { try { _monitorSource.disconnect(); } catch {} _monitorSource = null; }
   if (_monitorCtx) { _monitorCtx.close().catch(() => {}); _monitorCtx = null; }
   _monitorAccum = [];
 }
 
-function startWakeWord() {
+function stopWakeWordMonitor() {
+  _stopBrowserWakeMonitor();
+  _stopServerWakeMonitor();
+  _wakeMode = 'none';
+}
+
+async function startWakeWord() {
   wakeWordActive = true;
   const indicator = document.getElementById('wake-indicator');
   const label = document.getElementById('wake-label');
   indicator.classList.remove('hidden');
   label.textContent = t('wake.starting');
 
-  // Need mic stream — use camera's if available, else request audio-only
-  if (S.mediaStream && S.mediaStream.getTracks().some(t => t.readyState === 'live')) {
-    startWakeWordMonitor();
+  if (!_wakeWordsCache.length) await _fetchWakeWords();
+
+  if (_hasBrowserSTT) {
+    _startBrowserWakeMonitor();
+  } else if (S.mediaStream && S.mediaStream.getTracks().some(t => t.readyState === 'live')) {
+    _startServerWakeMonitor();
   } else if (S.isCameraOn) {
     label.textContent = t('wake.waitingCam');
-    // Camera is on but stream not ready yet, retry
     setTimeout(startWakeWord, 500);
-    wakeWordActive = false; // prevent infinite recursion
+    wakeWordActive = false;
   } else {
-    // No camera — get audio-only stream for monitoring
     navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } })
       .then(stream => {
         S.mediaStream = stream;
-        startWakeWordMonitor();
+        _startServerWakeMonitor();
         startSnapDetect();
       })
       .catch(e => { label.textContent = t('wake.micNeeded'); });
@@ -4802,7 +4946,6 @@ function stopWakeWord() {
   stopWakeWordMonitor();
   stopSnapDetect();
   document.getElementById('wake-indicator').classList.add('hidden');
-  // Only release mic if camera isn't providing it
   if (!S.isRecording && !S.isCameraOn && S.mediaStream) {
     S.mediaStream.getTracks().forEach(t => t.stop());
     S.mediaStream = null;
@@ -4815,7 +4958,6 @@ function resumeWakeWord() {
   }
 }
 
-// Resume wake word after voice conversation ends
 const _origOnVoiceAudioDone = onVoiceAudioDone;
 onVoiceAudioDone = function() {
   const voiceVisible = isVoiceUIVisible();
@@ -4829,7 +4971,7 @@ onVoiceAudioDone = function() {
     }, 400);
   } else {
     closeVoiceOverlay();
-    if (wakeWordActive) setTimeout(startWakeWordMonitor, 400);
+    if (wakeWordActive) setTimeout(() => startWakeWord(), 400);
   }
 };
 
@@ -5118,13 +5260,98 @@ document.addEventListener('visibilitychange', () => {
 </script>
 
 <script>
-// PWA Service Worker registration
+// PWA: Service Worker + Install Prompt + Update Detection + Offline
+let _deferredInstall = null;
+
+// ── Offline / Online detection ──
+const _offlineBanner = document.getElementById('offline-banner');
+window.addEventListener('offline', () => {
+  if (_offlineBanner) _offlineBanner.classList.add('show');
+});
+window.addEventListener('online', () => {
+  if (_offlineBanner) _offlineBanner.classList.remove('show');
+  if (!S.voiceWs || S.voiceWs.readyState > 1) {
+    _wsRetryCount = 0;
+    connectVoiceWs();
+  }
+});
+if (!navigator.onLine && _offlineBanner) _offlineBanner.classList.add('show');
+
+// ── PWA Install ──
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstall = e;
+  const dismissed = sessionStorage.getItem('pwa_dismissed');
+  if (!dismissed) {
+    const bar = document.getElementById('pwa-install-bar');
+    if (bar) bar.classList.add('show');
+  }
+});
+
+const _pwaInstallBtn = document.getElementById('pwa-install-btn');
+const _pwaDismissBtn = document.getElementById('pwa-dismiss-btn');
+if (_pwaInstallBtn) {
+  _pwaInstallBtn.onclick = async () => {
+    if (_deferredInstall) {
+      _deferredInstall.prompt();
+      const result = await _deferredInstall.userChoice;
+      if (result.outcome === 'accepted') console.log('PWA installed');
+      _deferredInstall = null;
+    }
+    const bar = document.getElementById('pwa-install-bar');
+    if (bar) bar.classList.remove('show');
+  };
+}
+if (_pwaDismissBtn) {
+  _pwaDismissBtn.onclick = () => {
+    const bar = document.getElementById('pwa-install-bar');
+    if (bar) bar.classList.remove('show');
+    sessionStorage.setItem('pwa_dismissed', '1');
+  };
+}
+
+window.addEventListener('appinstalled', () => {
+  _deferredInstall = null;
+  const bar = document.getElementById('pwa-install-bar');
+  if (bar) bar.classList.remove('show');
+  showGestureToast({ icon: '✅', label: '应用已安装', color: '#10b981' });
+});
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then((reg) => console.log('SW registered:', reg.scope))
+      .then((reg) => {
+        console.log('SW registered:', reg.scope);
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          if (!newSW) return;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              _showUpdateBanner(reg);
+            }
+          });
+        });
+      })
       .catch((e) => console.warn('SW registration failed:', e));
   });
+}
+
+function _showUpdateBanner(reg) {
+  if (document.getElementById('pwa-update-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'pwa-update-banner';
+  banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;' +
+    'background:linear-gradient(135deg,#10b981,#34d399);color:#fff;padding:12px 20px;border-radius:14px;' +
+    'display:flex;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(16,185,129,.4);font-family:Inter,system-ui,sans-serif;' +
+    'animation:slideDown .4s ease-out;max-width:380px;width:calc(100% - 40px)';
+  banner.innerHTML = '<span style="font-size:22px">🔄</span>' +
+    '<div style="flex:1;font-size:13px;font-weight:500">新版本已就绪</div>' +
+    '<button onclick="this.parentElement.remove();location.reload()" style="padding:6px 16px;background:rgba(255,255,255,.2);' +
+    'color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">刷新</button>';
+  const style = document.createElement('style');
+  style.textContent = '@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+  document.head.appendChild(style);
+  document.body.appendChild(banner);
 }
 </script>
 
@@ -5573,21 +5800,13 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     const tog = document.getElementById('wxp-master-toggle');
     if (tog) tog.checked = !!d.enabled;
     document.getElementById('wxp-status-txt').textContent = d.enabled ? '运行中' : '已关闭';
-
-    // v2.0 三轨模式显示
-    const v2 = d.v2 || {};
-    const track = v2.active_track || d.monitor_mode || 'none';
-    const trackLabels = {db:'DB直读', wxauto:'wxauto', uia:'UIA', ocr:'OCR', none:'未连接'};
-    document.getElementById('wxp-mode-label').textContent = trackLabels[track] || track;
+    document.getElementById('wxp-mode-label').textContent =
+      d.monitor_mode === 'uia' ? 'UIA模式' : 'OCR模式';
 
     // 统计
     document.getElementById('wxp-stat-today').textContent = d.today_replied ?? 0;
     document.getElementById('wxp-stat-pending').textContent = d.pending_count ?? 0;
     document.getElementById('wxp-stat-total').textContent = d.total_replied ?? 0;
-
-    // 智能模式开关同步
-    const smartToggle = document.getElementById('wxp-smart-mode');
-    if (smartToggle) smartToggle.checked = d.smart_mode !== false;
 
     // 联系人列表
     wxpRenderContacts(d.contacts || {});
@@ -5597,9 +5816,6 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
 
     // 待审核
     wxpRenderReviews(d.reviews || []);
-
-    // 升级列表
-    wxpRefreshEscalations();
   }
 
   // ── 总开关 ──────────────────────────────────────────────────
@@ -5616,13 +5832,11 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
   // ── 保存全局配置 ────────────────────────────────────────────
   document.getElementById('wxp-save-config')?.addEventListener('click', async () => {
     const body = {
-      smart_mode: document.getElementById('wxp-smart-mode').checked,
       manual_review: document.getElementById('wxp-manual-review').checked,
       quiet_start: document.getElementById('wxp-quiet-start').value,
       quiet_end: document.getElementById('wxp-quiet-end').value,
       min_reply_delay: parseFloat(document.getElementById('wxp-delay-min').value),
       max_reply_delay: parseFloat(document.getElementById('wxp-delay-max').value),
-      batch_timeout: parseFloat(document.getElementById('wxp-batch-timeout')?.value || 4),
     };
     await fetch('/api/wechat/config', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -5739,72 +5953,18 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
   };
 
-  // ── 日志渲染（增强版：显示意图/情感标签）─────────────────────
+  // ── 日志渲染 ────────────────────────────────────────────────
   function wxpRenderLogs(logs) {
     const el = document.getElementById('wxp-logs-list');
     if (!logs.length) { el.innerHTML = '<div style="color:#8a9bb0;text-align:center;padding:8px">暂无记录</div>'; return; }
-    const modeColors = {chitchat:'#63b3ed',question:'#ffd700',request:'#f6ad55',complaint:'#fc8181',greeting:'#48bb78',sensitive:'#e53e3e'};
-    el.innerHTML = logs.reverse().map(l => {
-      const mode = l.mode || 'auto';
-      const intentMatch = mode.match(/^smart:(.+)/);
-      const intentBadge = intentMatch
-        ? `<span style="font-size:10px;padding:1px 5px;border-radius:4px;background:${modeColors[intentMatch[1]]||'#555'};color:#000;margin-right:4px">${intentMatch[1]}</span>`
-        : '';
-      return `
+    el.innerHTML = logs.reverse().map(l => `
       <div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px;align-items:flex-start">
         <span style="color:#8a9bb0;white-space:nowrap">${l.time}</span>
         <span style="color:#63b3ed">${l.contact}</span>
-        ${intentBadge}
         <span style="color:#aaa;flex:1">${l.incoming} → <span style="color:#e8f0fe">${l.reply}</span></span>
         <span style="color:${l.success?'#48bb78':'#fc8181'}">${l.success?'✓':'✗'}</span>
-      </div>`;
-    }).join('');
+      </div>`).join('');
   }
-
-  // ── 升级管理 ─────────────────────────────────────────────────
-  window.wxpRefreshEscalations = async function() {
-    try {
-      const r = await fetch('/api/wechat/escalations');
-      const d = await r.json();
-      const el = document.getElementById('wxp-escalation-list');
-      const items = d.items || [];
-      if (!items.length) {
-        el.innerHTML = '<div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无升级</div>';
-        return;
-      }
-      el.innerHTML = items.map(item => {
-        const emotionColors = {angry:'#fc8181',anxious:'#f6ad55',urgent:'#e53e3e',sad:'#63b3ed'};
-        const eColor = emotionColors[item.emotion] || '#ffd700';
-        return `
-        <div class="wxp-review-item" id="wxp-esc-${item.id}" style="border-color:${eColor}30;background:${eColor}08">
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-            <span style="font-size:12px;color:${eColor};font-weight:600">${item.contact}</span>
-            <span style="font-size:10px;padding:1px 5px;border-radius:4px;background:${eColor}30;color:${eColor}">${item.intent}/${item.emotion}</span>
-          </div>
-          <div style="font-size:12px;color:#8a9bb0;margin-bottom:2px">原因：${item.reason}</div>
-          <div style="font-size:13px;color:#aaa;margin-bottom:4px">💬 ${item.messages?.join(' | ') || ''}</div>
-          <div style="font-size:13px;color:#e8f0fe;margin-bottom:8px">🤖 AI草稿：${item.ai_draft || '(无)'}</div>
-          <div style="display:flex;gap:8px">
-            <button class="wxp-btn-primary" style="flex:1;padding:6px 0;font-size:12px"
-              onclick="wxpEscAction('${item.id}','send_draft')">发送AI草稿</button>
-            <button class="wxp-btn-secondary" style="flex:1;padding:6px 0;font-size:12px"
-              onclick="wxpEscAction('${item.id}','dismiss')">忽略</button>
-          </div>
-        </div>`;
-      }).join('');
-    } catch(e) {
-      console.warn('wxpRefreshEscalations:', e);
-    }
-  };
-
-  window.wxpEscAction = async function(id, action) {
-    await fetch(`/api/wechat/escalations/${id}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action})
-    });
-    document.getElementById(`wxp-esc-${id}`)?.remove();
-    showToast(action === 'dismiss' ? '已忽略' : '已发送');
-  };
 
   // ── SSE 实时推送（人工审核通知）───────────────────────────
   let _wxpEventSource = null;
@@ -5863,28 +6023,16 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
       const d = await r.json();
       if (!d.available) { el.textContent = '功能不可用（缺少依赖）'; return; }
       const s = d.stats || {};
-      const lines = [
+      el.textContent = [
         `运行状态: ${s.is_running ? '✅ 运行中' : '⏸ 已停止'}`,
         `读取模式: ${s.mode === 'uia' ? 'UIAutomation' : 'OCR截图'}`,
-      ];
-      // v2.0 三轨信息
-      if (s.v2_active_track) {
-        const trackNames = {db:'DB直读', wxauto:'wxauto后台', uia:'UIAutomation', ocr:'OCR截图'};
-        lines.push(`\n── v2.0 三轨融合 ──`);
-        lines.push(`活跃轨道: ${trackNames[s.v2_active_track] || s.v2_active_track}`);
-        lines.push(`适配器运行: ${s.v2_running ? '✅' : '⏸'}`);
-        lines.push(`总扫描次数: ${s.v2_scans ?? 0}`);
-        lines.push(`检测消息数: ${s.v2_messages ?? 0}`);
-        const tracks = s.v2_tracks || {};
-        for (const [name, info] of Object.entries(tracks)) {
-          const icon = info.available ? (info.healthy ? '✅' : '⚠️') : '❌';
-          lines.push(`  ${icon} ${name}: ${info.available ? `可用 (${info.success_rate})` : '不可用'}${info.error ? ' - ' + info.error : ''}`);
-        }
-      }
-      lines.push(`\n── 旧版监控器 ──`);
-      lines.push(`UIA扫描: ${s.uia_reads ?? 0}  OCR扫描: ${s.ocr_reads ?? 0}  UIA失败: ${s.uia_failures ?? 0}`);
-      lines.push(`检测消息: ${s.messages_detected ?? 0}`);
-      el.textContent = lines.join('\n');
+        `UIA扫描次数: ${s.uia_reads ?? 0}`,
+        `OCR扫描次数: ${s.ocr_reads ?? 0}`,
+        `UIA失败次数: ${s.uia_failures ?? 0}`,
+        `检测到消息数: ${s.messages_detected ?? 0}`,
+        `最后扫描: ${s.last_scan_time ? new Date(s.last_scan_time * 1000).toLocaleTimeString() : '未扫描'}`,
+        `最后扫描未读会话: ${s.last_scan_found ?? 0} 个`,
+      ].join('\n');
     } catch(e) {
       el.textContent = `加载失败: ${e.message}`;
     }
@@ -5905,42 +6053,26 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
         return;
       }
       const res = d.result;
-      const ver = d.version || 'v1';
-      const lines = [`读取引擎: ${ver === 'v2' ? 'v2.0 三轨融合' : 'v1.0 旧版'}`];
-
-      if (ver === 'v2') {
-        // v2.0 三轨结果
-        lines.push(`活跃轨道: ${res.active_track || 'none'}`);
-        lines.push(`微信运行: ${res.wechat_running ? '✅' : '❌'}`);
-        const tracks = res.tracks || {};
-        lines.push(`\n轨道状态:`);
-        for (const [name, info] of Object.entries(tracks)) {
-          lines.push(`  ${info.available ? '✅' : '❌'} ${name} (评分:${info.score})`);
-        }
-        const msgs = res.messages || [];
-        lines.push(`\n读取到 ${msgs.length} 条消息:`);
-        msgs.forEach((m, i) => {
-          lines.push(`  ${i+1}. [${m.source}][${m.is_mine ? '我' : m.sender || '对方'}][${m.msg_type}] ${m.content}`);
-        });
-      } else {
-        // v1.0 旧版结果
-        lines.push(`微信运行: ${res.wechat_running ? '✅ 是' : '❌ 否'}`);
-        lines.push(`UIA可用: ${res.uia_available ? '✅ 是' : '❌ 否'}`);
-        lines.push(`读取模式: ${res.mode}`);
-        if (res.window_info?.found) {
-          const wi = res.window_info;
-          lines.push(`窗口: ${wi.title} (${wi.rect?.width}×${wi.rect?.height})`);
-        }
-        lines.push(`\n未读会话 (${res.unread_sessions?.length ?? 0}):`);
-        (res.unread_sessions || []).forEach(s => {
-          lines.push(`  • ${s.contact} [${s.unread_count}条未读]`);
-        });
-        const chat = res.current_chat || {};
-        lines.push(`\n当前聊天: ${chat.contact || '(未识别)'}`);
-        (chat.messages || []).forEach((m, i) => {
-          lines.push(`  ${i+1}. [${m.is_mine ? '我' : m.sender || '对方'}][${m.msg_type}] ${m.content}`);
-        });
+      const lines = [
+        `微信运行: ${res.wechat_running ? '✅ 是' : '❌ 否'}`,
+        `UIA可用: ${res.uia_available ? '✅ 是' : '❌ 否（需安装 uiautomation）'}`,
+        `读取模式: ${res.mode}`,
+      ];
+      if (res.window_info?.found) {
+        const wi = res.window_info;
+        lines.push(`窗口标题: ${wi.title}`);
+        if (wi.rect) lines.push(`窗口大小: ${wi.rect.width} × ${wi.rect.height}`);
       }
+      lines.push(`\n未读会话 (${res.unread_sessions?.length ?? 0} 个):`);
+      (res.unread_sessions || []).forEach(s => {
+        lines.push(`  • ${s.contact} [${s.unread_count}条未读] ${s.is_group ? '(群聊)' : ''}`);
+      });
+      const chat = res.current_chat || {};
+      lines.push(`\n当前聊天窗口: ${chat.contact || '(未识别)'}`);
+      lines.push(`最新消息 (${chat.messages?.length ?? 0} 条):`);
+      (chat.messages || []).forEach((m, i) => {
+        lines.push(`  ${i+1}. [${m.is_mine ? '我' : m.sender || '对方'}][${m.msg_type}] ${m.content}`);
+      });
       result.textContent = lines.join('\n');
     } catch(e) {
       result.textContent = `请求失败: ${e.message}`;

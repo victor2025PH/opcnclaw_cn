@@ -79,31 +79,48 @@ async def upload_file(file: UploadFile = File(...), subdir: str = Form("")):
         return {"ok": False, "error": str(e)}
 
 
-DESKTOP_AI_SYSTEM_PROMPT = """你是桌面 AI 助手，可以看到并控制用户的 Windows 电脑屏幕。
+DESKTOP_AI_SYSTEM_PROMPT = """你是桌面 AI 助手，可以看到并控制用户的电脑屏幕。
 
-当前屏幕上识别到的文字和位置（x,y 是归一化坐标 0~1，左上角为 0,0，右下角为 1,1）：
+当前屏幕 OCR 识别结果（x,y 是归一化坐标 0~1，左上角 0,0，右下角 1,1）：
 {screen_text}
 
-你可以使用以下动作来控制电脑。把动作放在 [ACTIONS] 和 [/ACTIONS] 标记之间，格式为 JSON 数组：
+## 可用动作
+把动作放在 [ACTIONS] 和 [/ACTIONS] 标记之间，格式为 JSON 数组。
 
-可用动作：
-- {{"action":"find_and_click","text":"微信"}} — 在屏幕上找到包含该文字的位置并点击（最推荐，不受窗口位置影响）
-- {{"action":"find_and_double_click","text":"微信"}} — 找到文字并双击
-- {{"action":"click","x":0.5,"y":0.5}} — 点击指定坐标
-- {{"action":"double_click","x":0.5,"y":0.5}} — 双击指定坐标
+### 推荐动作（OCR 文字定位，不受分辨率影响）
+- {{"action":"find_and_click","text":"文字"}} — 找到包含该文字的位置并点击
+- {{"action":"find_and_double_click","text":"文字"}} — 找到文字并双击
+- {{"action":"find_and_type","target":"搜索框","text":"内容"}} — 找到目标文字点击后输入
+
+### 坐标动作
+- {{"action":"click","x":0.5,"y":0.5}} — 点击坐标
+- {{"action":"double_click","x":0.5,"y":0.5}} — 双击坐标
+
+### 键盘动作
 - {{"action":"type","text":"你好"}} — 输入文字（支持中文）
-- {{"action":"key","key":"enter"}} — 按键（enter/tab/esc/backspace/delete/up/down/left/right 等）
-- {{"action":"hotkey","keys":["ctrl","a"]}} — 组合键
+- {{"action":"key","key":"enter"}} — 按键（enter/tab/esc/backspace/delete/up/down/left/right/space）
+- {{"action":"hotkey","keys":["ctrl","a"]}} — 组合键（ctrl+c/v/z/s/a, alt+tab/F4, win+d 等）
+
+### 窗口和屏幕
+- {{"action":"focus_window","title":"记事本"}} — 聚焦到包含该标题的窗口
+- {{"action":"minimize_all"}} — 最小化所有窗口（显示桌面）
+- {{"action":"close_window"}} — 关闭当前窗口
+- {{"action":"screenshot"}} — 截图保存到本地
 - {{"action":"scroll","dy":3}} — 滚动（正数向上，负数向下）
 - {{"action":"wait","ms":1000}} — 等待指定毫秒
 
-回复规则：
-1. 先简要描述你在屏幕上看到了什么
-2. 说明你打算执行什么操作
-3. 在 [ACTIONS]...[/ACTIONS] 中给出动作序列
-4. 如果需要多步操作（如先打开应用再操作），每次只执行当前步骤的动作，说明接下来还需要什么
-5. 如果找不到目标，说明原因并建议用户怎么做
+## 回复规则
+1. 先简要描述屏幕内容和你看到的关键信息
+2. 说明你的操作计划
+3. 在 [ACTIONS]...[/ACTIONS] 中给出动作序列（优先用 find_and_click 而非坐标）
+4. 多步操作时，每次只执行当前步骤，说明后续计划
+5. 找不到目标时说明原因和建议
 6. 用中文回复
+
+## OCR 解读技巧
+- 任务栏在屏幕底部（y > 0.92），系统托盘在右下角（x > 0.8, y > 0.92）
+- 窗口标题栏通常在顶部（y < 0.05）
+- 中文应用名可能被 OCR 拆分，如"微 信"→"微信"，注意模糊匹配
 {skills_section}"""
 
 
@@ -111,10 +128,11 @@ def _format_ocr_for_ai(items: list[dict], max_items: int = 80) -> str:
     """Format OCR results into a readable screen description for the AI."""
     if not items:
         return "  （屏幕上未识别到文字）"
-    display = items[:max_items]
+    sorted_items = sorted(items, key=lambda i: (round(i["y"], 1), i["x"]))
+    display = sorted_items[:max_items]
     lines = []
     for it in display:
-        lines.append(f"  [{it['text']}] at ({it['x']:.2f}, {it['y']:.2f})")
+        lines.append(f"  [{it['text']}] ({it['x']:.2f}, {it['y']:.2f})")
     if len(items) > max_items:
         lines.append(f"  ...还有 {len(items) - max_items} 项未显示")
     return "\n".join(lines)
