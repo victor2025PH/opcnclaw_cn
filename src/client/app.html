@@ -852,6 +852,70 @@ body{
 .msg .msg-bookmark-btn:hover{opacity:1}
 .msg .msg-bookmark-btn.starred{opacity:1;color:#fbbf24}
 .msg.bookmarked{border-left:3px solid #fbbf24}
+
+/* ─── Message reactions ─── */
+.msg-reactions-bar{
+  display:flex;gap:2px;padding:4px 0 0;opacity:0;transition:opacity .15s;height:0;overflow:hidden;
+}
+.msg:hover .msg-reactions-bar,.msg-reactions-bar.has-reactions{opacity:1;height:auto}
+.msg-reaction{
+  background:none;border:1px solid transparent;border-radius:12px;padding:1px 6px;
+  font-size:14px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:2px;
+}
+.msg-reaction:hover{background:color-mix(in srgb, var(--accent) 12%, transparent);border-color:var(--border)}
+.msg-reaction.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 18%, transparent)}
+.msg-reaction .r-count{font-size:10px;color:var(--text-muted)}
+
+/* ─── Message translate button ─── */
+.msg .msg-translate-btn{
+  position:absolute;top:4px;right:28px;
+  background:none;border:none;font-size:13px;cursor:pointer;
+  opacity:0;transition:opacity .15s;padding:2px 4px;z-index:2;
+}
+.msg:hover .msg-translate-btn{opacity:.6}
+.msg .msg-translate-btn:hover{opacity:1}
+.msg-translation{
+  margin-top:8px;padding:8px 12px;border-radius:8px;font-size:12px;
+  background:color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  border-left:3px solid var(--accent);color:var(--text-secondary);
+  animation:fadeSlideIn .2s ease;
+}
+.msg-translation.loading{color:var(--text-muted);font-style:italic}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── Keyboard shortcut map ─── */
+#keymap-panel{
+  position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#keymap-panel.open{opacity:1;pointer-events:auto}
+.keymap-card{
+  background:var(--bg-secondary);border-radius:var(--radius-lg);
+  width:min(560px,92vw);max-height:80vh;display:flex;flex-direction:column;
+  border:1px solid var(--border-strong);box-shadow:0 12px 40px rgba(0,0,0,.4);
+}
+.keymap-header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.keymap-header h2{flex:1;font-size:15px;font-weight:700}
+.keymap-search{
+  width:100%;padding:8px 14px;margin:0;border:none;border-bottom:1px solid var(--border);
+  background:var(--bg-surface);color:var(--text-primary);font-size:12px;font-family:inherit;
+  outline:none;
+}
+.keymap-body{overflow-y:auto;padding:10px 18px 16px;-webkit-overflow-scrolling:touch}
+.keymap-group{margin-bottom:14px}
+.keymap-group-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.keymap-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px}
+.keymap-row.hidden{display:none}
+.keymap-keys{display:flex;gap:4px;flex-shrink:0}
+kbd{
+  display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;
+  font-family:'Consolas','Monaco',monospace;line-height:1.4;
+  background:var(--bg-surface);border:1px solid var(--border-strong);
+  box-shadow:0 1px 2px rgba(0,0,0,.15);color:var(--text-primary);
+  min-width:20px;text-align:center;
+}
+
 #bookmark-panel{
   position:fixed;top:0;right:0;bottom:0;width:min(360px,88vw);z-index:255;
   background:var(--bg-secondary);border-left:1px solid var(--border);
@@ -2600,6 +2664,18 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   </div>
 </div>
 
+<!-- ═══════════════ KEYBOARD SHORTCUT MAP ═══════════════ -->
+<div id="keymap-panel" role="dialog" aria-label="Keyboard Shortcuts">
+  <div class="keymap-card">
+    <div class="keymap-header">
+      <h2 data-i18n="keymap.title">⌨️ 快捷键</h2>
+      <button class="icon-btn" id="keymap-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <input class="keymap-search" id="keymap-search" data-i18n="keymap.searchPlaceholder" data-i18n-attr="placeholder" placeholder="搜索快捷键…">
+    <div class="keymap-body" id="keymap-body"></div>
+  </div>
+</div>
+
 <!-- ═══════════════ SKILL CHAIN EDITOR ═══════════════ -->
 <div id="skill-chain-panel" class="hidden" role="dialog" aria-label="Skill Chain Editor" tabindex="-1">
   <div class="sc-header">
@@ -2615,6 +2691,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   </div>
   <div class="sc-footer">
     <button class="mp-btn" id="sc-new" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--text-primary)" data-i18n="sc.new">+ 新建</button>
+    <button class="mp-btn" id="sc-templates" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--text-primary)" data-i18n="sc.templates">📦 模板</button>
     <button class="mp-btn" id="sc-save" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--accent)" data-i18n="sc.save">💾 保存</button>
     <button class="mp-btn mp-btn-install" id="sc-run" style="flex:1;font-size:11px;padding:5px 12px" data-i18n="sc.run">▶ 运行</button>
     <button class="mp-btn" id="sc-delete" style="font-size:11px;padding:5px 12px;background:var(--bg-surface);color:var(--error)" data-i18n="sc.delete">🗑️</button>
@@ -2850,6 +2927,11 @@ const I18N = {
     'sc.running':'运行中…','sc.done':'技能链执行完成','sc.saved':'已保存','sc.deleted':'已删除','sc.noNodes':'请先添加技能节点',
     'sc.dragHint':'从左侧拖入技能','sc.namePrompt':'技能链名称：',
     'sandbox.blocked':'插件请求被安全策略拒绝',
+    'reactions.title':'表情回应',
+    'translate.btn':'翻译','translate.loading':'翻译中…','translate.hide':'收起翻译','translate.error':'翻译失败',
+    'keymap.title':'⌨️ 快捷键','keymap.searchPlaceholder':'搜索快捷键…',
+    'keymap.general':'通用','keymap.voice':'语音','keymap.navigation':'导航','keymap.command':'命令','keymap.panels':'面板',
+    'sc.templates':'📦 模板','sc.tplTitle':'技能链模板','sc.tplUse':'使用',
     'settings.plugins':'插件','settings.noPlugins':'暂无已注册插件','settings.pluginHint':'通过 window.ocPlugins.register() 注册插件',
     'settings.advTheme':'高级主题','settings.accentColor':'强调色','settings.fontSize':'字体大小','settings.resetTheme':'重置为默认',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
@@ -3009,6 +3091,11 @@ const I18N = {
     'sc.running':'Running…','sc.done':'Skill chain complete','sc.saved':'Saved','sc.deleted':'Deleted','sc.noNodes':'Add skill nodes first',
     'sc.dragHint':'Drag skills from the left','sc.namePrompt':'Chain name:',
     'sandbox.blocked':'Plugin request blocked by security policy',
+    'reactions.title':'Reactions',
+    'translate.btn':'Translate','translate.loading':'Translating…','translate.hide':'Hide translation','translate.error':'Translation failed',
+    'keymap.title':'⌨️ Shortcuts','keymap.searchPlaceholder':'Search shortcuts…',
+    'keymap.general':'General','keymap.voice':'Voice','keymap.navigation':'Navigation','keymap.command':'Command','keymap.panels':'Panels',
+    'sc.templates':'📦 Templates','sc.tplTitle':'Skill Chain Templates','sc.tplUse':'Use',
     'settings.plugins':'Plugins','settings.noPlugins':'No registered plugins','settings.pluginHint':'Register via window.ocPlugins.register()',
     'settings.advTheme':'Advanced Theme','settings.accentColor':'Accent Color','settings.fontSize':'Font Size','settings.resetTheme':'Reset to Default',
     'shortcuts.perf':'Performance',
@@ -10371,9 +10458,272 @@ const ocAudioViz = (function() {
   }
   function close() { panel.classList.add('hidden'); }
 
+  // ── Skill Chain Templates ──
+  const TEMPLATES = [
+    { name: '截图+OCR+翻译', nameEn: 'Screenshot+OCR+Translate', desc: '截屏后识别文字并翻译', descEn: 'Capture screen, OCR text, then translate',
+      nodes: [{id:1,skillId:'screenshot',x:60,y:40},{id:2,skillId:'ocr_region',x:60,y:130},{id:3,skillId:'translate',x:60,y:220}],
+      edges: [{from:1,to:2},{from:2,to:3}] },
+    { name: '屏幕录制+总结', nameEn: 'Screen Record+Summarize', desc: '录制屏幕并总结内容', descEn: 'Record screen then summarize content',
+      nodes: [{id:1,skillId:'screen_record',x:60,y:40},{id:2,skillId:'summarize',x:60,y:130}],
+      edges: [{from:1,to:2}] },
+    { name: '文件整理', nameEn: 'File Organization', desc: '列出文件、分类并移动', descEn: 'List, categorize and move files',
+      nodes: [{id:1,skillId:'list_files',x:60,y:40},{id:2,skillId:'categorize',x:60,y:130},{id:3,skillId:'move_files',x:60,y:220}],
+      edges: [{from:1,to:2},{from:2,to:3}] },
+    { name: '系统诊断', nameEn: 'System Diagnostics', desc: '系统信息+磁盘检查+报告', descEn: 'System info, disk check, then report',
+      nodes: [{id:1,skillId:'sys_info',x:40,y:40},{id:2,skillId:'disk_check',x:150,y:40},{id:3,skillId:'report',x:95,y:140}],
+      edges: [{from:1,to:3},{from:2,to:3}] },
+  ];
+
+  function applyTemplate(tpl) {
+    const name = prompt(t('sc.namePrompt'), tpl.name);
+    if (!name) return;
+    _chains.push({ name, nodes: JSON.parse(JSON.stringify(tpl.nodes)), edges: JSON.parse(JSON.stringify(tpl.edges)) });
+    save();
+    _currentIdx = _chains.length - 1;
+    renderChainSelect();
+    loadChain(_currentIdx);
+    if (typeof ocToast !== 'undefined') ocToast.success(t('sc.saved'));
+  }
+
+  $('sc-templates')?.addEventListener('click', () => {
+    const isEn = (document.documentElement.lang || '').startsWith('en');
+    let html = `<div style="padding:12px"><h3 style="margin:0 0 10px;font-size:14px">${t('sc.tplTitle')}</h3>`;
+    TEMPLATES.forEach((tpl, i) => {
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;margin-bottom:6px;background:var(--bg-surface);border-radius:8px;border:1px solid var(--border)">
+        <div><div style="font-size:12px;font-weight:600">${isEn ? tpl.nameEn : tpl.name}</div><div style="font-size:10px;color:var(--text-muted)">${isEn ? tpl.descEn : tpl.desc} · ${tpl.nodes.length} nodes</div></div>
+        <button class="mp-btn mp-btn-install sc-tpl-use" data-idx="${i}" style="font-size:10px;padding:4px 10px">${t('sc.tplUse')}</button>
+      </div>`;
+    });
+    html += '</div>';
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-secondary);border-radius:12px;width:min(400px,90vw);max-height:70vh;overflow-y:auto;border:1px solid var(--border-strong)';
+    card.innerHTML = html;
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    card.querySelectorAll('.sc-tpl-use').forEach(btn => {
+      btn.addEventListener('click', () => { applyTemplate(TEMPLATES[parseInt(btn.dataset.idx)]); overlay.remove(); });
+    });
+  });
+
   $('sc-open')?.addEventListener('click', open);
   $('sc-back')?.addEventListener('click', close);
   window.addEventListener('resize', () => { if (!panel.classList.contains('hidden')) resizeCanvas(); });
+})();
+
+// MESSAGE REACTIONS
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const RKEY = 'oc-reactions';
+  const EMOJIS = ['👍','👎','🔥','😂','🤔','❤️'];
+  let _reactions = JSON.parse(localStorage.getItem(RKEY) || '{}');
+  function saveReactions() { localStorage.setItem(RKEY, JSON.stringify(_reactions)); }
+
+  function attachReactionBar(msgEl) {
+    if (msgEl.querySelector('.msg-reactions-bar')) return;
+    if (msgEl.classList.contains('user')) return;
+    const bar = document.createElement('div');
+    bar.className = 'msg-reactions-bar';
+    const idx = getMsgIndex(msgEl);
+    const current = _reactions[idx] || [];
+    if (current.length) bar.classList.add('has-reactions');
+    EMOJIS.forEach(em => {
+      const btn = document.createElement('button');
+      btn.className = 'msg-reaction' + (current.includes(em) ? ' active' : '');
+      const count = current.includes(em) ? 1 : 0;
+      btn.innerHTML = `${em}${count ? '<span class="r-count">1</span>' : ''}`;
+      btn.addEventListener('click', () => toggleReaction(msgEl, idx, em, btn, bar));
+      bar.appendChild(btn);
+    });
+    const textArea = msgEl.querySelector('.msg-text');
+    if (textArea) textArea.after(bar);
+    else msgEl.appendChild(bar);
+  }
+
+  function getMsgIndex(el) {
+    const msgs = $('messages');
+    if (!msgs) return 0;
+    return Array.from(msgs.querySelectorAll('.msg')).indexOf(el);
+  }
+
+  function toggleReaction(msgEl, idx, emoji, btn, bar) {
+    if (!_reactions[idx]) _reactions[idx] = [];
+    const arr = _reactions[idx];
+    const pos = arr.indexOf(emoji);
+    if (pos >= 0) {
+      arr.splice(pos, 1);
+      btn.classList.remove('active');
+      btn.innerHTML = emoji;
+    } else {
+      arr.push(emoji);
+      btn.classList.add('active');
+      btn.innerHTML = `${emoji}<span class="r-count">1</span>`;
+    }
+    if (arr.length) bar.classList.add('has-reactions');
+    else bar.classList.remove('has-reactions');
+    saveReactions();
+  }
+
+  const area = $('messages');
+  if (area) {
+    area.querySelectorAll('.msg').forEach(attachReactionBar);
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (n.nodeType === 1 && n.classList?.contains('msg')) attachReactionBar(n);
+      }));
+    }).observe(area, { childList: true });
+  }
+})();
+
+// MESSAGE INLINE TRANSLATE
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const _cache = {};
+
+  function attachTranslateBtn(msgEl) {
+    if (msgEl.querySelector('.msg-translate-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'msg-translate-btn';
+    btn.textContent = '🌐';
+    btn.title = t('translate.btn');
+    btn.addEventListener('click', () => handleTranslate(msgEl, btn));
+    msgEl.appendChild(btn);
+  }
+
+  async function handleTranslate(msgEl, btn) {
+    const existing = msgEl.querySelector('.msg-translation');
+    if (existing) { existing.remove(); return; }
+
+    const textEl = msgEl.querySelector('.msg-text');
+    if (!textEl) return;
+    const text = textEl.textContent.trim();
+    if (!text) return;
+
+    const idx = Array.from($('messages')?.querySelectorAll('.msg') || []).indexOf(msgEl);
+    if (_cache[idx]) { showTranslation(msgEl, _cache[idx]); return; }
+
+    const loading = document.createElement('div');
+    loading.className = 'msg-translation loading';
+    loading.textContent = t('translate.loading');
+    const insertAfter = msgEl.querySelector('.msg-reactions-bar') || textEl;
+    insertAfter.after(loading);
+
+    const lang = (document.documentElement.lang || 'zh-CN').startsWith('en') ? '中文' : 'English';
+    try {
+      const r = await fetch(getBaseUrl() + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: `You are a translator. Translate the following text to ${lang}. Output ONLY the translation, nothing else.` },
+            { role: 'user', content: text }
+          ],
+          stream: false
+        })
+      });
+      loading.remove();
+      if (!r.ok) throw new Error('API error');
+      const data = await r.json();
+      const translated = data.response || data.content || data.text || '';
+      _cache[idx] = translated;
+      showTranslation(msgEl, translated);
+    } catch (e) {
+      loading.remove();
+      if (typeof ocToast !== 'undefined') ocToast.error(t('translate.error'));
+    }
+  }
+
+  function showTranslation(msgEl, text) {
+    const div = document.createElement('div');
+    div.className = 'msg-translation';
+    div.textContent = text;
+    const insertAfter = msgEl.querySelector('.msg-reactions-bar') || msgEl.querySelector('.msg-text');
+    if (insertAfter) insertAfter.after(div);
+    else msgEl.appendChild(div);
+  }
+
+  const area = $('messages');
+  if (area) {
+    area.querySelectorAll('.msg').forEach(attachTranslateBtn);
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (n.nodeType === 1 && n.classList?.contains('msg')) attachTranslateBtn(n);
+      }));
+    }).observe(area, { childList: true });
+  }
+})();
+
+// KEYBOARD SHORTCUT MAP
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const panel = $('keymap-panel');
+  const body = $('keymap-body');
+  const search = $('keymap-search');
+  if (!panel || !body) return;
+
+  const SHORTCUTS = [
+    { group: 'keymap.general', items: [
+      { keys: ['Ctrl','F'], desc: '消息搜索 / Message Search' },
+      { keys: ['Escape'], desc: '关闭面板 / Close Panel' },
+      { keys: ['?'], desc: '快捷键帮助 / Shortcut Help' },
+      { keys: ['Ctrl','/'], desc: '快捷键帮助 / Shortcut Help' },
+    ]},
+    { group: 'keymap.voice', items: [
+      { keys: ['Space'], desc: '开始/停止录音 / Toggle Recording' },
+    ]},
+    { group: 'keymap.panels', items: [
+      { keys: ['Ctrl','M'], desc: '模型面板 / Model Panel' },
+      { keys: ['Ctrl','T'], desc: 'MCP 工具 / MCP Tools' },
+      { keys: ['Ctrl','P'], desc: '性能面板 / Performance' },
+      { keys: ['Ctrl','Shift','D'], desc: '切换主题 / Toggle Theme' },
+    ]},
+    { group: 'keymap.command', items: [
+      { keys: ['Ctrl','K'], desc: '命令面板 / Command Palette' },
+    ]},
+  ];
+
+  function render(filter) {
+    const lf = (filter || '').toLowerCase();
+    body.innerHTML = SHORTCUTS.map(g => {
+      const rows = g.items.map(it => {
+        const kbds = it.keys.map(k => `<kbd>${k}</kbd>`).join(' + ');
+        const vis = !lf || it.desc.toLowerCase().includes(lf) || it.keys.some(k => k.toLowerCase().includes(lf));
+        return `<div class="keymap-row${vis ? '' : ' hidden'}"><span>${it.desc}</span><span class="keymap-keys">${kbds}</span></div>`;
+      }).join('');
+      return `<div class="keymap-group"><div class="keymap-group-title">${t(g.group)}</div>${rows}</div>`;
+    }).join('');
+  }
+
+  function openKeymap() { render(''); panel.classList.add('open'); search.value = ''; search.focus(); }
+  function closeKeymap() { panel.classList.remove('open'); }
+
+  $('keymap-close')?.addEventListener('click', closeKeymap);
+  panel.addEventListener('click', (e) => { if (e.target === panel) closeKeymap(); });
+  search?.addEventListener('input', () => render(search.value));
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === '?' && !e.ctrlKey && !e.metaKey) || (e.key === '/' && (e.ctrlKey || e.metaKey))) {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      if (panel.classList.contains('open')) closeKeymap();
+      else openKeymap();
+    }
+    if (e.key === 'Escape' && panel.classList.contains('open')) { e.stopPropagation(); closeKeymap(); }
+  });
+
+  // Add a link in settings
+  const settingsGroups = document.querySelectorAll('.settings-group');
+  if (settingsGroups.length) {
+    const last = settingsGroups[settingsGroups.length - 1];
+    const grp = document.createElement('div');
+    grp.className = 'settings-group';
+    grp.innerHTML = `<h3 data-i18n="keymap.title">${t('keymap.title')}</h3><button class="mp-btn" id="keymap-open-btn" style="font-size:11px;padding:6px 14px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer">⌨️ ${t('keymap.title')} <kbd>?</kbd></button>`;
+    last.after(grp);
+    $('keymap-open-btn')?.addEventListener('click', openKeymap);
+  }
 })();
 
 // PLUGIN SYSTEM
