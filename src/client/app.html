@@ -705,6 +705,62 @@ body{
 :root[data-theme="light"] .mp-header,:root[data-theme="light"] .mcp-header{background:rgba(255,255,255,.9);border-color:rgba(0,0,0,.06)}
 :root[data-theme="light"] .settings-sheet{background:#fff;border-color:rgba(0,0,0,.06)}
 
+/* ─── Toast notification system ─── */
+.oc-toast-container{
+  position:fixed;top:calc(var(--header-h) + var(--safe-top) + 8px);right:16px;z-index:500;
+  display:flex;flex-direction:column;gap:6px;pointer-events:none;
+}
+.oc-toast{
+  pointer-events:auto;
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;min-width:240px;max-width:360px;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-md);
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+  font-size:13px;color:var(--text-primary);
+  animation:toastIn .25s ease-out;
+  transition:opacity .2s,transform .2s;
+}
+.oc-toast.removing{opacity:0;transform:translateX(30px)}
+.oc-toast-icon{font-size:16px;flex-shrink:0}
+.oc-toast-body{flex:1;line-height:1.4}
+.oc-toast-close{
+  background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;font-size:14px;line-height:1;
+}
+.oc-toast-close:hover{color:var(--text-primary)}
+.oc-toast.success{border-left:3px solid var(--success)}
+.oc-toast.error{border-left:3px solid var(--error)}
+.oc-toast.warning{border-left:3px solid var(--warning)}
+.oc-toast.info{border-left:3px solid var(--accent)}
+@keyframes toastIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+
+/* ─── Keyboard shortcuts help ─── */
+.shortcuts-overlay{
+  position:fixed;inset:0;z-index:600;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.shortcuts-overlay.open{opacity:1;pointer-events:auto}
+.shortcuts-card{
+  width:90%;max-width:380px;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);
+  padding:24px;
+}
+.shortcuts-card h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.shortcut-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.shortcut-row:last-child{border:none}
+.shortcut-keys{display:flex;gap:4px}
+.shortcut-key{
+  padding:2px 8px;background:var(--bg-surface);border:1px solid var(--border-strong);
+  border-radius:4px;font-size:11px;font-family:'Consolas','Monaco',monospace;color:var(--text-secondary);
+}
+
+/* ─── MCP tool favorites ─── */
+.mcp-tool-chip .fav-star{
+  font-size:10px;margin-left:2px;cursor:pointer;opacity:.4;transition:opacity .15s;
+}
+.mcp-tool-chip .fav-star:hover,.mcp-tool-chip .fav-star.starred{opacity:1;color:#fbbf24}
+
 /* ─── Press-hold mic hint ─── */
 .mic-hold-hint{
   position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
@@ -1268,11 +1324,11 @@ body{
 </div>
 
 <!-- ═══════════════ SETTINGS MODAL ═══════════════ -->
-<div id="settings-modal" class="hidden">
+<div id="settings-modal" class="hidden" role="dialog" aria-label="Settings">
   <div class="settings-sheet">
     <div class="settings-header">
       <h2 data-i18n="settings.title">设置</h2>
-      <button class="icon-btn" id="settings-close">
+      <button class="icon-btn" id="settings-close" aria-label="Close settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -1390,9 +1446,9 @@ body{
 </div>
 
 <!-- ═══════════════ MODEL MANAGEMENT ═══════════════ -->
-<div id="model-panel" class="hidden">
+<div id="model-panel" class="hidden" role="dialog" aria-label="Model Management" tabindex="-1">
   <div class="mp-header">
-    <button class="icon-btn" id="mp-back">
+    <button class="icon-btn" id="mp-back" aria-label="Close model panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     </button>
     <h2 data-i18n="model.title">📦 模型管理</h2>
@@ -1415,9 +1471,9 @@ body{
 </div>
 
 <!-- ═══════════════ MCP TOOLS PANEL ═══════════════ -->
-<div id="mcp-panel" class="hidden">
+<div id="mcp-panel" class="hidden" role="dialog" aria-label="MCP Tools" tabindex="-1">
   <div class="mcp-header">
-    <button class="icon-btn" id="mcp-back">
+    <button class="icon-btn" id="mcp-back" aria-label="Close MCP panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     </button>
     <h2 data-i18n="mcp.title">🔌 MCP 工具</h2>
@@ -1878,6 +1934,21 @@ body{
   <span class="emo-text" id="emo-text"></span>
 </div>
 
+<div class="oc-toast-container" id="oc-toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<div class="shortcuts-overlay" id="shortcuts-overlay" role="dialog" aria-label="Keyboard shortcuts" tabindex="-1">
+  <div class="shortcuts-card">
+    <h3 data-i18n="shortcuts.title">⌨️ 键盘快捷键</h3>
+    <div class="shortcut-row"><span data-i18n="shortcuts.models">模型管理</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">M</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.mcp">MCP 工具</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">T</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.theme">切换主题</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">Shift</span><span class="shortcut-key">D</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.voice">语音输入</span><div class="shortcut-keys"><span class="shortcut-key">Space</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.escape">关闭面板</span><div class="shortcut-keys"><span class="shortcut-key">Esc</span></div></div>
+    <div class="shortcut-row"><span data-i18n="shortcuts.help">此帮助</span><div class="shortcut-keys"><span class="shortcut-key">Ctrl</span><span class="shortcut-key">/</span></div></div>
+    <button class="mp-btn" id="shortcuts-close" style="margin-top:16px;width:100%;padding:8px;background:var(--bg-surface);color:var(--text-primary)" data-i18n="shortcuts.close">关闭</button>
+  </div>
+</div>
+
 <!-- Fullscreen Button -->
 <button class="fullscreen-btn hidden" id="fullscreen-btn" data-i18n="fullscreen.toggle" data-i18n-attr="title" title="切换全屏">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
@@ -2016,6 +2087,13 @@ const I18N = {
     'mcp.toolRun':'▶ 调用','mcp.toolRunning':'调用中…','mcp.toolClose':'关闭','mcp.rawJson':'原始 JSON',
     'mcp.noParams':'此工具无需参数','mcp.jsonError':'⚠️ JSON 参数格式错误',
     'mic.holdHint':'长按说话，松开结束',
+    'toast.installOk':'模型 {id} 安装成功','toast.installFail':'模型 {id} 安装失败',
+    'toast.verifyFail':'模型 {id} 验证失败，可能无法导入','toast.uninstallOk':'模型 {id} 已卸载',
+    'toast.cancelled':'安装已取消','toast.batchDone':'批量安装完成: {n} 个模型',
+    'shortcuts.title':'⌨️ 键盘快捷键','shortcuts.models':'模型管理','shortcuts.mcp':'MCP 工具',
+    'shortcuts.theme':'切换主题','shortcuts.voice':'语音输入','shortcuts.escape':'关闭面板',
+    'shortcuts.help':'此帮助','shortcuts.close':'关闭',
+    'mcp.fav':'收藏','mcp.unfav':'取消收藏',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
     'desktop.ai.clicking':'正在点击','desktop.ai.typing':'正在输入',
@@ -2134,6 +2212,13 @@ const I18N = {
     'mcp.toolRun':'▶ Call','mcp.toolRunning':'Calling…','mcp.toolClose':'Close','mcp.rawJson':'Raw JSON',
     'mcp.noParams':'No parameters needed','mcp.jsonError':'⚠️ Invalid JSON parameters',
     'mic.holdHint':'Hold to talk, release to send',
+    'toast.installOk':'Model {id} installed','toast.installFail':'Model {id} install failed',
+    'toast.verifyFail':'Model {id} verify failed — may not import','toast.uninstallOk':'Model {id} uninstalled',
+    'toast.cancelled':'Installation cancelled','toast.batchDone':'Batch complete: {n} models',
+    'shortcuts.title':'⌨️ Keyboard Shortcuts','shortcuts.models':'Model Manager','shortcuts.mcp':'MCP Tools',
+    'shortcuts.theme':'Toggle Theme','shortcuts.voice':'Voice Input','shortcuts.escape':'Close Panel',
+    'shortcuts.help':'This Help','shortcuts.close':'Close',
+    'mcp.fav':'Favorite','mcp.unfav':'Unfavorite',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
     'desktop.ai.placeholder':'Type desktop command (e.g. open WeChat, send message)...',
     'desktop.ai.clicking':'Clicking','desktop.ai.typing':'Typing',
@@ -6284,6 +6369,7 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
       if (btn) await installModel(ids[i], btn);
     }
     status.textContent = `✓ 队列完成: ${ids.length} 个模型`;
+    if (typeof ocToast !== 'undefined') ocToast.success('批量安装完成: ' + ids.length + ' 个模型');
     $('mp-batch-install').disabled = false;
     _batchSelected.clear();
     updateBatchBar();
@@ -6332,6 +6418,7 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
       btnEl.disabled = false;
       cancelBtn.classList.add('hidden');
       fill.style.width = '0%';
+      if (typeof ocToast !== 'undefined') ocToast.info('安装已取消');
       setTimeout(() => { if (progBar.parentNode) progBar.remove(); }, 1500);
     };
 
@@ -6360,21 +6447,26 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
               cancelBtn.classList.add('hidden');
               if (ev.success) {
                 btnEl.textContent = '验证中…';
+                let verifyOk = true;
                 try {
                   const chk = await fetch(getBaseUrl() + `/api/models/${id}/check`);
                   const chkD = await chk.json();
                   if (!chkD.installed) {
+                    verifyOk = false;
                     const warn = document.createElement('div');
                     warn.style.cssText = 'font-size:11px;color:var(--warning);margin-top:4px';
                     warn.textContent = '⚠️ 安装完成但验证失败，模块可能无法导入';
                     card.appendChild(warn);
+                    if (typeof ocToast !== 'undefined') ocToast.warning('模型 ' + id + ' 验证失败');
                   }
                 } catch {}
+                if (verifyOk && typeof ocToast !== 'undefined') ocToast.success('模型 ' + id + ' 安装成功');
                 _modelsLoaded = false;
                 await loadModels();
               } else {
                 btnEl.textContent = '安装失败';
                 btnEl.disabled = false;
+                if (typeof ocToast !== 'undefined') ocToast.error('模型 ' + id + ' 安装失败');
               }
             }
           } catch {}
@@ -6394,6 +6486,7 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
     if (!confirm('确定要卸载此模型？')) return;
     try {
       await fetch(getBaseUrl() + `/api/models/${id}/uninstall`, { method: 'POST' });
+      if (typeof ocToast !== 'undefined') ocToast.success('模型 ' + id + ' 已卸载');
       _modelsLoaded = false;
       await loadModels();
     } catch(e) { console.warn('uninstall:', e); }
@@ -6468,6 +6561,28 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
 
   let _toolsData = [];
   let _activeToolName = null;
+  let _favTools = JSON.parse(localStorage.getItem('oc-mcp-favs') || '[]');
+
+  function saveFavs() { localStorage.setItem('oc-mcp-favs', JSON.stringify(_favTools)); }
+
+  function toggleFav(name, starEl) {
+    const idx = _favTools.indexOf(name);
+    if (idx >= 0) { _favTools.splice(idx, 1); starEl.classList.remove('starred'); starEl.textContent = '☆'; }
+    else { _favTools.push(name); starEl.classList.add('starred'); starEl.textContent = '★'; }
+    saveFavs();
+    reorderToolChips();
+  }
+
+  function reorderToolChips() {
+    const list = $('mcp-tools-list');
+    const chips = [...list.querySelectorAll('.mcp-tool-chip')];
+    chips.sort((a, b) => {
+      const aFav = _favTools.includes(a.dataset.tool) ? 0 : 1;
+      const bFav = _favTools.includes(b.dataset.tool) ? 0 : 1;
+      return aFav - bFav;
+    });
+    chips.forEach(c => list.appendChild(c));
+  }
 
   async function loadTools() {
     try {
@@ -6483,11 +6598,26 @@ if (!document.getElementById('chat-page')?.classList.contains('hidden')) {
         return;
       }
       noTools.classList.add('hidden');
-      list.innerHTML = _toolsData.map(t =>
-        `<span class="mcp-tool-chip" data-tool="${t.name}" title="${(t.description || t.name).replace(/"/g,'&quot;')}">⚙️ ${t.name}</span>`
-      ).join('');
+      const sorted = [..._toolsData].sort((a, b) => {
+        const af = _favTools.includes(a.name) ? 0 : 1;
+        const bf = _favTools.includes(b.name) ? 0 : 1;
+        return af - bf;
+      });
+      list.innerHTML = sorted.map(t => {
+        const isFav = _favTools.includes(t.name);
+        return `<span class="mcp-tool-chip" data-tool="${t.name}" title="${(t.description || t.name).replace(/"/g,'&quot;')}">⚙️ ${t.name}<span class="fav-star ${isFav ? 'starred' : ''}" data-fav="${t.name}">${isFav ? '★' : '☆'}</span></span>`;
+      }).join('');
       list.querySelectorAll('.mcp-tool-chip').forEach(chip => {
-        chip.addEventListener('click', () => openToolDrawer(chip.dataset.tool));
+        chip.addEventListener('click', (e) => {
+          if (e.target.classList.contains('fav-star')) return;
+          openToolDrawer(chip.dataset.tool);
+        });
+      });
+      list.querySelectorAll('.fav-star').forEach(star => {
+        star.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleFav(star.dataset.fav, star);
+        });
       });
     } catch(e) {
       $('mcp-no-tools').classList.remove('hidden');
@@ -6852,6 +6982,147 @@ function showEmotionBadge(emotion, dominant) {
       } catch {}
     });
   });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// TOAST NOTIFICATION SYSTEM
+// ══════════════════════════════════════════════════════════════
+const ocToast = (function() {
+  const container = document.getElementById('oc-toast-container');
+  const MAX = 5;
+
+  function show(message, type, duration) {
+    type = type || 'info';
+    duration = duration || 4000;
+    if (!container) return;
+    while (container.children.length >= MAX) container.removeChild(container.firstChild);
+    const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+    const el = document.createElement('div');
+    el.className = 'oc-toast ' + type;
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `<span class="oc-toast-icon">${icons[type] || icons.info}</span><span class="oc-toast-body">${message}</span><button class="oc-toast-close" aria-label="Dismiss">&times;</button>`;
+    el.querySelector('.oc-toast-close').addEventListener('click', () => dismiss(el));
+    container.appendChild(el);
+    const timer = setTimeout(() => dismiss(el), duration);
+    el._timer = timer;
+    return el;
+  }
+
+  function dismiss(el) {
+    if (!el || !el.parentNode) return;
+    clearTimeout(el._timer);
+    el.classList.add('removing');
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 250);
+  }
+
+  return { show, success: (m, d) => show(m, 'success', d), error: (m, d) => show(m, 'error', d), warning: (m, d) => show(m, 'warning', d), info: (m, d) => show(m, 'info', d) };
+})();
+
+// ══════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const shortcuts = document.getElementById('shortcuts-overlay');
+  const closeBtn = document.getElementById('shortcuts-close');
+
+  function toggleShortcuts() {
+    shortcuts.classList.toggle('open');
+    if (shortcuts.classList.contains('open')) shortcuts.focus();
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', () => shortcuts.classList.remove('open'));
+  shortcuts?.addEventListener('click', (e) => { if (e.target === shortcuts) shortcuts.classList.remove('open'); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
+
+    if (e.key === 'Escape') {
+      if (shortcuts.classList.contains('open')) { shortcuts.classList.remove('open'); return; }
+      const panels = ['model-panel', 'mcp-panel', 'settings-modal', 'shortcuts-overlay'];
+      for (const id of panels) {
+        const p = document.getElementById(id);
+        if (p && !p.classList.contains('hidden') && !p.classList.contains('open') === false) {
+          p.classList.add('hidden'); return;
+        }
+        if (p && p.classList.contains('open')) { p.classList.remove('open'); return; }
+      }
+      const mp = document.getElementById('model-panel');
+      if (mp && !mp.classList.contains('hidden')) { mp.classList.add('hidden'); return; }
+      const mcp = document.getElementById('mcp-panel');
+      if (mcp && !mcp.classList.contains('hidden')) { mcp.classList.add('hidden'); return; }
+      const sm = document.getElementById('settings-modal');
+      if (sm && !sm.classList.contains('hidden')) { sm.classList.add('hidden'); return; }
+    }
+
+    if (e.ctrlKey && !e.shiftKey && e.key === 'm') {
+      e.preventDefault();
+      const mp = document.getElementById('model-panel');
+      if (mp.classList.contains('hidden')) { mp.classList.remove('hidden'); mp.focus(); }
+      else mp.classList.add('hidden');
+    }
+
+    if (e.ctrlKey && !e.shiftKey && e.key === 't') {
+      e.preventDefault();
+      const mcp = document.getElementById('mcp-panel');
+      if (mcp.classList.contains('hidden')) { mcp.classList.remove('hidden'); mcp.focus(); }
+      else mcp.classList.add('hidden');
+    }
+
+    if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+      e.preventDefault();
+      const sel = document.getElementById('theme-select');
+      if (sel) {
+        const order = ['dark', 'light', 'auto'];
+        const cur = sel.value;
+        sel.value = order[(order.indexOf(cur) + 1) % order.length];
+        sel.dispatchEvent(new Event('change'));
+        ocToast.info('🎨 ' + sel.options[sel.selectedIndex].text);
+      }
+    }
+
+    if (e.ctrlKey && e.key === '/') {
+      e.preventDefault();
+      toggleShortcuts();
+    }
+
+    if (e.key === ' ' && !e.ctrlKey) {
+      const chatPage = document.getElementById('chat-page');
+      if (chatPage && !chatPage.classList.contains('hidden')) {
+        const overlay = document.getElementById('voice-overlay');
+        if (overlay && overlay.classList.contains('hidden')) {
+          e.preventDefault();
+          if (typeof startVoiceRecording === 'function') startVoiceRecording();
+        }
+      }
+    }
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// FOCUS MANAGEMENT (a11y)
+// ══════════════════════════════════════════════════════════════
+(function() {
+  let _prevFocus = null;
+
+  function trapFocus(panelId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    const obs = new MutationObserver(() => {
+      const isVisible = !panel.classList.contains('hidden');
+      if (isVisible) {
+        _prevFocus = document.activeElement;
+        panel.focus();
+      } else if (_prevFocus) {
+        _prevFocus.focus();
+        _prevFocus = null;
+      }
+    });
+    obs.observe(panel, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  trapFocus('model-panel');
+  trapFocus('mcp-panel');
+  trapFocus('settings-modal');
 })();
 
 // ══════════════════════════════════════════════════════════════
