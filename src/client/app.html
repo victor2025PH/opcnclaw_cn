@@ -97,6 +97,21 @@ body{
 .status-dot.offline,.status-dot.disconnected{background:var(--error)}
 .status-dot.connecting{background:var(--warning);animation:blink 1s infinite}
 .status-dot.http-mode{background:#4fc3f7}
+.ws-latency-badge{
+  font-size:10px;font-variant-numeric:tabular-nums;padding:1px 6px;
+  border-radius:8px;background:var(--bg-surface);color:var(--text-muted);
+  border:1px solid var(--border);margin-left:4px;transition:color .3s,border-color .3s;
+}
+.ws-latency-badge.q-excellent{color:#22c55e;border-color:#22c55e}
+.ws-latency-badge.q-good{color:#84cc16;border-color:#84cc16}
+.ws-latency-badge.q-fair{color:#f59e0b;border-color:#f59e0b}
+.ws-latency-badge.q-poor{color:#ef4444;border-color:#ef4444}
+.ws-reconnect-bar{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  padding:6px 16px;text-align:center;font-size:12px;font-weight:600;
+  background:var(--warning);color:#000;transform:translateY(-100%);transition:transform .3s;
+}
+.ws-reconnect-bar.visible{transform:translateY(0)}
 .header-title{font-size:16px;font-weight:600}
 .header-right{display:flex;align-items:center;gap:4px}
 .icon-btn{
@@ -826,6 +841,55 @@ body{
   font-size:11px;cursor:pointer;flex-shrink:0;
 }
 
+/* ─── Notification center ─── */
+#notif-panel{
+  position:fixed;top:0;right:0;bottom:0;width:min(340px,85vw);z-index:250;
+  background:var(--bg-secondary);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .25s;
+}
+#notif-panel.open{transform:translateX(0)}
+.notif-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.notif-header h3{flex:1;font-size:15px;font-weight:700;margin:0}
+.notif-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.notif-item{
+  padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;
+  display:flex;gap:8px;align-items:flex-start;transition:background .15s;cursor:pointer;
+}
+.notif-item:hover{background:var(--bg-surface-hover)}
+.notif-item.unread{background:color-mix(in srgb, var(--accent) 6%, transparent)}
+.notif-item .notif-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.notif-item .notif-body{flex:1}
+.notif-item .notif-msg{color:var(--text-primary);line-height:1.4}
+.notif-item .notif-time{font-size:10px;color:var(--text-muted);margin-top:2px}
+.notif-empty{padding:40px 20px;text-align:center;color:var(--text-muted);font-size:13px}
+.notif-bell{position:relative}
+.notif-badge{
+  position:absolute;top:2px;right:2px;min-width:14px;height:14px;
+  border-radius:7px;background:var(--error);color:#fff;font-size:9px;
+  display:flex;align-items:center;justify-content:center;padding:0 3px;
+  font-weight:700;pointer-events:none;
+}
+.notif-badge.hidden{display:none}
+
+/* ─── Header drag sort ─── */
+.header-right.drag-active .icon-btn{cursor:grab;transition:transform .15s}
+.header-right .icon-btn.dragging{opacity:.4;transform:scale(.85)}
+.header-right .icon-btn.drag-over{transform:scale(1.15);filter:brightness(1.3)}
+
+/* ─── Model dependency graph ─── */
+.dep-graph-container{margin-top:12px;padding:12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md)}
+.dep-graph-container h4{font-size:13px;font-weight:600;margin:0 0 10px}
+.dep-node{
+  display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
+  border-radius:16px;font-size:11px;margin:3px;border:1px solid var(--border);
+  background:var(--bg-surface);transition:all .2s;
+}
+.dep-node.installed{border-color:var(--success);color:var(--success)}
+.dep-node.missing{border-color:var(--error);color:var(--error)}
+.dep-node.highlight{background:color-mix(in srgb, var(--accent) 15%, transparent);border-color:var(--accent);font-weight:600}
+.dep-arrow{color:var(--text-muted);font-size:10px;margin:0 2px}
+
 /* ─── Command Palette ─── */
 .cmd-palette-overlay{
   position:fixed;inset:0;z-index:700;
@@ -1297,6 +1361,7 @@ body{
   <header class="chat-header">
     <div class="header-left">
       <div class="status-dot" id="status-dot"></div>
+      <span class="ws-latency-badge" id="ws-latency-badge" title="WebSocket RTT">—</span>
       <span class="header-title" data-i18n="header.title">OpenClaw AI</span>
     </div>
     <div class="header-right">
@@ -1324,6 +1389,10 @@ body{
       </button>
       <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+      <button class="icon-btn notif-bell" id="notif-toggle" title="通知">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
       <button class="icon-btn" id="settings-toggle" data-i18n="header.settings" data-i18n-attr="title" title="设置" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -1600,7 +1669,15 @@ body{
       <button class="mp-btn mp-btn-install" id="mp-batch-install" style="padding:6px 16px;font-size:12px" data-i18n="model.batchInstall">批量安装</button>
       <button class="mp-btn mp-btn-cancel" id="mp-batch-clear" style="padding:6px 12px;font-size:12px" data-i18n="model.batchCancel">取消</button>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="mp-btn" id="mp-view-list" style="flex:1;font-size:11px;padding:5px 10px;background:var(--accent);color:#fff" data-i18n="model.viewList">📋 列表</button>
+      <button class="mp-btn" id="mp-view-deps" style="flex:1;font-size:11px;padding:5px 10px;background:var(--bg-surface);color:var(--text-secondary)" data-i18n="model.viewDeps">🔗 依赖关系</button>
+    </div>
     <div id="mp-models-list"></div>
+    <div id="mp-dep-graph" class="dep-graph-container" style="display:none">
+      <h4 data-i18n="model.depTitle">模型依赖关系</h4>
+      <canvas id="mp-dep-canvas" width="400" height="300" style="width:100%;border-radius:6px;background:var(--bg-primary)"></canvas>
+    </div>
     <div id="mp-queue-status" class="mp-queue-progress" style="display:none"></div>
   </div>
 </div>
@@ -2133,6 +2210,22 @@ body{
   </div>
 </div>
 
+<!-- ═══════════════ WS RECONNECT BAR ═══════════════ -->
+<div class="ws-reconnect-bar" id="ws-reconnect-bar"></div>
+
+<!-- ═══════════════ NOTIFICATION CENTER ═══════════════ -->
+<div id="notif-panel" role="dialog" aria-label="Notifications">
+  <div class="notif-header">
+    <h3 data-i18n="notif.title">🔔 通知</h3>
+    <button class="mp-btn" id="notif-read-all" style="font-size:10px;padding:3px 8px;background:var(--bg-surface);color:var(--text-secondary)" data-i18n="notif.readAll">全部已读</button>
+    <button class="mp-btn" id="notif-clear-all" style="font-size:10px;padding:3px 8px;background:var(--bg-surface);color:var(--error)" data-i18n="notif.clearAll">清空</button>
+    <button class="icon-btn" id="notif-close" aria-label="Close notifications" style="font-size:14px">✕</button>
+  </div>
+  <div class="notif-list" id="notif-list">
+    <div class="notif-empty" data-i18n="notif.empty">暂无通知</div>
+  </div>
+</div>
+
 <!-- ═══════════════ COMMAND PALETTE ═══════════════ -->
 <div class="cmd-palette-overlay" id="cmd-overlay" role="dialog" aria-label="Command Palette">
   <div class="cmd-palette">
@@ -2314,6 +2407,9 @@ const I18N = {
     'settings.dataTitle':'数据','settings.export':'📤 导出设置','settings.import':'📥 导入设置','settings.dataHint':'导出/导入主题、收藏、历史等本地设置',
     'settings.exportOk':'设置已导出','settings.importOk':'设置已导入，页面将刷新','settings.importFail':'导入失败：无效的设置文件',
     'cmd.placeholder':'输入命令…','cmd.empty':'无匹配结果','cmd.recent':'最近使用',
+    'ws.excellent':'优秀','ws.good':'良好','ws.fair':'一般','ws.poor':'较差','ws.reconnecting':'重新连接中… {s}s','ws.degraded':'连接不稳定，部分功能可能受影响',
+    'notif.title':'🔔 通知','notif.readAll':'全部已读','notif.clearAll':'清空','notif.empty':'暂无通知',
+    'model.viewList':'📋 列表','model.viewDeps':'🔗 依赖关系','model.depTitle':'模型依赖关系','model.depMissing':'缺少前置依赖','model.depOk':'依赖已就绪',
     'desktop.title':'远程桌面','desktop.gestureCtrl':'手势控制',
     'desktop.ai.placeholder':'输入桌面指令（如：打开微信、给张三发消息）...',
     'desktop.ai.clicking':'正在点击','desktop.ai.typing':'正在输入',
@@ -2450,6 +2546,9 @@ const I18N = {
     'settings.dataTitle':'Data','settings.export':'📤 Export Settings','settings.import':'📥 Import Settings','settings.dataHint':'Export/import theme, favorites, history and other local settings',
     'settings.exportOk':'Settings exported','settings.importOk':'Settings imported, page will reload','settings.importFail':'Import failed: invalid settings file',
     'cmd.placeholder':'Type a command…','cmd.empty':'No matches','cmd.recent':'Recently used',
+    'ws.excellent':'Excellent','ws.good':'Good','ws.fair':'Fair','ws.poor':'Poor','ws.reconnecting':'Reconnecting… {s}s','ws.degraded':'Unstable connection, some features may be affected',
+    'notif.title':'🔔 Notifications','notif.readAll':'Mark all read','notif.clearAll':'Clear all','notif.empty':'No notifications',
+    'model.viewList':'📋 List','model.viewDeps':'🔗 Dependencies','model.depTitle':'Model Dependencies','model.depMissing':'Missing prerequisites','model.depOk':'Dependencies ready',
     'shortcuts.perf':'Performance',
     'desktop.title':'Remote Desktop','desktop.gestureCtrl':'Gesture control',
     'desktop.ai.placeholder':'Type desktop command (e.g. open WeChat, send message)...',
@@ -3106,7 +3205,11 @@ function connectVoiceWs() {
   S.voiceWs.onopen = () => {
     console.log('Voice WS connected');
     _wsRetryCount = 0;
+    S._wsHighLatencyStreak = 0;
     dom.statusDot.className = 'status-dot';
+    const rbar = document.getElementById('ws-reconnect-bar');
+    if (rbar) rbar.classList.remove('visible');
+    if (S._reconnectCountdown) { clearInterval(S._reconnectCountdown); S._reconnectCountdown = null; }
     if (S._wsPingInterval) clearInterval(S._wsPingInterval);
     S._wsPingInterval = setInterval(() => {
       if (S.voiceWs?.readyState === 1) {
@@ -3128,11 +3231,26 @@ function connectVoiceWs() {
     console.log('Voice WS closed, code:', ev.code, 'reason:', ev.reason);
     S.voiceWs = null;
     if (S._wsPingInterval) { clearInterval(S._wsPingInterval); S._wsPingInterval = null; }
+    const badge = document.getElementById('ws-latency-badge');
+    if (badge) { badge.textContent = '—'; badge.className = 'ws-latency-badge'; }
     _wsRetryCount++;
     if (_wsRetryCount <= 8) {
       dom.statusDot.className = 'status-dot disconnected';
       const delay = Math.min(1000 * Math.pow(1.5, _wsRetryCount - 1), 15000);
       console.log(`WS reconnect in ${Math.round(delay)}ms (attempt ${_wsRetryCount})`);
+      // Show reconnect countdown bar
+      const rbar = document.getElementById('ws-reconnect-bar');
+      if (rbar) {
+        let remaining = Math.ceil(delay / 1000);
+        rbar.textContent = t('ws.reconnecting').replace('{s}', remaining);
+        rbar.classList.add('visible');
+        if (S._reconnectCountdown) clearInterval(S._reconnectCountdown);
+        S._reconnectCountdown = setInterval(() => {
+          remaining--;
+          if (remaining <= 0) { clearInterval(S._reconnectCountdown); S._reconnectCountdown = null; rbar.classList.remove('visible'); }
+          else rbar.textContent = t('ws.reconnecting').replace('{s}', remaining);
+        }, 1000);
+      }
       _wsReconnectTimer = setTimeout(connectVoiceWs, delay);
     } else {
       console.log('WS failed 8 times, switching to HTTP voice mode');
@@ -3160,6 +3278,19 @@ function handleVoiceMessage(msg) {
     const latency = Math.round(performance.now() - S._pingTs);
     S._pingTs = null;
     if (typeof ocPerf !== 'undefined') ocPerf.setWsLatency(latency);
+    // Update latency badge
+    const badge = document.getElementById('ws-latency-badge');
+    if (badge) {
+      badge.textContent = latency + 'ms';
+      const q = latency < 100 ? 'excellent' : latency < 300 ? 'good' : latency < 1000 ? 'fair' : 'poor';
+      badge.className = 'ws-latency-badge q-' + q;
+    }
+    // Degradation warning on 3 consecutive high-latency pings
+    if (!S._wsHighLatencyStreak) S._wsHighLatencyStreak = 0;
+    if (latency >= 1000) { S._wsHighLatencyStreak++; } else { S._wsHighLatencyStreak = 0; }
+    if (S._wsHighLatencyStreak === 3) {
+      if (typeof ocToast !== 'undefined') ocToast.warning(t('ws.degraded'));
+    }
     return;
   }
   if (typeof ocPerf !== 'undefined') {
@@ -7288,7 +7419,13 @@ const ocToast = (function() {
     setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 250);
   }
 
-  return { show, success: (m, d) => show(m, 'success', d), error: (m, d) => show(m, 'error', d), warning: (m, d) => show(m, 'warning', d), info: (m, d) => show(m, 'info', d) };
+  function showAndLog(message, type, duration) {
+    const el = show(message, type, duration);
+    window.dispatchEvent(new CustomEvent('oc-notification', { detail: { message, type: type || 'info', time: Date.now() } }));
+    return el;
+  }
+
+  return { show: showAndLog, success: (m, d) => showAndLog(m, 'success', d), error: (m, d) => showAndLog(m, 'error', d), warning: (m, d) => showAndLog(m, 'warning', d), info: (m, d) => showAndLog(m, 'info', d) };
 })();
 
 // ══════════════════════════════════════════════════════════════
@@ -8324,6 +8461,310 @@ const ocCmdPalette = (function() {
     reader.readAsText(file);
     e.target.value = '';
   });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// NOTIFICATION CENTER
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+  const SKEY = 'oc-notif-session';
+  let _notifs = JSON.parse(sessionStorage.getItem(SKEY) || '[]');
+  let _unread = _notifs.filter(n => !n.read).length;
+  const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+
+  function save() { sessionStorage.setItem(SKEY, JSON.stringify(_notifs)); }
+
+  function updateBadge() {
+    const badge = $('notif-badge');
+    if (!badge) return;
+    _unread = _notifs.filter(n => !n.read).length;
+    badge.textContent = _unread;
+    badge.classList.toggle('hidden', _unread === 0);
+  }
+
+  function renderList() {
+    const list = $('notif-list');
+    if (!list) return;
+    if (_notifs.length === 0) {
+      list.innerHTML = `<div class="notif-empty" data-i18n="notif.empty">${t('notif.empty')}</div>`;
+      return;
+    }
+    list.innerHTML = _notifs.slice().reverse().map((n, ri) => {
+      const idx = _notifs.length - 1 - ri;
+      const d = new Date(n.time);
+      const ts = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0') + ':' + d.getSeconds().toString().padStart(2,'0');
+      return `<div class="notif-item${n.read ? '' : ' unread'}" data-idx="${idx}">
+        <span class="notif-icon">${icons[n.type] || icons.info}</span>
+        <div class="notif-body">
+          <div class="notif-msg">${n.message}</div>
+          <div class="notif-time">${ts}</div>
+        </div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.notif-item').forEach(el => {
+      el.addEventListener('click', () => { const i = +el.dataset.idx; _notifs[i].read = true; save(); updateBadge(); el.classList.remove('unread'); });
+    });
+  }
+
+  window.addEventListener('oc-notification', (e) => {
+    _notifs.push({ message: e.detail.message, type: e.detail.type, time: e.detail.time, read: false });
+    if (_notifs.length > 100) _notifs = _notifs.slice(-100);
+    save(); updateBadge();
+    if ($('notif-panel')?.classList.contains('open')) renderList();
+  });
+
+  $('notif-toggle')?.addEventListener('click', () => {
+    const p = $('notif-panel');
+    p.classList.toggle('open');
+    if (p.classList.contains('open')) renderList();
+  });
+  $('notif-close')?.addEventListener('click', () => $('notif-panel').classList.remove('open'));
+  $('notif-read-all')?.addEventListener('click', () => { _notifs.forEach(n => n.read = true); save(); updateBadge(); renderList(); });
+  $('notif-clear-all')?.addEventListener('click', () => { _notifs = []; save(); updateBadge(); renderList(); });
+
+  updateBadge();
+})();
+
+// ══════════════════════════════════════════════════════════════
+// HEADER BUTTON DRAG SORT
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const OKEY = 'oc-header-order';
+  const container = document.querySelector('.header-right');
+  if (!container) return;
+  const saved = JSON.parse(localStorage.getItem(OKEY) || 'null');
+
+  function getButtons() { return Array.from(container.querySelectorAll('.icon-btn')); }
+
+  function restoreOrder() {
+    if (!saved || !Array.isArray(saved)) return;
+    const btns = getButtons();
+    const byId = {};
+    btns.forEach(b => { byId[b.id] = b; });
+    saved.forEach(id => {
+      const b = byId[id];
+      if (b) container.appendChild(b);
+    });
+  }
+  restoreOrder();
+
+  function saveOrder() {
+    const order = getButtons().map(b => b.id).filter(Boolean);
+    localStorage.setItem(OKEY, JSON.stringify(order));
+  }
+
+  let _dragEl = null;
+  let _holdTimer = null;
+  let _dragging = false;
+
+  container.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest('.icon-btn');
+    if (!btn || !container.contains(btn)) return;
+    _holdTimer = setTimeout(() => {
+      _dragging = true;
+      _dragEl = btn;
+      btn.classList.add('dragging');
+      container.classList.add('drag-active');
+      btn.setPointerCapture(e.pointerId);
+    }, 400);
+  });
+
+  container.addEventListener('pointermove', (e) => {
+    if (!_dragging || !_dragEl) return;
+    const btns = getButtons();
+    const rects = btns.map(b => b.getBoundingClientRect());
+    btns.forEach(b => b.classList.remove('drag-over'));
+    for (let i = 0; i < btns.length; i++) {
+      if (btns[i] === _dragEl) continue;
+      const r = rects[i];
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+        btns[i].classList.add('drag-over');
+        break;
+      }
+    }
+  });
+
+  container.addEventListener('pointerup', (e) => {
+    if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
+    if (!_dragging || !_dragEl) return;
+    const btns = getButtons();
+    btns.forEach(b => b.classList.remove('drag-over'));
+    const rects = btns.map(b => b.getBoundingClientRect());
+    for (let i = 0; i < btns.length; i++) {
+      if (btns[i] === _dragEl) continue;
+      const r = rects[i];
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+        const mid = r.left + r.width / 2;
+        if (e.clientX < mid) container.insertBefore(_dragEl, btns[i]);
+        else if (btns[i].nextSibling) container.insertBefore(_dragEl, btns[i].nextSibling);
+        else container.appendChild(_dragEl);
+        saveOrder();
+        break;
+      }
+    }
+    _dragEl.classList.remove('dragging');
+    container.classList.remove('drag-active');
+    _dragEl = null; _dragging = false;
+  });
+
+  container.addEventListener('pointercancel', () => {
+    if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
+    if (_dragEl) { _dragEl.classList.remove('dragging'); container.classList.remove('drag-active'); }
+    getButtons().forEach(b => b.classList.remove('drag-over'));
+    _dragEl = null; _dragging = false;
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// MODEL DEPENDENCY GRAPH
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const $ = id => document.getElementById(id);
+
+  const DEPS = {
+    'SenseVoice': ['onnxruntime'],
+    'FunASR':     ['onnxruntime', 'torch'],
+    'ChatTTS':    ['torch', 'vocos'],
+    'CosyVoice':  ['torch', 'onnxruntime'],
+    'GPT-SoVITS': ['torch', 'ffmpeg'],
+    'Whisper':    ['torch', 'ffmpeg'],
+    'XTTS-v2':    ['torch'],
+    'MeloTTS':    ['torch', 'mecab'],
+    'EdgeTTS':    [],
+    'torch':      ['cuda-toolkit'],
+    'onnxruntime':['cuda-toolkit'],
+    'vocos':      ['torch'],
+  };
+
+  let _models = [];
+  let _viewMode = 'list';
+
+  $('mp-view-list')?.addEventListener('click', () => {
+    _viewMode = 'list';
+    $('mp-view-list').style.background = 'var(--accent)'; $('mp-view-list').style.color = '#fff';
+    $('mp-view-deps').style.background = 'var(--bg-surface)'; $('mp-view-deps').style.color = 'var(--text-secondary)';
+    $('mp-models-list').style.display = '';
+    $('mp-dep-graph').style.display = 'none';
+  });
+
+  $('mp-view-deps')?.addEventListener('click', () => {
+    _viewMode = 'deps';
+    $('mp-view-deps').style.background = 'var(--accent)'; $('mp-view-deps').style.color = '#fff';
+    $('mp-view-list').style.background = 'var(--bg-surface)'; $('mp-view-list').style.color = 'var(--text-secondary)';
+    $('mp-models-list').style.display = 'none';
+    $('mp-dep-graph').style.display = '';
+    drawDeps();
+  });
+
+  function getInstalled() {
+    const items = document.querySelectorAll('#mp-models-list .mp-card');
+    const installed = new Set();
+    items.forEach(card => {
+      const badge = card.querySelector('.mp-status');
+      if (badge && (badge.textContent.includes('✅') || badge.textContent.includes('已安装') || badge.textContent.includes('Installed'))) {
+        const name = card.querySelector('.mp-name')?.textContent?.trim();
+        if (name) installed.add(name);
+      }
+    });
+    return installed;
+  }
+
+  function drawDeps() {
+    const canvas = $('mp-dep-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 320 * dpr;
+    canvas.style.height = '320px';
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = 320;
+    ctx.clearRect(0, 0, W, H);
+
+    const installed = getInstalled();
+    const allNodes = new Set();
+    Object.keys(DEPS).forEach(k => { allNodes.add(k); (DEPS[k] || []).forEach(d => allNodes.add(d)); });
+    const nodeArr = Array.from(allNodes);
+
+    // Layout: group by depth (BFS from roots)
+    const depth = {};
+    const childOf = {};
+    nodeArr.forEach(n => { depth[n] = -1; childOf[n] = []; });
+    Object.entries(DEPS).forEach(([parent, deps]) => { deps.forEach(d => { if (childOf[d]) childOf[d].push(parent); }); });
+    const roots = nodeArr.filter(n => !(DEPS[n] && DEPS[n].length > 0));
+    const queue = [...roots];
+    roots.forEach(r => depth[r] = 0);
+    while (queue.length) {
+      const cur = queue.shift();
+      childOf[cur].forEach(ch => {
+        if (depth[ch] < depth[cur] + 1) { depth[ch] = depth[cur] + 1; queue.push(ch); }
+      });
+    }
+    nodeArr.forEach(n => { if (depth[n] < 0) depth[n] = 0; });
+    const maxDepth = Math.max(...Object.values(depth), 0);
+    const levels = [];
+    for (let d = 0; d <= maxDepth; d++) levels.push(nodeArr.filter(n => depth[n] === d));
+
+    const nodePos = {};
+    const nodeW = 90, nodeH = 28, padX = 30, padY = 50;
+    const totalH = (maxDepth + 1) * (nodeH + padY);
+    const startY = Math.max(20, (H - totalH) / 2);
+
+    levels.forEach((lvl, d) => {
+      const totalW = lvl.length * nodeW + (lvl.length - 1) * padX;
+      const startX = (W - totalW) / 2;
+      lvl.forEach((n, i) => {
+        nodePos[n] = { x: startX + i * (nodeW + padX), y: startY + d * (nodeH + padY) };
+      });
+    });
+
+    // Draw edges
+    ctx.lineWidth = 1.5;
+    Object.entries(DEPS).forEach(([parent, deps]) => {
+      deps.forEach(dep => {
+        if (!nodePos[parent] || !nodePos[dep]) return;
+        const from = nodePos[dep];
+        const to = nodePos[parent];
+        ctx.strokeStyle = installed.has(dep) ? '#22c55e' : '#ef4444';
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.moveTo(from.x + nodeW / 2, from.y + nodeH);
+        ctx.bezierCurveTo(from.x + nodeW / 2, from.y + nodeH + padY * 0.4, to.x + nodeW / 2, to.y - padY * 0.4, to.x + nodeW / 2, to.y);
+        ctx.stroke();
+        // Arrow
+        const ax = to.x + nodeW / 2, ay = to.y;
+        ctx.beginPath(); ctx.moveTo(ax - 4, ay - 6); ctx.lineTo(ax, ay); ctx.lineTo(ax + 4, ay - 6); ctx.stroke();
+        ctx.globalAlpha = 1;
+      });
+    });
+
+    // Draw nodes
+    nodeArr.forEach(n => {
+      if (!nodePos[n]) return;
+      const p = nodePos[n];
+      const isInst = installed.has(n);
+      ctx.fillStyle = isInst ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)';
+      ctx.strokeStyle = isInst ? '#22c55e' : '#ef4444';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(p.x, p.y, nodeW, nodeH, 6);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = isInst ? '#22c55e' : '#ef4444';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const label = n.length > 12 ? n.slice(0, 11) + '…' : n;
+      ctx.fillText(label, p.x + nodeW / 2, p.y + nodeH / 2);
+    });
+  }
+
+  // Re-draw when model list updates
+  const observer = new MutationObserver(() => {
+    if (_viewMode === 'deps') setTimeout(drawDeps, 200);
+  });
+  const ml = $('mp-models-list');
+  if (ml) observer.observe(ml, { childList: true, subtree: true });
 })();
 </script>
 </body>
