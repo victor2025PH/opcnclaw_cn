@@ -390,7 +390,7 @@ def main():
         logger.debug(f"Context engine not started: {e}")
 
     # S2S 模式检测
-    if router.s2s_available:
+    if getattr(router, 's2s_available', False):
         logger.info(f"⚡ S2S 端到端语音模式可用: {router.s2s.backend_name}")
     else:
         logger.info("📡 使用 STT → LLM → TTS 管道模式")

@@ -113,7 +113,7 @@ body{
 }
 .ws-reconnect-bar.visible{transform:translateY(0)}
 .header-title{font-size:16px;font-weight:600}
-.header-right{display:flex;align-items:center;gap:4px}
+.header-right{display:flex;align-items:center;gap:4px;position:relative}
 .icon-btn{
   width:40px;height:40px;display:flex;align-items:center;justify-content:center;
   border:none;background:transparent;color:var(--text-secondary);
@@ -964,6 +964,10 @@ body{
 .msg .msg-pin-btn:hover{opacity:1}
 .msg .msg-pin-btn.pinned{opacity:1;color:var(--accent)}
 
+/* ─── WeChat panel fix ─── */
+#wechat-panel{display:none}
+#wechat-panel.open{display:flex}
+
 /* ─── Keyboard shortcut map ─── */
 #keymap-panel{
   position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.55);
@@ -1746,6 +1750,132 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 .pwa-install-bar .pwa-dismiss{
   background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px;
 }
+
+/* ═══════════════════════════════════════════════════
+   R16-fix: Responsive Layout Polish
+   ═══════════════════════════════════════════════════ */
+
+.chat-header{position:relative}
+
+/* Header overflow "more" menu */
+.header-more-btn{display:none}
+.header-overflow-menu{
+  position:absolute;top:calc(100% + 4px);right:8px;z-index:30;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);
+  border-radius:var(--radius-md);box-shadow:0 8px 32px rgba(0,0,0,.45);
+  padding:6px 0;min-width:200px;
+  opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .15s,transform .15s;
+}
+.header-overflow-menu.open{opacity:1;transform:translateY(0);pointer-events:auto}
+.hom-item{
+  display:flex;align-items:center;gap:10px;padding:10px 16px;
+  cursor:pointer;color:var(--text-primary);font-size:13px;
+  transition:background .1s;width:100%;background:none;border:none;
+  font-family:inherit;text-align:left;
+}
+.hom-item:hover{background:var(--bg-surface-hover)}
+.hom-item .hom-icon{width:22px;text-align:center;flex-shrink:0;font-size:15px}
+.hom-sep{height:1px;background:var(--border);margin:4px 0}
+
+/* --- Desktop ≥ 1025px --- */
+@media(min-width:1025px){
+  .header-right .icon-btn{width:36px;height:36px}
+  .header-right .icon-btn svg{width:18px;height:18px}
+  .messages-area{padding:24px 12%}
+  .msg{max-width:65%}
+  .input-area{padding:12px 12%}
+  #settings-modal{align-items:center}
+  .settings-sheet{max-width:520px;border-radius:var(--radius-lg);max-height:85vh}
+  .sc-grid{grid-template-columns:repeat(3,1fr)}
+}
+
+/* --- Tablet 768px–1024px --- */
+@media(min-width:768px) and (max-width:1024px){
+  .header-right{gap:2px}
+  .header-right .icon-btn{width:34px;height:34px}
+  .header-right .icon-btn svg{width:16px;height:16px}
+  .header-more-btn{display:flex}
+  #desktop-toggle,#perf-toggle,#vcmd-toggle,#summary-btn,#export-toggle{display:none}
+}
+
+/* --- Mobile < 768px --- */
+@media(max-width:767px){
+  :root{--header-h:48px}
+  .chat-header{padding:0 8px;height:var(--header-h)}
+  .header-left{gap:6px}
+  .header-title{font-size:13px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ws-latency-badge{display:none}
+  .header-right{gap:1px}
+  .header-right>.icon-btn{width:34px;height:34px}
+  .header-right .icon-btn svg{width:16px;height:16px}
+  .header-more-btn{display:flex}
+  #desktop-toggle,#perf-toggle,#vcmd-toggle,#model-panel-toggle,
+  #mcp-panel-toggle,#skills-center-toggle,#summary-btn,#export-toggle,
+  #bookmark-toggle{display:none}
+  #bookmark-panel{width:100%}
+  #notif-panel{width:100%}
+  #sessions-panel{width:100%}
+  .settings-sheet{max-width:100%}
+  .keymap-card{width:96vw;max-height:88vh}
+  .sc-sidebar{display:none}
+  .sc-footer{flex-wrap:wrap}
+  .sc-footer .btn{flex:1;min-width:0;font-size:11px;padding:8px}
+  .msg{max-width:90%}
+  .welcome{padding:32px 16px}
+  .welcome-icon{font-size:48px;margin-bottom:12px}
+  .welcome h2{font-size:20px}
+  .suggestions{gap:6px}
+  .suggestion{padding:8px 12px;font-size:11px}
+  .summary-card{margin:6px 8px;padding:10px 12px}
+  .pinned-zone.has-pins{max-height:120px}
+  .header-overflow-menu{right:4px}
+}
+
+/* --- Small phones ≤ 480px --- */
+@media(max-width:480px){
+  .chat-header{padding:0 6px}
+  .header-title{max-width:72px;font-size:12px}
+  .header-right>.icon-btn{width:32px;height:32px}
+  .header-right .icon-btn svg{width:15px;height:15px}
+  #camera-toggle{display:none}
+  .quick-actions{padding:4px 8px;gap:4px}
+  .qa-chip{padding:4px 10px;font-size:10px}
+  .skill-bar{padding:4px 8px;gap:4px}
+  .skill-btn{padding:4px 10px;font-size:11px}
+  .msg-text{font-size:13px;padding:10px 12px}
+}
+
+/* Message hover action buttons — prevent overlap */
+.msg .msg-pin-btn{right:76px}
+.msg .msg-edit-btn{right:52px}
+.msg .msg-translate-btn{right:28px}
+.msg .msg-bookmark-btn{right:4px}
+@media(max-width:767px){
+  .msg .msg-pin-btn,.msg .msg-edit-btn,.msg .msg-translate-btn,.msg .msg-bookmark-btn{
+    font-size:11px;padding:1px 3px;
+  }
+  .msg .msg-pin-btn{right:60px}
+  .msg .msg-edit-btn{right:40px}
+  .msg .msg-translate-btn{right:20px}
+  .msg .msg-bookmark-btn{right:2px}
+}
+@media(max-width:480px){
+  .msg .msg-pin-btn,.msg .msg-edit-btn,.msg .msg-translate-btn,.msg .msg-bookmark-btn{
+    font-size:10px;padding:1px 2px;top:2px;
+  }
+  .msg .msg-pin-btn{right:48px}
+  .msg .msg-edit-btn{right:32px}
+  .msg .msg-translate-btn{right:16px}
+  .msg .msg-bookmark-btn{right:0px}
+}
+
+/* Landscape phones — compact layout */
+@media(max-height:500px) and (orientation:landscape){
+  .header-more-btn{display:flex}
+  #desktop-toggle,#perf-toggle,#vcmd-toggle,#summary-btn,#export-toggle,
+  #model-panel-toggle,#bookmark-toggle{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -1851,6 +1981,22 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span class="update-badge hidden" id="update-badge"></span>
       </button>
+      <button class="icon-btn header-more-btn" id="header-more-toggle" title="更多">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+      </button>
+    </div>
+    <div class="header-overflow-menu" id="header-overflow-menu">
+      <button class="hom-item" data-target="desktop-toggle"><span class="hom-icon">🖥️</span>远程桌面</button>
+      <button class="hom-item" data-target="camera-toggle"><span class="hom-icon">📷</span>摄像头</button>
+      <button class="hom-item" data-target="model-panel-toggle"><span class="hom-icon">📦</span>模型管理</button>
+      <button class="hom-item" data-target="mcp-panel-toggle"><span class="hom-icon">🔌</span>MCP 工具</button>
+      <button class="hom-item" data-target="perf-toggle"><span class="hom-icon">📊</span>性能监控</button>
+      <button class="hom-item" data-target="vcmd-toggle"><span class="hom-icon">🔊</span>语音指令</button>
+      <div class="hom-sep"></div>
+      <button class="hom-item" data-target="skills-center-toggle"><span class="hom-icon">🧩</span>技能中心</button>
+      <button class="hom-item" data-target="summary-btn"><span class="hom-icon">📋</span>对话摘要</button>
+      <button class="hom-item" data-target="export-toggle"><span class="hom-icon">📥</span>导出</button>
+      <button class="hom-item" data-target="bookmark-toggle"><span class="hom-icon">⭐</span>收藏</button>
     </div>
   </header>
 
@@ -2392,7 +2538,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- ═══════════════ 微信自动回复面板 ═══════════════ -->
 <div id="wechat-panel" class="hidden" style="
   position:fixed;inset:0;background:var(--bg,#0f1117);z-index:900;
-  display:flex;flex-direction:column;overflow:hidden;
+  flex-direction:column;overflow:hidden;display:none;
 ">
   <!-- 顶栏 -->
   <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
@@ -8598,15 +8744,21 @@ const mcpHistory = (function() {
 
   // 打开/关闭面板
   window.openWechatPanel = async function() {
-    panel().classList.remove('hidden');
+    const p = panel();
+    if (p) { p.style.display = ''; p.classList.remove('hidden'); p.classList.add('open'); }
     await wxpRefresh();
     wxpStartReviewStream();
   };
 
-  document.getElementById('wxp-back')?.addEventListener('click', () => {
-    panel().classList.add('hidden');
+  window.closeWechatPanel = function() {
+    const p = panel();
+    if (p) { p.classList.remove('open'); p.classList.add('hidden'); p.style.display = 'none'; }
     wxpStopReviewStream();
-  });
+  };
+  const backBtn = document.getElementById('wxp-back');
+  if (backBtn) {
+    backBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); closeWechatPanel(); };
+  }
 
   // ── 刷新所有状态 ────────────────────────────────────────────
   async function wxpRefresh() {
@@ -11358,6 +11510,43 @@ const ocPlugins = (function() {
   return { register, getAPI, list: () => [..._registry], setEnabled, destroySandbox };
 })();
 window.ocPlugins = ocPlugins;
+
+/* ─── Header overflow menu ─── */
+(function(){
+  const moreBtn = document.getElementById('header-more-toggle');
+  const menu = document.getElementById('header-overflow-menu');
+  if(!moreBtn || !menu) return;
+  moreBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+  menu.querySelectorAll('.hom-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const target = document.getElementById(item.dataset.target);
+      if(target) target.click();
+      menu.classList.remove('open');
+    });
+  });
+  document.addEventListener('click', e => {
+    if(!menu.contains(e.target) && e.target !== moreBtn) menu.classList.remove('open');
+  });
+  const syncVisibility = () => {
+    menu.querySelectorAll('.hom-item').forEach(item => {
+      const btn = document.getElementById(item.dataset.target);
+      item.style.display = (btn && getComputedStyle(btn).display === 'none') ? '' : 'none';
+    });
+    const sep = menu.querySelector('.hom-sep');
+    if(sep){
+      const children = [...menu.children];
+      const si = children.indexOf(sep);
+      const hasAbove = children.some((c,i) => i < si && c.classList.contains('hom-item') && c.style.display !== 'none');
+      const hasBelow = children.some((c,i) => i > si && c.classList.contains('hom-item') && c.style.display !== 'none');
+      sep.style.display = (hasAbove && hasBelow) ? '' : 'none';
+    }
+  };
+  moreBtn.addEventListener('click', syncVisibility);
+  window.addEventListener('resize', () => { if(menu.classList.contains('open')) syncVisibility(); });
+})();
 </script>
 </body>
 </html>
