@@ -243,9 +243,16 @@ app.include_router(mcp_router)
 # Startup / Shutdown
 # ═══════════════════════════════════════════════════════════════════
 
+_startup_done = False
+
 async def _startup(app: FastAPI):
     """Initialize models on server start."""
-    global stt, tts, backend, vad
+    global stt, tts, backend, vad, _startup_done
+
+    # 防重入：双 uvicorn 共享 app 实例，startup 会被触发两次
+    if _startup_done:
+        return
+    _startup_done = True
 
     logger.info("Initializing OpenClaw Voice server...")
 
@@ -344,8 +351,7 @@ async def _startup(app: FastAPI):
             vision_model=zhipu_vision_model,
         )
 
-    logger.info("Loading VAD model")
-    vad = VoiceActivityDetector()
+    vad = VoiceActivityDetector()  # 懒加载：首次语音输入时才加载 Silero（节省 4s）
     app.state.ai_backend = backend
 
     # Expose desktop streamer from routers/desktop.py for wechat module
@@ -1385,14 +1391,15 @@ if __name__ == "__main__":
     logger.info(f"  💻 Local:         https://localhost:{port}/app")
     logger.info("=" * 60)
 
+    # 直接传 app 实例（非字符串），避免两个 server 各自 import 导致 startup 执行两次
     https_config = uvicorn.Config(
-        "src.server.main:app",
+        app,
         host=settings.host, port=port,
         ssl_keyfile=server_key, ssl_certfile=server_crt,
         reload=False, log_level="info",
     )
     http_config = uvicorn.Config(
-        "src.server.main:app",
+        app,
         host=settings.host, port=http_port,
         reload=False, log_level="warning",
     )

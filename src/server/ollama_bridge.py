@@ -75,7 +75,7 @@ class OllamaBridge:
         self._base = base_url
         self._v1 = f"{base_url}/v1"
         self._health = OllamaHealth()
-        self._client = httpx.AsyncClient(timeout=10)
+        self._client = httpx.AsyncClient(timeout=2)  # 快速检测：Ollama 在本机，2s 足够
         self._benchmark_results: Dict[str, float] = {}
 
     @property

@@ -22,7 +22,14 @@ class VoiceActivityDetector:
         self.model = None
         self._get_speech_timestamps = None
         self._backend = "none"
-        self._load_model()
+        self._loaded = False
+        # 不在构造时加载，首次使用时加载（节省 4 秒启动时间）
+
+    def _ensure_loaded(self):
+        """懒加载：首次调用 VAD 方法时才加载模型"""
+        if not self._loaded:
+            self._loaded = True
+            self._load_model()
 
     # ──────────────────────────────────────────────────────
     # Model loading
@@ -83,6 +90,7 @@ class VoiceActivityDetector:
 
         Works with any chunk length (internally splits into 512-sample windows).
         """
+        self._ensure_loaded()
         sr = sample_rate or self.sample_rate
 
         if self._backend in ("silero", "silero_hub"):
