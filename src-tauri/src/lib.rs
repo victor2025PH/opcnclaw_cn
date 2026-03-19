@@ -37,9 +37,13 @@ impl PythonBackend {
         let python = find_python()
             .ok_or_else(|| "未找到 Python 3.10+，请安装 Python 或设置 OPENCLAW_PYTHON 环境变量".to_string())?;
 
+        // 确定工作目录：优先当前目录，其次 Inno Setup 安装目录
+        let work_dir = find_project_dir();
+
         let child = Command::new(&python)
             .args(["-m", "src.server.main"])
             .env("PYTHONPATH", ".")
+            .current_dir(&work_dir)
             .spawn()
             .map_err(|e| format!("启动失败 ({}): {}", python, e))?;
 
@@ -79,27 +83,39 @@ impl Drop for PythonBackend {
 }
 
 fn find_python() -> Option<String> {
-    // 1. 内嵌 Python（安装包自带）
+    // 1. 同目录内嵌 Python（开发或便携模式）
     if let Ok(cwd) = std::env::current_dir() {
-        for sub in &["python/python.exe", "python/python3.exe", "embedded/python/python.exe"] {
+        for sub in &["python/python.exe", "embedded/python/python.exe"] {
             let p = cwd.join(sub);
             if p.exists() {
                 return Some(p.to_string_lossy().to_string());
             }
         }
     }
-    // 2. 环境变量指定
+
+    // 2. Inno Setup 安装目录（Cursor 的安装包）
+    if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+        let inno_python = std::path::PathBuf::from(&appdata)
+            .join("ShisanXiang")
+            .join("python")
+            .join("python.exe");
+        if inno_python.exists() {
+            return Some(inno_python.to_string_lossy().to_string());
+        }
+    }
+
+    // 3. 环境变量指定
     if let Ok(p) = std::env::var("OPENCLAW_PYTHON") {
         if !p.is_empty() {
             return Some(p);
         }
     }
-    // 3. 系统 Python（验证版本 >= 3.10）
-    for name in &["python", "python3", "python3.13", "python3.12", "python3.11", "python3.10"] {
+
+    // 4. 系统 Python（验证版本 >= 3.10）
+    for name in &["python", "python3"] {
         if let Ok(output) = Command::new(name).arg("--version").output() {
             if output.status.success() {
                 let ver = String::from_utf8_lossy(&output.stdout);
-                // 确认是 3.10+
                 if ver.contains("3.1") || ver.contains("3.2") {
                     return Some(name.to_string());
                 }
@@ -107,6 +123,33 @@ fn find_python() -> Option<String> {
         }
     }
     None
+}
+
+/// 查找项目根目录（含 src/server/main.py 的目录）
+fn find_project_dir() -> std::path::PathBuf {
+    // 1. 当前目录
+    if let Ok(cwd) = std::env::current_dir() {
+        if cwd.join("src/server/main.py").exists() {
+            return cwd;
+        }
+    }
+    // 2. EXE 所在目录
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if dir.join("src/server/main.py").exists() {
+                return dir.to_path_buf();
+            }
+        }
+    }
+    // 3. Inno Setup 安装目录
+    if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+        let inno_dir = std::path::PathBuf::from(&appdata).join("ShisanXiang");
+        if inno_dir.join("src/server/main.py").exists() {
+            return inno_dir;
+        }
+    }
+    // 回退到当前目录
+    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
 }
 
 fn check_port_open(port: u16) -> bool {
