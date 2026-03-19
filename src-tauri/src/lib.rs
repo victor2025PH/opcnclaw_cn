@@ -9,7 +9,7 @@ const BACKEND_PORT: u16 = 8766;
 const BACKEND_URL: &str = "http://localhost:8766";
 const APP_URL: &str = "http://localhost:8766/app";
 const HEALTH_URL: &str = "http://localhost:8766/api/health";
-const HEALTH_TIMEOUT: Duration = Duration::from_secs(30);
+const HEALTH_TIMEOUT: Duration = Duration::from_secs(60);
 const HEALTH_POLL: Duration = Duration::from_millis(500);
 
 // ── Python 后端管理 ─────────────────────────────────────────
@@ -354,7 +354,7 @@ pub fn run() {
                     .center()
                     .build();
                 } else {
-                    let timeout_html = "data:text/html,<!DOCTYPE html><html><head><meta charset=utf-8><style>*{margin:0}body{background:%230b0b16;color:%23e8e8f0;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:40px;text-align:center}.icon{font-size:48px;margin-bottom:16px}h1{font-size:20px;margin-bottom:12px}p{color:%23888;font-size:14px;line-height:1.6}code{color:%237c6aef;background:%231a1a2e;padding:2px 6px;border-radius:4px}</style></head><body><div class=icon>⏱️</div><h1>AI 引擎启动超时</h1><p>Python 后端未能在 30 秒内就绪。<br>请尝试手动运行：<br><code>python -m src.server.main</code></p></body></html>";
+                    let timeout_html = "data:text/html,<!DOCTYPE html><html><head><meta charset=utf-8><style>*{margin:0}body{background:%230b0b16;color:%23e8e8f0;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:40px;text-align:center}.icon{font-size:48px;margin-bottom:16px}h1{font-size:20px;margin-bottom:12px}p{color:%23888;font-size:14px;line-height:1.6}code{color:%237c6aef;background:%231a1a2e;padding:2px 6px;border-radius:4px}</style></head><body><div class=icon>⏱️</div><h1>AI 引擎启动超时</h1><p>Python 后端未能在 60 秒内就绪。<br>请尝试手动运行：<br><code>python -m src.server.main</code></p></body></html>";
                     let _ = WebviewWindowBuilder::new(
                         &app_handle,
                         "main",
