@@ -1,12 +1,12 @@
 [package]
-name = "openclaw-desktop"
+name = "shisanxiang"
 version = "3.5.2"
 description = "十三香小龙虾 AI 桌面客户端"
 authors = ["OpenClaw Team"]
 edition = "2021"
 
 [lib]
-name = "openclaw_desktop_lib"
+name = "shisanxiang_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

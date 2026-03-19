@@ -15,7 +15,7 @@
 #define AppVersion    "3.5.2"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
-#define AppExeName    "openclaw-desktop.exe"
+#define AppExeName    "十三香小龙虾.exe"
 #define SourceDir     "."
 
 [Setup]
@@ -56,7 +56,7 @@ VersionInfoDescription=十三香小龙虾 — 全双工 AI 语音助手
 VersionInfoProductName={#AppName}
 ; 关闭运行中的程序
 CloseApplications=yes
-CloseApplicationsFilter=*OpenClaw*,*openclaw-desktop*,*launcher*,*十三香小龙虾*
+CloseApplicationsFilter=*OpenClaw*,*shisanxiang*,*launcher*,*十三香小龙虾*
 ; 安装后重启设置
 RestartIfNeededByRun=no
 ; 最低 Windows 版本：Windows 10
@@ -85,8 +85,8 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 
 [Files]
 ; ── 核心应用文件 ──────────────────────────────────────────────
-; ── Tauri 桌面客户端 ─────────────────────────────────────────
-Source: "src-tauri\target\release\openclaw-desktop.exe"; DestDir: "{app}"; Flags: ignoreversion
+; ── Tauri 桌面客户端（编译后自动复制到 dist/installer/）───
+Source: "dist\十三香小龙虾.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; ── 旧启动器（保留兼容）────────────────────────────────────
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt";           DestDir: "{app}"; Flags: ignoreversion
@@ -127,14 +127,14 @@ Source: "assets\icon.ico";     DestDir: "{app}\ssl";    Flags: ignoreversion; Af
 
 [Icons]
 ; 桌面快捷方式（非U盘模式）
-Name: "{autodesktop}\十三香小龙虾";       Filename: "{app}\openclaw-desktop.exe"; \
+Name: "{autodesktop}\十三香小龙虾";       Filename: "{app}\十三香小龙虾.exe"; \
   WorkingDir: "{app}"; \
   IconFilename: "{app}\assets\icon.ico"; IconIndex: 0; \
   Comment: "十三香小龙虾 — 全双工 AI 语音助手"; \
   Tasks: desktopicon; Check: IsNotUSBMode
 
 ; 开始菜单（非U盘模式）
-Name: "{group}\十三香小龙虾";             Filename: "{app}\openclaw-desktop.exe"; \
+Name: "{group}\十三香小龙虾";             Filename: "{app}\十三香小龙虾.exe"; \
   WorkingDir: "{app}"; \
   IconFilename: "{app}\assets\icon.ico"; IconIndex: 0; \
   Tasks: startmenu; Check: IsNotUSBMode
@@ -150,12 +150,12 @@ Name: "{group}\卸载 十三香小龙虾";        Filename: "{uninstallexe}"; \
 ; 开机自启（非U盘模式）
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
   ValueType: string; ValueName: "十三香小龙虾"; \
-  ValueData: """{app}\openclaw-desktop.exe"""; \
+  ValueData: """{app}\十三香小龙虾.exe"""; \
   Flags: uninsdeletevalue; Tasks: autostart; Check: IsNotUSBMode
 
 [Run]
 ; 标准模式完成后弹出"立即启动"（极速/U盘模式在 [Code] 中自动处理）
-Filename: "{app}\openclaw-desktop.exe"; \
+Filename: "{app}\十三香小龙虾.exe"; \
   Description: "立即启动 十三香小龙虾"; \
   Flags: nowait postinstall skipifsilent; Check: IsStandardMode
 
@@ -923,8 +923,8 @@ begin
     '    pause' + #13#10 +
     '    exit /b 1' + #13#10 +
     ')' + #13#10 +
-    'if exist "openclaw-desktop.exe" (' + #13#10 +
-    '    start "" "openclaw-desktop.exe"' + #13#10 +
+    'if exist "十三香小龙虾.exe" (' + #13#10 +
+    '    start "" "十三香小龙虾.exe"' + #13#10 +
     ') else (' + #13#10 +
     '    start "" "python\python.exe" launcher.py' + #13#10 +
     ')' + #13#10 +
@@ -962,8 +962,8 @@ begin
     // 极速/U盘模式：安装后自动启动并打开设置页
     if QuickMode or USBMode then
     begin
-      if FileExists(AppDir + '\openclaw-desktop.exe') then
-        Exec(AppDir + '\openclaw-desktop.exe', '', AppDir,
+      if FileExists(AppDir + '\十三香小龙虾.exe') then
+        Exec(AppDir + '\十三香小龙虾.exe', '', AppDir,
           SW_SHOWNORMAL, ewNoWait, ResultCode)
       else
         Exec('wscript.exe', '"' + AppDir + '\OpenClaw.vbs"', AppDir,
