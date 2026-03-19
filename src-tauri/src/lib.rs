@@ -224,8 +224,41 @@ fn restart_backend(state: tauri::State<PythonBackend>) -> Result<String, String>
 
 // ── 主入口 ─────────────────────────────────────────────
 
+/// 单实例互斥锁（Windows Named Mutex）
+fn single_instance_lock() -> Option<()> {
+    #[cfg(windows)]
+    {
+        use std::ptr;
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn CreateMutexW(attrs: *const u8, owner: i32, name: *const u16) -> *mut u8;
+            fn GetLastError() -> u32;
+        }
+        let name: Vec<u16> = "ShisanXiang_SingleInstance\0".encode_utf16().collect();
+        unsafe {
+            let handle = CreateMutexW(ptr::null(), 1, name.as_ptr());
+            if handle.is_null() || GetLastError() == 183 {
+                // ERROR_ALREADY_EXISTS = 183
+                return None;
+            }
+            // 不要 close handle — 让它在进程结束时自动释放
+            std::mem::forget(handle);
+        }
+    }
+    Some(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 单实例锁：防止重复启动
+    let _mutex = match single_instance_lock() {
+        Some(m) => m,
+        None => {
+            eprintln!("[Tauri] Another instance is already running");
+            return;
+        }
+    };
+
     let backend = PythonBackend::new();
 
     tauri::Builder::default()
