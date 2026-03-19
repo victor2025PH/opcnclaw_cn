@@ -1,5 +1,7 @@
 """Remote desktop streaming, OCR, and AI-driven control via WebSocket."""
 
+from __future__ import annotations
+
 import base64
 import io
 import os
@@ -8,10 +10,13 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from loguru import logger
+
+if TYPE_CHECKING:
+    from PIL import Image as _ImageType
 
 # 桌面控制依赖（仅 Windows/Mac 可用，CI/Linux 无头环境延迟导入）
 try:
@@ -24,6 +29,10 @@ try:
     _DESKTOP_AVAILABLE = True
 except ImportError as _e:
     _DESKTOP_AVAILABLE = False
+    mss = None  # type: ignore
+    pyautogui = None  # type: ignore
+    pyperclip = None  # type: ignore
+    Image = None  # type: ignore
     logger.debug(f"Desktop modules not available: {_e}")
 
 
