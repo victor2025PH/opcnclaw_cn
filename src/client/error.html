@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0b0b16;
+  color: #e8e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 40px;
+  text-align: center;
+}
+.icon { font-size: 48px; margin-bottom: 16px; }
+h1 { font-size: 20px; margin-bottom: 12px; }
+p { color: #888; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+.btn {
+  background: #7c6aef;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 4px;
+}
+.btn:hover { background: #6b59de; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #333;
+  color: #aaa;
+}
+</style>
+</head>
+<body>
+  <div class="icon">⚠️</div>
+  <h1>AI 引擎启动失败</h1>
+  <p>
+    Python 后端未能在 30 秒内启动完成。<br>
+    请检查 Python 是否已安装，或尝试手动启动：<br>
+    <code style="color:#7c6aef">python -m src.server.main</code>
+  </p>
+  <div>
+    <button class="btn" onclick="location.reload()">重试</button>
+    <button class="btn btn-ghost" onclick="window.close()">退出</button>
+  </div>
+</body>
+</html>

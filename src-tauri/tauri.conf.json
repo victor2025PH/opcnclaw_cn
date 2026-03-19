@@ -4,31 +4,13 @@
   "version": "3.5.2",
   "identifier": "com.shisanxiang.openclaw",
   "build": {
-    "devUrl": "https://localhost:8765/app",
     "frontendDist": "../src/client"
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "十三香小龙虾 AI",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
-        "center": true,
-        "decorations": true,
-        "resizable": true,
-        "url": "https://localhost:8765/app"
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
-    },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": false,
-      "tooltip": "十三香小龙虾 AI"
     }
   },
   "bundle": {
