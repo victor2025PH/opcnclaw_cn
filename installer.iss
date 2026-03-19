@@ -1,18 +1,21 @@
 ; ╔══════════════════════════════════════════════════════════════╗
-; ║   OpenClaw AI v3.2 — Inno Setup 安装脚本（双版本）          ║
-; ║   最小安装（云端）≈ 50MB  /  完整安装（本地GPU）≈ 1.5GB     ║
+; ║   十三香小龙虾 v3.5 — Inno Setup 安装脚本（三版本）         ║
+; ║   最小≈50MB / 无障碍≈60MB / 完整（本地GPU）≈1.5GB          ║
 ; ╚══════════════════════════════════════════════════════════════╝
+;
+; 前置步骤（仅首次编译前执行一次）:
+;   cd installer && python build_embedded_python.py
 ;
 ; 编译命令（CMD）:
 ;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 ;
-; 生成文件: dist\installer\OpenClaw-v3.2-Setup.exe
+; 生成文件: dist\installer\十三香小龙虾-v3.5.2-Setup.exe
 
-#define AppName       "OpenClaw AI 语音助手"
-#define AppVersion    "3.2.0"
-#define AppPublisher  "OpenClaw Team"
+#define AppName       "十三香小龙虾"
+#define AppVersion    "3.5.2"
+#define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
-#define AppExeName    "OpenClaw.vbs"
+#define AppExeName    "openclaw-desktop.exe"
 #define SourceDir     "."
 
 [Setup]
@@ -24,13 +27,14 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\OpenClaw
-DefaultGroupName=OpenClaw AI 语音助手
+DefaultDirName={localappdata}\ShisanXiang
+DefaultGroupName=十三香小龙虾
 AllowNoIcons=yes
-LicenseFile=
+LicenseFile=installer\assets\license.txt
 ; 输出目录和文件名
 OutputDir=dist\installer
-OutputBaseFilename=OpenClaw-v3.2-Setup
+; 带 BuildID 的文件名，避免被网盘/浏览器同名覆盖、拿错包
+OutputBaseFilename=十三香小龙虾-v{#AppVersion}-Setup
 ; 图标
 SetupIconFile=assets\icon.ico
 ; 压缩（lzma2/ultra 最高压缩率）
@@ -39,18 +43,20 @@ SolidCompression=yes
 CompressionThreads=auto
 ; 界面风格
 WizardStyle=modern
-WizardSizePercent=120
+WizardSizePercent=140
+WizardImageFile=installer\assets\wizard_image.bmp
+WizardSmallImageFile=installer\assets\wizard_small.bmp
 ; 权限（不要求管理员，避免UAC弹窗）
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ; 版本信息
 VersionInfoVersion={#AppVersion}.0
 VersionInfoCompany={#AppPublisher}
-VersionInfoDescription=全双工本地部署 AI 语音助手
+VersionInfoDescription=十三香小龙虾 — 全双工 AI 语音助手
 VersionInfoProductName={#AppName}
 ; 关闭运行中的程序
 CloseApplications=yes
-CloseApplicationsFilter=*OpenClaw*,*launcher*
+CloseApplicationsFilter=*OpenClaw*,*openclaw-desktop*,*launcher*,*十三香小龙虾*
 ; 安装后重启设置
 RestartIfNeededByRun=no
 ; 最低 Windows 版本：Windows 10
@@ -61,14 +67,16 @@ Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "english";     MessagesFile: "compiler:Default.isl"
 
 [Types]
-Name: "minimal"; Description: "最小安装（云端模式，约 50MB，推荐低配电脑）"
-Name: "full";    Description: "完整安装（含本地 GPU 模型，约 1.5GB，推荐高配电脑）"
-Name: "custom";  Description: "自定义安装"; Flags: iscustom
+Name: "minimal";  Description: "最小安装 — 云端模式，约 50MB，适合日常使用"
+Name: "access";   Description: "无障碍控制版 — 含桌面控制，约 80MB，推荐大多数用户"
+Name: "full";     Description: "完整安装 — 含本地 GPU 模型，约 1.5GB，可离线使用"
+Name: "custom";   Description: "自定义安装 — 手动选择组件"; Flags: iscustom
 
 [Components]
-Name: "core";     Description: "核心组件（必选）";           Types: minimal full custom; Flags: fixed
-Name: "localai";  Description: "本地 AI 引擎（PyTorch + 语音模型，需 GPU）"; Types: full
-Name: "vision";   Description: "视觉控制（OCR + 屏幕识别）"; Types: full
+Name: "core";     Description: "核心引擎 — 语音对话 + 情感识别 + 声音克隆（~50MB）";       Types: minimal access full custom; Flags: fixed
+Name: "desktop";  Description: "桌面控制 — OCR识别 + 鼠标键盘 + 屏幕捕获（+30MB）";       Types: access full
+Name: "localai";  Description: "本地AI引擎 — PyTorch + 语音模型，需GPU（+1.4GB）";         Types: full
+Name: "vision";   Description: "高级视觉 — UIAutomation 窗口控制（+10MB）";                Types: full
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式";     GroupDescription: "附加图标:"; Flags: checkedonce
@@ -77,7 +85,11 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 
 [Files]
 ; ── 核心应用文件 ──────────────────────────────────────────────
+; ── Tauri 桌面客户端 ─────────────────────────────────────────
+Source: "src-tauri\target\release\openclaw-desktop.exe"; DestDir: "{app}"; Flags: ignoreversion
+; ── 旧启动器（保留兼容）────────────────────────────────────
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion
+Source: "version.txt";           DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt";      DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements-full.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".env.template";         DestDir: "{app}"; DestName: ".env.template"; Flags: ignoreversion
@@ -94,11 +106,18 @@ Source: "src\*";               DestDir: "{app}\src"; Flags: ignoreversion recurs
 Source: "skills\*";            DestDir: "{app}\skills"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ── 图标资源 ──────────────────────────────────────────────────
-Source: "assets\icon.ico";     DestDir: "{app}\assets"; Flags: ignoreversion
-Source: "assets\icon.png";     DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "assets\icon.ico";      DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "assets\icon.png";      DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "assets\tray_icon.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 
-; ── 安装辅助脚本（安装完成后自动运行） ────────────────────────
+; ── 安装辅助脚本 ────────────────────────────────────────────
 Source: "install_full.bat";    DestDir: "{app}"; Flags: ignoreversion
+
+; ── 内嵌 Python 3.11.9 运行环境（离线可用）────────────────
+Source: "installer\embedded\python\*";  DestDir: "{app}\python"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; ── VC++ 运行库（安装后自动删除临时文件）──────────────────
+Source: "installer\embedded\vcredist_x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion deleteafterinstall
 
 ; ── 创建必要的空目录 ──────────────────────────────────────────
 Source: "assets\icon.ico";     DestDir: "{app}\data";   Flags: ignoreversion; AfterInstall: CreateDirs
@@ -107,43 +126,44 @@ Source: "assets\icon.ico";     DestDir: "{app}\logs";   Flags: ignoreversion; Af
 Source: "assets\icon.ico";     DestDir: "{app}\ssl";    Flags: ignoreversion; AfterInstall: CreateDirs
 
 [Icons]
-; 桌面快捷方式
-Name: "{autodesktop}\OpenClaw AI助手";    Filename: "{app}\OpenClaw.vbs"; \
+; 桌面快捷方式（非U盘模式）
+Name: "{autodesktop}\十三香小龙虾";       Filename: "{app}\openclaw-desktop.exe"; \
   WorkingDir: "{app}"; \
-  IconFilename: "{app}\assets\icon.ico"; \
-  Comment: "OpenClaw AI 语音助手 — 全双工对话"; \
-  Tasks: desktopicon
+  IconFilename: "{app}\assets\icon.ico"; IconIndex: 0; \
+  Comment: "十三香小龙虾 — 全双工 AI 语音助手"; \
+  Tasks: desktopicon; Check: IsNotUSBMode
 
-; 开始菜单
-Name: "{group}\OpenClaw AI助手";          Filename: "{app}\OpenClaw.vbs"; \
+; 开始菜单（非U盘模式）
+Name: "{group}\十三香小龙虾";             Filename: "{app}\openclaw-desktop.exe"; \
   WorkingDir: "{app}"; \
-  IconFilename: "{app}\assets\icon.ico"; \
-  Tasks: startmenu
+  IconFilename: "{app}\assets\icon.ico"; IconIndex: 0; \
+  Tasks: startmenu; Check: IsNotUSBMode
 Name: "{group}\命令行模式（调试）";        Filename: "{app}\openclaw_debug.bat"; \
   WorkingDir: "{app}"; \
-  Tasks: startmenu
+  Tasks: startmenu; Check: IsNotUSBMode
 Name: "{group}\使用说明";                 Filename: "{app}\OpenClaw使用说明书.md"; \
-  Tasks: startmenu
-Name: "{group}\卸载 OpenClaw";            Filename: "{uninstallexe}"; \
-  Tasks: startmenu
+  Tasks: startmenu; Check: IsNotUSBMode
+Name: "{group}\卸载 十三香小龙虾";        Filename: "{uninstallexe}"; \
+  Tasks: startmenu; Check: IsNotUSBMode
 
 [Registry]
-; 开机自启（写入注册表）
+; 开机自启（非U盘模式）
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
-  ValueType: string; ValueName: "OpenClawAI"; \
-  ValueData: "wscript.exe ""{app}\OpenClaw.vbs"""; \
-  Flags: uninsdeletevalue; Tasks: autostart
+  ValueType: string; ValueName: "十三香小龙虾"; \
+  ValueData: """{app}\openclaw-desktop.exe"""; \
+  Flags: uninsdeletevalue; Tasks: autostart; Check: IsNotUSBMode
 
 [Run]
-; 安装完成后弹出"立即启动"选项
-Filename: "{app}\OpenClaw.vbs"; \
-  Description: "立即启动 OpenClaw AI 助手"; \
-  Flags: nowait postinstall skipifsilent shellexec
+; 标准模式完成后弹出"立即启动"（极速/U盘模式在 [Code] 中自动处理）
+Filename: "{app}\openclaw-desktop.exe"; \
+  Description: "立即启动 十三香小龙虾"; \
+  Flags: nowait postinstall skipifsilent; Check: IsStandardMode
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\__pycache__"
 Type: filesandordirs; Name: "{app}\src\__pycache__"
 Type: filesandordirs; Name: "{app}\skills\__pycache__"
+Type: filesandordirs; Name: "{app}\python\__pycache__"
 ; 保留用户数据（注释掉以下行则卸载时保留）
 ; Type: filesandordirs; Name: "{app}\data"
 ; Type: filesandordirs; Name: "{app}\.env"
@@ -151,6 +171,31 @@ Type: filesandordirs; Name: "{app}\skills\__pycache__"
 [Code]
 var
   LogFile: String;
+  QuickMode: Boolean;
+  USBMode: Boolean;
+  ModePage: TWizardPage;
+  USBDrivePage: TInputDirWizardPage;
+
+// ─── Windows API ────────────────────────────────────────
+function PostMessage(hWnd: Integer; Msg, wParam, lParam: Integer): Integer;
+  external 'PostMessageA@user32.dll stdcall';
+function GetDriveTypeW(lpRootPathName: String): UINT;
+  external 'GetDriveTypeW@kernel32.dll stdcall';
+
+const
+  BM_CLICK = $00F5;
+  DRIVE_REMOVABLE = 2;
+
+// ─── Check 函数（供 [Icons]/[Registry]/[Run] 条件判断）──
+function IsNotUSBMode(): Boolean;
+begin
+  Result := not USBMode;
+end;
+
+function IsStandardMode(): Boolean;
+begin
+  Result := (not QuickMode) and (not USBMode);
+end;
 
 // ─── 日志 ──────────────────────────────────────────────
 procedure LogMsg(Msg: String);
@@ -159,33 +204,56 @@ begin
     '[' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', #0, #0) + '] ' + Msg + #13#10, True);
 end;
 
-// ─── 检测 Python ───────────────────────────────────────
+// ─── 检测系统已安装的 Python ───────────────────────────
 function FindPython(): String;
 var
-  LocalAppData: String;
+  LocalAppData, PF, PF86, RegPath: String;
   I: Integer;
-  Paths: array[0..5] of String;
+  Paths: array[0..13] of String;
   ResultCode: Integer;
 begin
   Result := '';
   LocalAppData := GetEnv('LOCALAPPDATA');
+  PF := ExpandConstant('{commonpf}');
+  PF86 := ExpandConstant('{commonpf32}');
 
-  Paths[0] := LocalAppData + '\Programs\Python\Python313\python.exe';
-  Paths[1] := LocalAppData + '\Programs\Python\Python312\python.exe';
-  Paths[2] := LocalAppData + '\Programs\Python\Python311\python.exe';
-  Paths[3] := 'C:\Python313\python.exe';
-  Paths[4] := 'C:\Python312\python.exe';
-  Paths[5] := 'C:\Python311\python.exe';
+  Paths[0]  := LocalAppData + '\Programs\Python\Python313\python.exe';
+  Paths[1]  := LocalAppData + '\Programs\Python\Python312\python.exe';
+  Paths[2]  := LocalAppData + '\Programs\Python\Python311\python.exe';
+  Paths[3]  := LocalAppData + '\Programs\Python\Python310\python.exe';
+  Paths[4]  := PF + '\Python313\python.exe';
+  Paths[5]  := PF + '\Python312\python.exe';
+  Paths[6]  := PF + '\Python311\python.exe';
+  Paths[7]  := PF86 + '\Python313\python.exe';
+  Paths[8]  := PF86 + '\Python312\python.exe';
+  Paths[9]  := PF86 + '\Python311\python.exe';
+  Paths[10] := 'C:\Python313\python.exe';
+  Paths[11] := 'C:\Python312\python.exe';
+  Paths[12] := 'C:\Python311\python.exe';
+  Paths[13] := 'C:\Python310\python.exe';
 
-  for I := 0 to 5 do
+  for I := 0 to 13 do
   begin
     if FileExists(Paths[I]) then
     begin
       Result := Paths[I];
-      LogMsg('Found Python: ' + Result);
+      LogMsg('Found system Python: ' + Result);
       Exit;
     end;
   end;
+
+  if RegQueryStringValue(HKCU, 'SOFTWARE\Python\PythonCore\3.13\InstallPath', '', RegPath) then
+    if FileExists(RegPath + 'python.exe') then begin Result := RegPath + 'python.exe'; LogMsg('Found Python via registry: ' + Result); Exit; end;
+  if RegQueryStringValue(HKCU, 'SOFTWARE\Python\PythonCore\3.12\InstallPath', '', RegPath) then
+    if FileExists(RegPath + 'python.exe') then begin Result := RegPath + 'python.exe'; LogMsg('Found Python via registry: ' + Result); Exit; end;
+  if RegQueryStringValue(HKCU, 'SOFTWARE\Python\PythonCore\3.11\InstallPath', '', RegPath) then
+    if FileExists(RegPath + 'python.exe') then begin Result := RegPath + 'python.exe'; LogMsg('Found Python via registry: ' + Result); Exit; end;
+  if RegQueryStringValue(HKLM, 'SOFTWARE\Python\PythonCore\3.13\InstallPath', '', RegPath) then
+    if FileExists(RegPath + 'python.exe') then begin Result := RegPath + 'python.exe'; LogMsg('Found Python via registry: ' + Result); Exit; end;
+  if RegQueryStringValue(HKLM, 'SOFTWARE\Python\PythonCore\3.12\InstallPath', '', RegPath) then
+    if FileExists(RegPath + 'python.exe') then begin Result := RegPath + 'python.exe'; LogMsg('Found Python via registry: ' + Result); Exit; end;
+  if RegQueryStringValue(HKLM, 'SOFTWARE\Python\PythonCore\3.11\InstallPath', '', RegPath) then
+    if FileExists(RegPath + 'python.exe') then begin Result := RegPath + 'python.exe'; LogMsg('Found Python via registry: ' + Result); Exit; end;
 
   if Exec('python', '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
@@ -197,42 +265,40 @@ begin
   end;
 end;
 
-// ─── 用 PowerShell 下载文件 ────────────────────────────
-function DownloadFile(URL, DestPath: String): Boolean;
-var
-  ResultCode: Integer;
-begin
-  LogMsg('Downloading: ' + URL);
-  Exec('powershell', '-Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile(''' + URL + ''', ''' + DestPath + ''')"',
-    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Result := FileExists(DestPath);
-  if Result then
-    LogMsg('Download OK: ' + DestPath)
-  else
-    LogMsg('Download FAILED: ' + URL);
-end;
-
-// ─── 运行 pip install（可选弹出窗口） ─────────────────
+// ─── 运行 pip install ─────────────────────────────────
 function RunPip(PythonExe, Args: String; Visible: Boolean): Integer;
 var
   ShowMode, ResultCode: Integer;
 begin
-  if Visible then
-    ShowMode := SW_SHOWNORMAL
-  else
-    ShowMode := SW_HIDE;
-
+  if Visible then ShowMode := SW_SHOWNORMAL else ShowMode := SW_HIDE;
   LogMsg('pip> ' + PythonExe + ' -m pip ' + Args);
-
   if Exec(PythonExe, '-m pip ' + Args, ExpandConstant('{app}'), ShowMode, ewWaitUntilTerminated, ResultCode) then
     Result := ResultCode
   else
     Result := -1;
-
   LogMsg('pip exit code: ' + IntToStr(Result));
 end;
 
-// ─── 生成 SSL 证书（CA + Server，含局域网 IP）─────────
+// ─── 确保有可用的 Python ──────────────────────────────
+function EnsurePython(AppDir: String): String;
+begin
+  Result := '';
+  if FileExists(AppDir + '\python\python.exe') then
+  begin
+    Result := AppDir + '\python\python.exe';
+    LogMsg('Using bundled Python 3.11.9: ' + Result);
+    Exit;
+  end;
+  Result := FindPython();
+  if Result <> '' then
+  begin
+    LogMsg('Using system Python: ' + Result);
+    Exit;
+  end;
+  LogMsg('FATAL: Neither bundled nor system Python found');
+end;
+
+// ─── 生成 SSL 证书 ───────────────────────────────────
 procedure GenerateSSL(PythonExe, AppDir: String);
 var
   Script, ScriptPath: String;
@@ -266,7 +332,7 @@ begin
     '            s.close()' + #13#10 +
     '        except: pass' + #13#10 +
     '        key = rsa.generate_private_key(65537, 2048)' + #13#10 +
-    '        subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "OpenClaw Voice Server")])' + #13#10 +
+    '        subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ShisanXiang Voice Server")])' + #13#10 +
     '        cert = (x509.CertificateBuilder().subject_name(subject).issuer_name(subject)' + #13#10 +
     '            .public_key(key.public_key()).serial_number(x509.random_serial_number())' + #13#10 +
     '            .not_valid_before(datetime.datetime.utcnow())' + #13#10 +
@@ -286,9 +352,48 @@ begin
   DeleteFile(ScriptPath);
 
   if ResultCode = 0 then
-    LogMsg('SSL certificate generated (CA + Server with LAN IPs)')
+    LogMsg('SSL certificate generated')
   else
     LogMsg('WARNING: SSL generation failed (code ' + IntToStr(ResultCode) + ')');
+end;
+
+// ─── 检测可移动磁盘（U盘）──────────────────────────────
+function DetectFirstUSBDrive(): String;
+var
+  I: Integer;
+  DriveLetter: String;
+begin
+  Result := '';
+  for I := Ord('D') to Ord('Z') do
+  begin
+    DriveLetter := Chr(I) + ':\';
+    if GetDriveTypeW(DriveLetter) = DRIVE_REMOVABLE then
+    begin
+      Result := DriveLetter;
+      Exit;
+    end;
+  end;
+end;
+
+function GetAllUSBDrives(): String;
+var
+  I: Integer;
+  DriveLetter: String;
+begin
+  Result := '';
+  for I := Ord('D') to Ord('Z') do
+  begin
+    DriveLetter := Chr(I) + ':\';
+    if GetDriveTypeW(DriveLetter) = DRIVE_REMOVABLE then
+    begin
+      if Result = '' then
+        Result := DriveLetter
+      else
+        Result := Result + '  ' + DriveLetter;
+    end;
+  end;
+  if Result = '' then
+    Result := '(未检测到U盘)';
 end;
 
 // ═══════════════════════════════════════════════════════
@@ -297,8 +402,7 @@ end;
 procedure RunInstallSteps();
 var
   Page: TOutputProgressWizardPage;
-  PythonExe, AppDir: String;
-  PyInstaller, VcInstaller: String;
+  PythonExe, AppDir, VcInstaller: String;
   ResultCode: Integer;
   Errors: String;
 begin
@@ -310,216 +414,161 @@ begin
 
   SaveStringToFile(LogFile,
     '================================================' + #13#10 +
-    ' OpenClaw AI v3.2 Installation Log' + #13#10 +
+    ' 十三香小龙虾 v{#AppVersion} Installation Log' + #13#10 +
     ' ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', #0, #0) + #13#10 +
+    ' Mode: ' + #13#10 +
     '================================================' + #13#10, False);
+
+  if QuickMode then LogMsg('Install mode: QUICK')
+  else if USBMode then LogMsg('Install mode: USB PORTABLE')
+  else LogMsg('Install mode: STANDARD');
 
   Page := CreateOutputProgressPage(
     '正在配置运行环境',
-    '安装程序正在下载并配置所需组件，请耐心等待...' + #13#10 +
+    '安装程序正在配置所需组件，请耐心等待...' + #13#10 +
     '（详细日志: ' + AppDir + '\logs\install.log）'
   );
   Page.Show;
 
   try
-    // ── 步骤 1/7：检测/安装 Python ──────────────────
-    Page.SetText('检测 Python 运行环境...', '');
+    // ── 步骤 1: 确保 Python ──
+    Page.SetText('正在初始化 Python 运行环境...', '');
     Page.SetProgress(0, 100);
-    LogMsg('=== [Step 1/7] Detect Python ===');
+    LogMsg('=== [Step 1] Ensure Python ===');
 
-    PythonExe := FindPython();
-
+    PythonExe := EnsurePython(AppDir);
     if PythonExe = '' then
     begin
-      Page.SetText(
-        '正在下载 Python 3.11（约 25MB）...',
-        '从华为云镜像下载，请确保网络畅通');
-      LogMsg('Python not found, downloading installer...');
-
-      PyInstaller := ExpandConstant('{tmp}\python-311-setup.exe');
-
-      if not DownloadFile(
-        'https://mirrors.huaweicloud.com/python/3.11.9/python-3.11.9-amd64.exe',
-        PyInstaller) then
-      begin
-        Page.SetText(
-          '华为云镜像下载失败，正在尝试官方源...',
-          '官方源速度可能较慢，请耐心等待');
-        DownloadFile(
-          'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe',
-          PyInstaller);
-      end;
-
-      if FileExists(PyInstaller) then
-      begin
-        Page.SetText('正在安装 Python 3.11...', '静默安装中，请勿操作');
-        Exec(PyInstaller, '/quiet InstallAllUsers=0 PrependPath=1 Include_pip=1 Include_launcher=0',
-          '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        DeleteFile(PyInstaller);
-        LogMsg('Python installer exit code: ' + IntToStr(ResultCode));
-        PythonExe := FindPython();
-      end;
-
-      if PythonExe = '' then
-      begin
-        LogMsg('FATAL: Python not available after install attempt');
+      LogMsg('FATAL: Python not available');
+      if not QuickMode then
         MsgBox(
-          'Python 安装失败！' + #13#10 + #13#10 +
-          '请手动安装 Python 3.11 后，运行安装目录下的 install_full.bat 完成安装。' + #13#10 + #13#10 +
-          '下载地址: https://www.python.org/downloads/release/python-3119/' + #13#10 +
-          '日志文件: ' + LogFile,
-          mbError, MB_OK);
-        Exit;
-      end;
+          'Python 运行环境初始化失败！' + #13#10 + #13#10 +
+          '请重新运行安装程序或检查磁盘空间。' + #13#10 +
+          '日志: ' + LogFile, mbError, MB_OK);
+      Exit;
     end;
-
     LogMsg('Using Python: ' + PythonExe);
     Page.SetProgress(10, 100);
 
-    // ── 步骤 2/7：检测/安装 VC++ ────────────────────
-    Page.SetText('检测 Visual C++ 运行库...', '');
-    Page.SetProgress(12, 100);
-    LogMsg('=== [Step 2/7] Check VC++ Runtime ===');
-
-    if not RegKeyExists(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64') and
-       not RegKeyExists(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64') then
+    // ── 步骤 2: 安装 VC++（U盘模式跳过，已内嵌 DLL）──
+    if not USBMode then
     begin
-      Page.SetText('正在下载 Visual C++ 运行库（5MB）...', '');
+      Page.SetText('正在安装 Visual C++ 运行库...', '');
+      Page.SetProgress(12, 100);
+      LogMsg('=== [Step 2] Install VC++ Runtime ===');
       VcInstaller := ExpandConstant('{tmp}\vcredist_x64.exe');
-
-      if DownloadFile('https://aka.ms/vs/17/release/vc_redist.x64.exe', VcInstaller) then
+      if FileExists(VcInstaller) then
       begin
-        Page.SetText('正在安装 Visual C++ 运行库...', '');
-        Exec(VcInstaller, '/quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        DeleteFile(VcInstaller);
+        Exec(VcInstaller, '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
         LogMsg('VC++ install exit code: ' + IntToStr(ResultCode));
       end else
-      begin
-        Errors := Errors + '- VC++ 运行库下载失败（PyTorch 可能无法运行）' + #13#10;
-        LogMsg('WARNING: VC++ download failed');
-      end;
+        LogMsg('WARNING: VC++ installer not found');
     end else
-      LogMsg('VC++ runtime: already installed');
+      LogMsg('=== [Step 2] Skip VC++ (USB mode, DLLs bundled) ===');
 
     Page.SetProgress(15, 100);
 
-    // ── 步骤 3/7：配置 pip 镜像 ────────────────────
-    Page.SetText('配置 pip 国内加速镜像（阿里云）...', '');
+    // ── 步骤 3: 配置 pip 镜像 ──
+    Page.SetText('配置 pip 国内加速镜像...', '');
     Page.SetProgress(16, 100);
-    LogMsg('=== [Step 3/7] Configure pip mirror ===');
-
+    LogMsg('=== [Step 3] Configure pip mirror ===');
     RunPip(PythonExe, 'config set global.index-url https://mirrors.aliyun.com/pypi/simple/', False);
     RunPip(PythonExe, 'config set global.trusted-host mirrors.aliyun.com', False);
     RunPip(PythonExe, 'install --upgrade pip -q', False);
-    LogMsg('pip mirror configured: aliyun');
     Page.SetProgress(20, 100);
 
-    // ── 步骤 4/7：安装核心依赖（最小包） ───────────
-    Page.SetText(
-      '正在安装核心依赖包（云端模式，约 1-3 分钟）...',
-      '已弹出命令行窗口显示下载详情。如果长时间无进度，请检查网络连接。');
+    // ── 步骤 4: 安装核心依赖 ──
+    Page.SetText('正在安装核心依赖包（约 1-3 分钟）...', '');
     Page.SetProgress(20, 100);
-    LogMsg('=== [Step 4/7] Install core dependencies (minimal) ===');
+    LogMsg('=== [Step 4] Install core dependencies ===');
 
     ResultCode := RunPip(PythonExe,
-      'install --no-cache-dir -r "' + AppDir + '\requirements.txt"',
-      True);
-
+      'install --no-cache-dir --timeout 120 -r "' + AppDir + '\requirements.txt"', True);
     if ResultCode <> 0 then
     begin
-      Errors := Errors + '- 核心依赖安装异常（错误码 ' + IntToStr(ResultCode) + '）' + #13#10;
+      Page.SetText('依赖安装未完成，正在重试...', '');
+      LogMsg('Core deps first attempt failed, retrying...');
+      ResultCode := RunPip(PythonExe,
+        'install --no-cache-dir --timeout 180 -r "' + AppDir + '\requirements.txt"', True);
+    end;
+    if ResultCode <> 0 then
+    begin
+      Errors := Errors + '- 核心依赖安装异常' + #13#10;
       LogMsg('WARNING: Core deps failed: ' + IntToStr(ResultCode));
     end;
-
     Page.SetProgress(50, 100);
 
-    // ── 步骤 5/7：安装本地 AI 模型（仅完整版） ─────
-    if IsComponentSelected('localai') then
+    // ── 步骤 4.5: 桌面控制依赖（极速模式自动包含）──
+    if WizardIsComponentSelected('desktop') or QuickMode then
     begin
-      Page.SetText(
-        '正在安装本地 AI 引擎（PyTorch + 语音模型，约 10-15 分钟）...',
-        '您选择了完整安装，正在下载本地 GPU 模型。如果下载速度慢，请耐心等待。');
-      Page.SetProgress(50, 100);
-      LogMsg('=== [Step 5/7] Install local AI (Full mode) ===');
-
+      Page.SetText('正在安装桌面控制组件...', '');
+      LogMsg('=== [Step 4.5] Install desktop control deps ===');
       ResultCode := RunPip(PythonExe,
-        'install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu',
-        True);
-
+        'install --no-cache-dir --timeout 120 pyautogui mss rapidocr-onnxruntime pyperclip', True);
       if ResultCode <> 0 then
       begin
-        LogMsg('PyTorch official source failed, trying aliyun mirror...');
-        ResultCode := RunPip(PythonExe, 'install --no-cache-dir torch', True);
+        Errors := Errors + '- 桌面控制组件安装异常' + #13#10;
+        LogMsg('WARNING: Desktop deps failed');
       end;
+    end;
 
+    // ── 步骤 5: 本地 AI（仅完整版，极速/U盘跳过）──
+    if WizardIsComponentSelected('localai') and (not QuickMode) and (not USBMode) then
+    begin
+      Page.SetText('正在安装本地 AI 引擎（约 10-15 分钟）...', '');
+      Page.SetProgress(50, 100);
+      LogMsg('=== [Step 5] Install local AI ===');
+      ResultCode := RunPip(PythonExe,
+        'install --no-cache-dir --timeout 300 torch --index-url https://download.pytorch.org/whl/cpu', True);
       if ResultCode <> 0 then
-      begin
-        Errors := Errors + '- PyTorch 安装失败（错误码 ' + IntToStr(ResultCode) + '）' + #13#10;
-        LogMsg('ERROR: PyTorch install failed');
-      end;
+        ResultCode := RunPip(PythonExe, 'install --no-cache-dir --timeout 300 torch', True);
+      if ResultCode <> 0 then
+        Errors := Errors + '- PyTorch 安装失败' + #13#10;
 
       Page.SetProgress(70, 100);
-
       ResultCode := RunPip(PythonExe,
-        'install --no-cache-dir faster-whisper funasr silero-vad torchaudio transformers',
-        True);
-
+        'install --no-cache-dir --timeout 120 faster-whisper funasr silero-vad torchaudio transformers', True);
       if ResultCode <> 0 then
-      begin
-        Errors := Errors + '- 本地语音模型安装异常（错误码 ' + IntToStr(ResultCode) + '）' + #13#10;
-        LogMsg('WARNING: Local STT install failed');
-      end;
+        Errors := Errors + '- 本地语音模型安装异常' + #13#10;
     end else
     begin
-      Page.SetText(
-        '跳过本地 AI 模型（最小安装模式，使用云端 API）...',
-        '安装 silero-vad 用于语音检测');
-      LogMsg('=== [Step 5/7] Minimal mode — skip local AI ===');
-
-      RunPip(PythonExe, 'install silero-vad', True);
+      Page.SetText('安装语音检测组件...', '');
+      LogMsg('=== [Step 5] Install silero-vad (minimal) ===');
+      RunPip(PythonExe, 'install --timeout 120 silero-vad', True);
     end;
-
     Page.SetProgress(80, 100);
 
-    // ── 步骤 6/7：安装视觉组件（仅完整版） ─────────
-    if IsComponentSelected('vision') then
+    // ── 步骤 6: 视觉组件（仅完整版）──
+    if WizardIsComponentSelected('vision') and (not QuickMode) and (not USBMode) then
     begin
-      Page.SetText('正在安装视觉控制组件（OCR + 屏幕识别）...', '');
-      LogMsg('=== [Step 6/7] Install vision components ===');
-      RunPip(PythonExe,
-        'install --no-cache-dir rapidocr-onnxruntime mss pyautogui uiautomation',
-        True);
-    end else
-    begin
-      LogMsg('=== [Step 6/7] Skip vision (minimal mode) ===');
+      Page.SetText('正在安装视觉控制组件...', '');
+      LogMsg('=== [Step 6] Install vision components ===');
+      ResultCode := RunPip(PythonExe,
+        'install --no-cache-dir --timeout 120 rapidocr-onnxruntime mss pyautogui uiautomation', True);
+      if ResultCode <> 0 then
+        RunPip(PythonExe,
+          'install --no-cache-dir --timeout 180 rapidocr-onnxruntime mss pyautogui uiautomation', True);
     end;
-
     Page.SetProgress(90, 100);
 
-    // ── 步骤 7/7：生成 SSL 证书 ────────────────────
-    Page.SetText('正在生成 SSL 证书（HTTPS 必需）...', '');
+    // ── 步骤 7: SSL 证书 ──
+    Page.SetText('正在生成 SSL 证书...', '');
     Page.SetProgress(92, 100);
-    LogMsg('=== [Step 7/7] Generate SSL certificate ===');
-
+    LogMsg('=== [Step 7] Generate SSL certificate ===');
     GenerateSSL(PythonExe, AppDir);
-
     Page.SetProgress(100, 100);
 
-    // ── 安装结果汇总 ────────────────────────────────
-    LogMsg('================================================');
+    // ── 安装结果 ──
     LogMsg('Installation finished: ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', #0, #0));
-
     if Errors <> '' then
     begin
       LogMsg('WARNINGS: ' + Errors);
-      MsgBox(
-        '安装已完成，但以下步骤有异常：' + #13#10 + #13#10 +
-        Errors + #13#10 +
-        '这些组件可能影响部分功能。您可以：' + #13#10 +
-        '  1. 手动运行 install_full.bat 重试' + #13#10 +
-        '  2. 查看日志: ' + LogFile + #13#10 +
-        '  3. 将日志发送给开发者排查问题',
-        mbInformation, MB_OK);
+      if not QuickMode then
+        MsgBox(
+          '安装已完成，但以下步骤有异常：' + #13#10 + #13#10 +
+          Errors + #13#10 +
+          '可重新运行安装程序或手动运行 install_full.bat 重试。' + #13#10 +
+          '日志: ' + LogFile, mbInformation, MB_OK);
     end else
       LogMsg('All steps completed successfully!');
 
@@ -528,48 +577,319 @@ begin
   end;
 end;
 
-// ─── 欢迎页自定义说明 ─────────────────────────────────
-procedure CurPageChanged(CurPageID: Integer);
+// ═══════════════════════════════════════════════════════
+//  三种安装模式的按钮回调
+// ═══════════════════════════════════════════════════════
+procedure QuickInstallClick(Sender: TObject);
 begin
-  if CurPageID = wpWelcome then
+  QuickMode := True;
+  USBMode := False;
+  WizardForm.DirEdit.Text := ExpandConstant('{localappdata}\ShisanXiang');
+  PostMessage(WizardForm.NextButton.Handle, BM_CLICK, 0, 0);
+end;
+
+procedure StandardInstallClick(Sender: TObject);
+begin
+  QuickMode := False;
+  USBMode := False;
+  PostMessage(WizardForm.NextButton.Handle, BM_CLICK, 0, 0);
+end;
+
+procedure USBInstallClick(Sender: TObject);
+var
+  FirstUSB: String;
+begin
+  QuickMode := False;
+  USBMode := True;
+  FirstUSB := DetectFirstUSBDrive();
+  if FirstUSB <> '' then
+    USBDrivePage.Values[0] := FirstUSB + 'ShisanXiang'
+  else
+    USBDrivePage.Values[0] := 'D:\ShisanXiang';
+  PostMessage(WizardForm.NextButton.Handle, BM_CLICK, 0, 0);
+end;
+
+// ═══════════════════════════════════════════════════════
+//  InitializeWizard — 三模式选择页 + U盘驱动器页 + 全局美化
+// ═══════════════════════════════════════════════════════
+procedure InitializeWizard();
+var
+  QuickBtn, StdBtn, USBBtn: TNewButton;
+  QuickDesc, StdDesc, USBDesc, LicenseNote: TNewStaticText;
+  Sep1, Sep2: TBevel;
+  BtnLeft, BtnWidth, BtnHeight, Y: Integer;
+begin
+  QuickMode := False;
+  USBMode := False;
+
+  // ── 全局美化 ──
+  WizardForm.Color := $00FAFAFA;
+
+  // ── 模式选择页（替代 wpWelcome）──
+  ModePage := CreateCustomPage(
+    wpWelcome,
+    '十三香小龙虾 v{#AppVersion}',
+    '全双工语音对话 · AI桌面控制 · 声音克隆 · 会议助手');
+
+  BtnLeft := ScaleX(16);
+  BtnWidth := ModePage.SurfaceWidth - ScaleX(32);
+  BtnHeight := ScaleY(44);
+  Y := ScaleY(12);
+
+  // ─── 极速安装（推荐）───
+  QuickBtn := TNewButton.Create(ModePage);
+  QuickBtn.Parent := ModePage.Surface;
+  QuickBtn.Caption := '  极速安装（推荐）';
+  QuickBtn.Left := BtnLeft;
+  QuickBtn.Top := Y;
+  QuickBtn.Width := BtnWidth;
+  QuickBtn.Height := BtnHeight;
+  QuickBtn.Font.Size := 11;
+  QuickBtn.Font.Style := [fsBold];
+  QuickBtn.Cursor := crHand;
+  QuickBtn.OnClick := @QuickInstallClick;
+
+  Y := Y + BtnHeight + ScaleY(3);
+  QuickDesc := TNewStaticText.Create(ModePage);
+  QuickDesc.Parent := ModePage.Surface;
+  QuickDesc.Caption := '一键完成 — 安装到默认位置，含桌面控制，自动打开设置页';
+  QuickDesc.Left := BtnLeft + ScaleX(4);
+  QuickDesc.Top := Y;
+  QuickDesc.Font.Color := $00888888;
+  QuickDesc.Font.Size := 8;
+
+  // ── 分隔线 ──
+  Y := Y + ScaleY(20);
+  Sep1 := TBevel.Create(ModePage);
+  Sep1.Parent := ModePage.Surface;
+  Sep1.Left := BtnLeft;
+  Sep1.Top := Y;
+  Sep1.Width := BtnWidth;
+  Sep1.Height := 1;
+  Sep1.Shape := bsTopLine;
+
+  // ─── 自定义安装 ───
+  Y := Y + ScaleY(10);
+  StdBtn := TNewButton.Create(ModePage);
+  StdBtn.Parent := ModePage.Surface;
+  StdBtn.Caption := '  自定义安装';
+  StdBtn.Left := BtnLeft;
+  StdBtn.Top := Y;
+  StdBtn.Width := BtnWidth;
+  StdBtn.Height := BtnHeight;
+  StdBtn.Font.Size := 11;
+  StdBtn.Cursor := crHand;
+  StdBtn.OnClick := @StandardInstallClick;
+
+  Y := Y + BtnHeight + ScaleY(3);
+  StdDesc := TNewStaticText.Create(ModePage);
+  StdDesc.Parent := ModePage.Surface;
+  StdDesc.Caption := '选择安装目录、组件和高级选项';
+  StdDesc.Left := BtnLeft + ScaleX(4);
+  StdDesc.Top := Y;
+  StdDesc.Font.Color := $00888888;
+  StdDesc.Font.Size := 8;
+
+  // ── 分隔线 ──
+  Y := Y + ScaleY(20);
+  Sep2 := TBevel.Create(ModePage);
+  Sep2.Parent := ModePage.Surface;
+  Sep2.Left := BtnLeft;
+  Sep2.Top := Y;
+  Sep2.Width := BtnWidth;
+  Sep2.Height := 1;
+  Sep2.Shape := bsTopLine;
+
+  // ─── U盘便携安装 ───
+  Y := Y + ScaleY(10);
+  USBBtn := TNewButton.Create(ModePage);
+  USBBtn.Parent := ModePage.Surface;
+  USBBtn.Caption := '  安装到U盘（便携版）';
+  USBBtn.Left := BtnLeft;
+  USBBtn.Top := Y;
+  USBBtn.Width := BtnWidth;
+  USBBtn.Height := BtnHeight;
+  USBBtn.Font.Size := 11;
+  USBBtn.Cursor := crHand;
+  USBBtn.OnClick := @USBInstallClick;
+
+  Y := Y + BtnHeight + ScaleY(3);
+  USBDesc := TNewStaticText.Create(ModePage);
+  USBDesc.Parent := ModePage.Surface;
+  USBDesc.Caption := '随插随用，不写入电脑 — 插到任何 Windows 10+ 电脑即可使用';
+  USBDesc.Left := BtnLeft + ScaleX(4);
+  USBDesc.Top := Y;
+  USBDesc.Font.Color := $00888888;
+  USBDesc.Font.Size := 8;
+
+  // 许可协议小字（紧贴底部）
+  LicenseNote := TNewStaticText.Create(ModePage);
+  LicenseNote.Parent := ModePage.Surface;
+  LicenseNote.Caption := '点击安装即表示您同意《用户许可协议》';
+  LicenseNote.Left := BtnLeft;
+  LicenseNote.Top := ModePage.SurfaceHeight - ScaleY(14);
+  LicenseNote.Font.Color := $00BBBBBB;
+  LicenseNote.Font.Size := 7;
+
+  // ── U盘驱动器选择页 ──
+  USBDrivePage := CreateInputDirPage(
+    wpLicense,
+    '选择U盘安装位置',
+    '十三香小龙虾将安装到U盘，随插随用',
+    '请选择U盘或移动硬盘上的安装目录。' + #13#10 + #13#10 +
+    '检测到的可移动磁盘: ' + GetAllUSBDrives() + #13#10 + #13#10 +
+    '提示: 最少需要 200MB 可用空间。安装完成后，' + #13#10 +
+    'U盘根目录会生成"启动十三香小龙虾.bat"，双击即可运行。',
+    False, '');
+  USBDrivePage.Add('安装到:');
+  USBDrivePage.Values[0] := 'D:\ShisanXiang';
+end;
+
+// ─── 页面跳过逻辑 ──────────────────────────────────────
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+
+  // 始终跳过默认欢迎页（被我们的 ModePage 替代）
+  if PageID = wpWelcome then
   begin
-    WizardForm.WelcomeLabel2.Caption :=
-      '欢迎安装 OpenClaw AI 语音助手 v3.2！' + #13#10 + #13#10 +
-      '主要功能：' + #13#10 +
-      '  - 全双工语音对话 + 情感识别' + #13#10 +
-      '  - 声音克隆（3 秒音频即可）' + #13#10 +
-      '  - AI 桌面控制 + 截图 + 窗口管理' + #13#10 +
-      '  - 微信公众号 / Siri / 飞书 / 钉钉 桥接' + #13#10 +
-      '  - 会议助手 + 主动智能' + #13#10 + #13#10 +
-      '安装模式：' + #13#10 +
-      '  [最小安装] 云端模式，约 50MB，3 分钟搞定' + #13#10 +
-      '  [完整安装] 含本地模型，约 1.5GB，高配电脑推荐' + #13#10 + #13#10 +
-      '下一步选择安装模式，安装过程会弹出命令行窗口。';
+    Result := True;
+    Exit;
+  end;
+
+  // 模式选择页始终显示
+  if PageID = ModePage.ID then
+  begin
+    Result := False;
+    Exit;
+  end;
+
+  if QuickMode then
+  begin
+    // 极速模式：跳过所有剩余页面
+    Result := True;
+  end
+  else if USBMode then
+  begin
+    // U盘模式：只显示U盘选择页
+    if PageID = USBDrivePage.ID then
+      Result := False
+    else
+      Result := True;
+  end
+  else
+  begin
+    // 标准模式：跳过U盘选择页，显示其他所有默认页面
+    if PageID = USBDrivePage.ID then
+      Result := True;
   end;
 end;
 
-// ─── 磁盘空间检查 ─────────────────────────────────────
+// ─── 页面切换时设置目录 ────────────────────────────────
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if USBMode and (CurPageID = USBDrivePage.ID) then
+  begin
+    WizardForm.DirEdit.Text := USBDrivePage.Values[0];
+  end;
+end;
+
+// ─── 页面变化回调（美化每一步）─────────────────────────
+procedure CurPageChanged(CurPageID: Integer);
+var
+  I: Integer;
+begin
+  // 极速/U盘模式：到达完成页时自动点击完成
+  if (CurPageID = wpFinished) and (QuickMode or USBMode) then
+  begin
+    PostMessage(WizardForm.NextButton.Handle, BM_CLICK, 0, 0);
+    Exit;
+  end;
+
+  // 模式选择页：隐藏 Next 按钮文字（用户通过三个模式按钮选择）
+  if CurPageID = ModePage.ID then
+    WizardForm.NextButton.Caption := ''
+  else
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonNext);
+
+  // ── 各页面美化 ──
+
+  // 许可协议页
+  if CurPageID = wpLicense then
+  begin
+    WizardForm.PageDescriptionLabel.Caption :=
+      '请阅读以下许可协议，滚动到底部后点击"我接受"继续。';
+  end;
+
+  // 安装目录选择页
+  if CurPageID = wpSelectDir then
+  begin
+    WizardForm.PageNameLabel.Caption := '选择安装位置';
+    WizardForm.PageDescriptionLabel.Caption :=
+      '十三香小龙虾将安装到以下目录。如果不确定，保持默认即可。';
+  end;
+
+  // 组件选择页
+  if CurPageID = wpSelectComponents then
+  begin
+    WizardForm.PageNameLabel.Caption := '选择安装组件';
+    WizardForm.PageDescriptionLabel.Caption :=
+      '选择要安装的功能模块。括号内为预估占用空间。';
+  end;
+
+  // 任务选择页 — 默认勾选所有
+  if CurPageID = wpSelectTasks then
+  begin
+    WizardForm.PageNameLabel.Caption := '附加选项';
+    WizardForm.PageDescriptionLabel.Caption :=
+      '选择安装后的快捷方式和启动行为。';
+    for I := 0 to WizardForm.TasksList.Items.Count - 1 do
+      WizardForm.TasksList.Checked[I] := True;
+  end;
+
+  // 准备安装页
+  if CurPageID = wpReady then
+  begin
+    WizardForm.PageNameLabel.Caption := '准备安装';
+    WizardForm.PageDescriptionLabel.Caption :=
+      '确认以下设置无误后，点击"安装"开始。';
+  end;
+
+  // 完成页
+  if CurPageID = wpFinished then
+  begin
+    WizardForm.FinishedHeadingLabel.Caption :=
+      '安装完成！';
+    WizardForm.FinishedLabel.Caption :=
+      '十三香小龙虾 v{#AppVersion} 已成功安装到您的电脑。' + #13#10 + #13#10 +
+      '勾选下方选项可立即启动程序。首次运行会打开浏览器' + #13#10 +
+      '引导您完成 AI 平台配置。' + #13#10 + #13#10 +
+      '感谢您选择十三香小龙虾！';
+  end;
+end;
+
+// ─── 磁盘空间检查 ──────────────────────────────────────
 function InitializeSetup(): Boolean;
 var
   FreeSpaceMB, TotalSpaceMB: Cardinal;
 begin
   Result := True;
-  if GetSpaceOnDisk(ExpandConstant('{autopf}'), True, FreeSpaceMB, TotalSpaceMB) then
+  if GetSpaceOnDisk(ExpandConstant('{localappdata}'), True, FreeSpaceMB, TotalSpaceMB) then
   begin
-    if FreeSpaceMB < 2048 then
+    if FreeSpaceMB < 500 then
     begin
       if MsgBox(
-        '磁盘可用空间不足 2GB！' + #13#10 +
-        'OpenClaw 需要约 1-2GB 空间安装依赖。' + #13#10 + #13#10 +
+        '磁盘可用空间不足 500MB！' + #13#10 +
+        '十三香小龙虾需要约 300MB 基础空间。' + #13#10 + #13#10 +
         '是否仍要继续安装？',
-        mbConfirmation, MB_YESNO
-      ) = IDNO then
+        mbConfirmation, MB_YESNO) = IDNO then
         Result := False;
     end;
   end;
 end;
 
-// ─── 创建目录 + 复制 .env + 运行安装步骤 ──────────────
+// ─── 创建目录 ──────────────────────────────────────────
 procedure CreateDirs();
 begin
   ForceDirectories(ExpandConstant('{app}\data'));
@@ -582,17 +902,73 @@ begin
   ForceDirectories(ExpandConstant('{app}\ssl'));
 end;
 
+// ─── U盘启动器生成 ────────────────────────────────────
+procedure CreateUSBLauncher(AppDir: String);
+var
+  DrivePath, FolderName, BatPath, BatContent: String;
+begin
+  DrivePath := ExtractFileDrive(AppDir);
+  FolderName := ExtractFileName(AppDir);
+  BatPath := DrivePath + '\启动十三香小龙虾.bat';
+  BatContent :=
+    '@echo off' + #13#10 +
+    'chcp 65001 >nul' + #13#10 +
+    'title 十三香小龙虾 — 便携版' + #13#10 +
+    'echo.' + #13#10 +
+    'echo  正在从U盘启动十三香小龙虾，请稍候...' + #13#10 +
+    'echo.' + #13#10 +
+    'cd /d "%~dp0' + FolderName + '"' + #13#10 +
+    'if not exist "python\python.exe" (' + #13#10 +
+    '    echo  [错误] 找不到内嵌 Python，请重新安装便携版。' + #13#10 +
+    '    pause' + #13#10 +
+    '    exit /b 1' + #13#10 +
+    ')' + #13#10 +
+    'if exist "openclaw-desktop.exe" (' + #13#10 +
+    '    start "" "openclaw-desktop.exe"' + #13#10 +
+    ') else (' + #13#10 +
+    '    start "" "python\python.exe" launcher.py' + #13#10 +
+    ')' + #13#10 +
+    'echo  十三香小龙虾已启动！可以关闭此窗口。' + #13#10 +
+    'timeout /t 3 /nobreak >nul' + #13#10;
+
+  SaveStringToFile(BatPath, BatContent, False);
+  LogMsg('USB launcher created: ' + BatPath);
+
+  // 写入 portable 标记
+  SaveStringToFile(AppDir + '\portable.flag', 'portable=true' + #13#10, False);
+  LogMsg('Portable flag created');
+end;
+
+// ─── 安装后处理 ────────────────────────────────────────
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  EnvFile, TemplateFile: String;
+  EnvFile, TemplateFile, AppDir: String;
+  ResultCode: Integer;
 begin
   if CurStep = ssPostInstall then
   begin
-    EnvFile := ExpandConstant('{app}\.env');
-    TemplateFile := ExpandConstant('{app}\.env.template');
+    AppDir := ExpandConstant('{app}');
+    EnvFile := AppDir + '\.env';
+    TemplateFile := AppDir + '\.env.template';
     if not FileExists(EnvFile) and FileExists(TemplateFile) then
-      CopyFile(TemplateFile, EnvFile, False);
+      FileCopy(TemplateFile, EnvFile, False);
 
     RunInstallSteps();
+
+    // U盘模式：生成便携启动器
+    if USBMode then
+      CreateUSBLauncher(AppDir);
+
+    // 极速/U盘模式：安装后自动启动并打开设置页
+    if QuickMode or USBMode then
+    begin
+      if FileExists(AppDir + '\openclaw-desktop.exe') then
+        Exec(AppDir + '\openclaw-desktop.exe', '', AppDir,
+          SW_SHOWNORMAL, ewNoWait, ResultCode)
+      else
+        Exec('wscript.exe', '"' + AppDir + '\OpenClaw.vbs"', AppDir,
+          SW_SHOWNORMAL, ewNoWait, ResultCode);
+      LogMsg('Auto-launched application');
+    end;
   end;
 end;
