@@ -25,49 +25,17 @@ import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from loguru import logger
 
+from .. import db as _db
 
-DB_PATH = Path("data/contact_fusion.db")
-_conn: Optional[sqlite3.Connection] = None
 _lock = threading.Lock()
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS fused_contacts (
-            id TEXT PRIMARY KEY,
-            display_name TEXT NOT NULL,
-            aliases TEXT DEFAULT '[]',
-            account_contacts TEXT DEFAULT '[]',
-            relationship TEXT DEFAULT 'normal',
-            intimacy REAL DEFAULT 30.0,
-            interests TEXT DEFAULT '[]',
-            notes TEXT DEFAULT '',
-            total_interactions INTEGER DEFAULT 0,
-            created_at REAL DEFAULT 0,
-            updated_at REAL DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS alias_map (
-            account_id TEXT NOT NULL,
-            contact_name TEXT NOT NULL,
-            fused_id TEXT NOT NULL,
-            confidence REAL DEFAULT 1.0,
-            match_method TEXT DEFAULT 'manual',
-            PRIMARY KEY (account_id, contact_name)
-        );
-        """)
-        _conn.commit()
-    return _conn
+    return _db.get_conn("wechat")
 
 
 @dataclass
@@ -212,7 +180,7 @@ def create_fused_contact(
     conn = _get_conn()
     with _lock:
         conn.execute(
-            "INSERT OR REPLACE INTO fused_contacts "
+            "INSERT OR REPLACE INTO contact_links "
             "(id,display_name,aliases,account_contacts,relationship,intimacy,interests,notes,total_interactions,created_at,updated_at) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (fc.id, fc.display_name, json.dumps(fc.aliases, ensure_ascii=False),
@@ -235,7 +203,7 @@ def create_fused_contact(
 def merge_contacts(fused_id: str, new_account_id: str, new_name: str) -> bool:
     """将一个新的账号联系人合并到已有的融合联系人"""
     conn = _get_conn()
-    row = conn.execute("SELECT * FROM fused_contacts WHERE id=?", (fused_id,)).fetchone()
+    row = conn.execute("SELECT * FROM contact_links WHERE id=?", (fused_id,)).fetchone()
     if not row:
         return False
 
@@ -248,7 +216,7 @@ def merge_contacts(fused_id: str, new_account_id: str, new_name: str) -> bool:
 
     with _lock:
         conn.execute(
-            "UPDATE fused_contacts SET account_contacts=?, aliases=?, updated_at=? WHERE id=?",
+            "UPDATE contact_links SET account_contacts=?, aliases=?, updated_at=? WHERE id=?",
             (json.dumps(accts, ensure_ascii=False), json.dumps(aliases, ensure_ascii=False),
              time.time(), fused_id),
         )
@@ -273,7 +241,7 @@ def resolve_fused_id(account_id: str, contact_name: str) -> Optional[str]:
 
 def get_fused_contact(fused_id: str) -> Optional[FusedContact]:
     conn = _get_conn()
-    row = conn.execute("SELECT * FROM fused_contacts WHERE id=?", (fused_id,)).fetchone()
+    row = conn.execute("SELECT * FROM contact_links WHERE id=?", (fused_id,)).fetchone()
     if not row:
         return None
     return FusedContact(
@@ -289,7 +257,7 @@ def get_fused_contact(fused_id: str) -> Optional[FusedContact]:
 
 def list_fused_contacts() -> List[FusedContact]:
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM fused_contacts ORDER BY updated_at DESC").fetchall()
+    rows = conn.execute("SELECT * FROM contact_links ORDER BY updated_at DESC").fetchall()
     return [FusedContact(
         id=r["id"], display_name=r["display_name"],
         aliases=json.loads(r["aliases"]),
@@ -303,7 +271,7 @@ def list_fused_contacts() -> List[FusedContact]:
 def delete_fused_contact(fused_id: str):
     conn = _get_conn()
     with _lock:
-        conn.execute("DELETE FROM fused_contacts WHERE id=?", (fused_id,))
+        conn.execute("DELETE FROM contact_links WHERE id=?", (fused_id,))
         conn.execute("DELETE FROM alias_map WHERE fused_id=?", (fused_id,))
         conn.commit()
 

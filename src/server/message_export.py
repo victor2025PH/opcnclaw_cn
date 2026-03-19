@@ -17,7 +17,6 @@ from __future__ import annotations
 import csv
 import io
 import json
-import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
@@ -90,34 +89,31 @@ def _fetch_messages(source, session, contact, account_id, start_time, end_time) 
             logger.warning(f"Inbox export failed: {e}")
     else:
         try:
-            db_path = Path("data/memory.db")
-            if db_path.exists():
-                conn = sqlite3.connect(str(db_path))
-                conn.row_factory = sqlite3.Row
-                conditions = []
-                params = []
-                if session:
-                    conditions.append("session = ?")
-                    params.append(session)
-                if start_time:
-                    conditions.append("ts >= ?")
-                    params.append(start_time)
-                if end_time:
-                    conditions.append("ts <= ?")
-                    params.append(end_time)
-                where = " AND ".join(conditions) if conditions else "1=1"
-                rows = conn.execute(
-                    f"SELECT role, content, ts FROM messages WHERE {where} ORDER BY ts ASC LIMIT 10000",
-                    params,
-                ).fetchall()
-                for r in rows:
-                    messages.append({
-                        "time": r["ts"],
-                        "sender": "User" if r["role"] == "user" else "AI",
-                        "content": r["content"][:2000],
-                        "direction": "in" if r["role"] == "user" else "out",
-                    })
-                conn.close()
+            from . import db as _db
+            conn = _db.get_conn("main")
+            conditions = []
+            params = []
+            if session:
+                conditions.append("session = ?")
+                params.append(session)
+            if start_time:
+                conditions.append("ts >= ?")
+                params.append(start_time)
+            if end_time:
+                conditions.append("ts <= ?")
+                params.append(end_time)
+            where = " AND ".join(conditions) if conditions else "1=1"
+            rows = conn.execute(
+                f"SELECT role, content, ts FROM messages WHERE {where} ORDER BY ts ASC LIMIT 10000",
+                params,
+            ).fetchall()
+            for r in rows:
+                messages.append({
+                    "time": r["ts"],
+                    "sender": "User" if r["role"] == "user" else "AI",
+                    "content": r["content"][:2000],
+                    "direction": "in" if r["role"] == "user" else "out",
+                })
         except Exception as e:
             logger.warning(f"Memory export failed: {e}")
 

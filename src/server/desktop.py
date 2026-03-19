@@ -24,12 +24,21 @@ pyautogui.PAUSE = 0.0
 class DesktopStreamer:
     """Captures the screen, runs OCR, and executes mouse/keyboard commands."""
 
+    # OCR 缓存 TTL（秒）：屏幕内容在短时间内不会变化
+    OCR_CACHE_TTL = 3.0
+
     def __init__(self, max_width: int = 1280, quality: int = 45, fps: int = 10):
         self.max_width = max_width
         self.quality = quality
         self.fps = fps
         self._screen_w, self._screen_h = pyautogui.size()
         self._ocr = None
+        self._monitor_idx = 1
+        self._cursor_nx = 0.5
+        self._cursor_ny = 0.5
+        # OCR 缓存
+        self._ocr_cache: list[dict] = []
+        self._ocr_cache_ts: float = 0.0
         logger.info(f"Desktop streamer ready — screen {self._screen_w}x{self._screen_h}")
 
     @property
@@ -46,21 +55,31 @@ class DesktopStreamer:
         return self._ocr
 
     def _capture_raw(self) -> Image.Image:
-        """Capture full-resolution screenshot as PIL Image."""
+        """Capture screenshot from the active monitor as PIL Image."""
         with mss.mss() as sct:
-            monitor = sct.monitors[1]
-            raw = sct.grab(monitor)
+            idx = min(self._monitor_idx, len(sct.monitors) - 1)
+            raw = sct.grab(sct.monitors[idx])
             return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
 
-    def ocr_screen(self) -> list[dict]:
+    def ocr_screen(self, force: bool = False) -> list[dict]:
         """Capture screen + OCR → list of {text, x, y, score}.
-        x, y are normalized center coordinates (0~1)."""
+        x, y are normalized center coordinates (0~1).
+
+        使用 TTL 缓存（默认 3 秒）避免重复 OCR。
+        force=True 强制刷新缓存。
+        """
+        now = time.time()
+        if not force and self._ocr_cache and (now - self._ocr_cache_ts) < self.OCR_CACHE_TTL:
+            return self._ocr_cache
+
         img = self._capture_raw()
         img_np = np.array(img)
         ocr = self._get_ocr()
 
         result, _ = ocr(img_np)
         if not result:
+            self._ocr_cache = []
+            self._ocr_cache_ts = now
             return []
 
         sw, sh = img.width, img.height
@@ -80,7 +99,14 @@ class DesktopStreamer:
                 "y": round(cy, 4),
                 "score": round(score_f, 2),
             })
+
+        self._ocr_cache = items
+        self._ocr_cache_ts = now
         return items
+
+    def invalidate_ocr_cache(self):
+        """用户操作（点击/输入）后调用，使 OCR 缓存立即失效"""
+        self._ocr_cache_ts = 0.0
 
     def find_text(self, target: str) -> Optional[dict]:
         """Find text containing `target` on screen, return best match with coords."""
@@ -114,6 +140,155 @@ class DesktopStreamer:
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=self.quality)
         return base64.b64encode(buf.getvalue()).decode(), img.width, img.height
+
+    def _resize(self, img: Image.Image) -> Image.Image:
+        if img.width > self.max_width:
+            r = self.max_width / img.width
+            img = img.resize((self.max_width, int(img.height * r)), Image.LANCZOS)
+        return img
+
+    def _jpg_b64(self, img: Image.Image, quality: int | None = None) -> str:
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality or self.quality)
+        return base64.b64encode(buf.getvalue()).decode()
+
+    def _jpg_bytes(self, img: Image.Image, quality: int | None = None) -> bytes:
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality or self.quality)
+        return buf.getvalue()
+
+    def capture_frame_binary(
+        self, prev_np: "np.ndarray | None" = None, force_key: bool = False,
+    ) -> "tuple[bytes | None, dict, np.ndarray]":
+        """Binary-optimized capture: returns (jpeg_bytes, header_dict, frame_np).
+
+        jpeg_bytes is raw JPEG (no base64). header_dict has metadata only.
+        If mode=='skip', jpeg_bytes is None.
+        """
+        img = self._resize(self._capture_raw())
+        frame_np = np.array(img)
+        h, w = frame_np.shape[:2]
+        sw, sh = self._screen_w, self._screen_h
+
+        if prev_np is None or force_key or prev_np.shape != frame_np.shape:
+            return (
+                self._jpg_bytes(img),
+                {"m": "k", "w": w, "h": h, "sw": sw, "sh": sh},
+                frame_np,
+            )
+
+        diff = np.any(
+            np.abs(frame_np.astype(np.int16) - prev_np.astype(np.int16))
+            > self._DELTA_NOISE,
+            axis=2,
+        )
+        if not np.any(diff):
+            return None, {"m": "s"}, prev_np
+
+        B = self._DELTA_BLOCK
+        changed = []
+        for by in range(0, h, B):
+            for bx in range(0, w, B):
+                bh, bw = min(B, h - by), min(B, w - bx)
+                if np.any(diff[by : by + bh, bx : bx + bw]):
+                    changed.append((bx, by, bw, bh))
+
+        if not changed:
+            return None, {"m": "s"}, prev_np
+
+        total_blocks = ((h + B - 1) // B) * ((w + B - 1) // B)
+        if len(changed) > total_blocks * 0.45:
+            return (
+                self._jpg_bytes(img),
+                {"m": "k", "w": w, "h": h, "sw": sw, "sh": sh},
+                frame_np,
+            )
+
+        x1 = min(b[0] for b in changed)
+        y1 = min(b[1] for b in changed)
+        x2 = max(b[0] + b[2] for b in changed)
+        y2 = max(b[1] + b[3] for b in changed)
+
+        crop = img.crop((x1, y1, x2, y2))
+        cx, cy = self._cursor_nx * w, self._cursor_ny * h
+        near_cursor = x1 <= cx <= x2 and y1 <= cy <= y2
+        q = min(self.quality + (20 if near_cursor else 8), 88)
+
+        return (
+            self._jpg_bytes(crop, q),
+            {"m": "d", "x": x1, "y": y1, "dw": x2 - x1, "dh": y2 - y1, "w": w, "h": h},
+            frame_np,
+        )
+
+    _DELTA_BLOCK = 64
+    _DELTA_NOISE = 10
+
+    def capture_frame_delta(
+        self, prev_np: np.ndarray | None = None, force_key: bool = False,
+    ) -> tuple[dict, np.ndarray]:
+        """Delta-compressed capture with block-based diff and noise tolerance.
+
+        Returns (msg_dict, frame_numpy).
+        msg_dict has key 'mode': 'key' | 'delta' | 'skip'.
+        Caller must store frame_numpy for next call's prev_np.
+        """
+        img = self._resize(self._capture_raw())
+        frame_np = np.array(img)
+        h, w = frame_np.shape[:2]
+        sw, sh = self._screen_w, self._screen_h
+
+        if prev_np is None or force_key or prev_np.shape != frame_np.shape:
+            return {
+                "type": "frame", "mode": "key",
+                "data": self._jpg_b64(img), "w": w, "h": h,
+                "sw": sw, "sh": sh,
+            }, frame_np
+
+        diff = np.any(
+            np.abs(frame_np.astype(np.int16) - prev_np.astype(np.int16))
+            > self._DELTA_NOISE,
+            axis=2,
+        )
+
+        if not np.any(diff):
+            return {"type": "frame", "mode": "skip"}, prev_np
+
+        B = self._DELTA_BLOCK
+        changed = []
+        for by in range(0, h, B):
+            for bx in range(0, w, B):
+                bh, bw = min(B, h - by), min(B, w - bx)
+                if np.any(diff[by : by + bh, bx : bx + bw]):
+                    changed.append((bx, by, bw, bh))
+
+        if not changed:
+            return {"type": "frame", "mode": "skip"}, prev_np
+
+        total_blocks = ((h + B - 1) // B) * ((w + B - 1) // B)
+
+        if len(changed) > total_blocks * 0.45:
+            return {
+                "type": "frame", "mode": "key",
+                "data": self._jpg_b64(img), "w": w, "h": h,
+                "sw": sw, "sh": sh,
+            }, frame_np
+
+        x1 = min(b[0] for b in changed)
+        y1 = min(b[1] for b in changed)
+        x2 = max(b[0] + b[2] for b in changed)
+        y2 = max(b[1] + b[3] for b in changed)
+
+        crop = img.crop((x1, y1, x2, y2))
+        cx, cy = self._cursor_nx * w, self._cursor_ny * h
+        near_cursor = x1 <= cx <= x2 and y1 <= cy <= y2
+        q = min(self.quality + (20 if near_cursor else 8), 88)
+
+        return {
+            "type": "frame", "mode": "delta",
+            "data": self._jpg_b64(crop, q),
+            "x": x1, "y": y1, "dw": x2 - x1, "dh": y2 - y1,
+            "w": w, "h": h, "bc": len(changed),
+        }, frame_np
 
     # ── Mouse ──
 
@@ -154,7 +329,19 @@ class DesktopStreamer:
     def key_press(self, key: str):
         pyautogui.press(key, _pause=False)
 
+    _MEDIA_VK = {
+        'play_pause': 0xB3, 'volume_mute': 0xAD,
+        'volume_down': 0xAE, 'volume_up': 0xAF,
+        'next_track': 0xB0, 'prev_track': 0xB1, 'stop_media': 0xB2,
+    }
+
     def hotkey(self, keys: list[str]):
+        if len(keys) == 1 and keys[0] in self._MEDIA_VK:
+            import ctypes
+            vk = self._MEDIA_VK[keys[0]]
+            ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+            return
         pyautogui.hotkey(*keys, _pause=False)
 
     def type_text(self, text: str):
@@ -279,6 +466,7 @@ class DesktopStreamer:
 
     def execute_actions(self, actions: list[dict]) -> list[str]:
         """Execute a list of AI-planned actions. Returns execution log lines."""
+        self.invalidate_ocr_cache()  # 操作前失效缓存
         log = []
         for i, act in enumerate(actions[:15]):  # safety limit
             a = act.get("action", "")
@@ -376,6 +564,155 @@ class DesktopStreamer:
 
         return log
 
+    # ── Z1: Enhanced Remote Control ──
+
+    def get_system_info(self) -> dict:
+        import psutil
+        cpu = psutil.cpu_percent(interval=0)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage(os.environ.get("SystemDrive", "C:\\") + "\\" if sys.platform == "win32" else "/")
+        net = psutil.net_io_counters()
+        bat = psutil.sensors_battery()
+        return {
+            "cpu": cpu,
+            "mem_used": mem.used // (1024 * 1024),
+            "mem_total": mem.total // (1024 * 1024),
+            "mem_pct": mem.percent,
+            "disk_used": disk.used // (1024 ** 3),
+            "disk_total": disk.total // (1024 ** 3),
+            "disk_pct": round(disk.percent, 1),
+            "net_sent": net.bytes_sent // (1024 * 1024),
+            "net_recv": net.bytes_recv // (1024 * 1024),
+            "battery": bat.percent if bat else -1,
+            "plugged": bat.power_plugged if bat else True,
+            "fg_app": self.get_foreground_app(),
+        }
+
+    def get_clipboard_text(self) -> str:
+        try:
+            return pyperclip.paste() or ""
+        except Exception:
+            return ""
+
+    def set_clipboard_text(self, text: str):
+        try:
+            pyperclip.copy(text)
+        except Exception as e:
+            logger.warning(f"Clipboard write failed: {e}")
+
+    def list_files(self, path_str: str) -> tuple[str, list]:
+        p = Path(os.path.expanduser(path_str)).resolve()
+        if not p.exists() or not p.is_dir():
+            return str(p), []
+        entries = []
+        try:
+            for f in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+                try:
+                    st = f.stat()
+                    entries.append({
+                        "name": f.name,
+                        "dir": f.is_dir(),
+                        "size": st.st_size if f.is_file() else 0,
+                        "ts": int(st.st_mtime * 1000),
+                    })
+                except (PermissionError, OSError):
+                    pass
+        except PermissionError:
+            pass
+        return str(p), entries[:300]
+
+    def open_file(self, path_str: str):
+        import subprocess
+        p = Path(path_str)
+        if not p.exists():
+            return
+        if sys.platform == "win32":
+            os.startfile(str(p))
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(p)])
+        else:
+            subprocess.Popen(["xdg-open", str(p)])
+
+    def get_processes(self, top_n: int = 25) -> list:
+        import psutil
+        procs = []
+        for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_percent"]):
+            try:
+                info = p.info
+                if (info["cpu_percent"] or 0) > 0 or (info["memory_percent"] or 0) > 0.1:
+                    procs.append({
+                        "pid": info["pid"],
+                        "name": info["name"] or "?",
+                        "cpu": round(info["cpu_percent"] or 0, 1),
+                        "mem": round(info["memory_percent"] or 0, 1),
+                    })
+            except Exception:
+                pass
+        procs.sort(key=lambda x: x["cpu"] + x["mem"] * 2, reverse=True)
+        return procs[:top_n]
+
+    def kill_process(self, pid: int) -> bool:
+        import psutil
+        try:
+            psutil.Process(pid).terminate()
+            return True
+        except Exception:
+            return False
+
+    # ── Q1: OCR at pointer ──
+
+    def ocr_at_point(self, nx: float, ny: float, radius: float = 0.08) -> list[dict]:
+        """OCR a small region centered at normalized (nx, ny)."""
+        x1, y1 = max(0.0, nx - radius), max(0.0, ny - radius)
+        x2, y2 = min(1.0, nx + radius), min(1.0, ny + radius)
+        try:
+            return self.ocr_region(x1, y1, x2, y2)
+        except Exception as e:
+            logger.warning(f"OCR at point failed: {e}")
+            return []
+
+    # ── Q2: Multi-monitor + foreground app ──
+
+    def get_monitors(self) -> list[dict]:
+        with mss.mss() as sct:
+            result = []
+            for i, m in enumerate(sct.monitors):
+                if i == 0:
+                    continue
+                result.append({
+                    "index": i,
+                    "width": m["width"], "height": m["height"],
+                    "left": m["left"], "top": m["top"],
+                    "active": i == self._monitor_idx,
+                })
+            return result
+
+    def set_monitor(self, index: int):
+        with mss.mss() as sct:
+            if 0 < index < len(sct.monitors):
+                m = sct.monitors[index]
+                self._monitor_idx = index
+                self._screen_w = m["width"]
+                self._screen_h = m["height"]
+                logger.info(f"Monitor switched to {index}: {m['width']}x{m['height']}")
+                return True
+        return False
+
+    def get_foreground_app(self) -> str:
+        if sys.platform != "win32":
+            return ""
+        try:
+            import ctypes
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+            if length == 0:
+                return ""
+            buf = ctypes.create_unicode_buffer(length + 1)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
+            return buf.value.strip()
+        except Exception:
+            return ""
+
     # ── Command dispatcher (WebSocket) ──
 
     def handle_command(self, msg: dict):
@@ -406,5 +743,12 @@ class DesktopStreamer:
                 self.fps = max(1, min(30, int(msg["fps"])))
             elif t == "set_quality":
                 self.quality = max(10, min(95, int(msg["quality"])))
+            elif t == "scroll":
+                self.mouse_scroll(msg.get("dy", 0))
+            elif t == "shell":
+                import subprocess
+                cmd = msg.get("command", "")
+                if cmd:
+                    subprocess.Popen(cmd, shell=True, creationflags=0x08)
         except Exception as e:
             logger.warning(f"Desktop command error ({t}): {e}")

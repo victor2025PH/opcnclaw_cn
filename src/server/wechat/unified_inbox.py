@@ -17,57 +17,17 @@ import sqlite3
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
+from .. import db as _db
 
-DB_PATH = Path("data/unified_inbox.db")
-_conn: Optional[sqlite3.Connection] = None
 _lock = threading.Lock()
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS inbox (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            account_id TEXT NOT NULL,
-            contact TEXT NOT NULL,
-            sender TEXT DEFAULT '',
-            content TEXT NOT NULL,
-            is_group INTEGER DEFAULT 0,
-            is_mine INTEGER DEFAULT 0,
-            timestamp REAL DEFAULT 0,
-            read INTEGER DEFAULT 0,
-            starred INTEGER DEFAULT 0,
-            forwarded INTEGER DEFAULT 0
-        );
-        CREATE INDEX IF NOT EXISTS idx_inbox_acct ON inbox(account_id, timestamp DESC);
-        CREATE INDEX IF NOT EXISTS idx_inbox_contact ON inbox(contact, timestamp DESC);
-        CREATE INDEX IF NOT EXISTS idx_inbox_unread ON inbox(read, timestamp DESC);
-
-        CREATE TABLE IF NOT EXISTS forward_rules (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            enabled INTEGER DEFAULT 1,
-            src_account TEXT NOT NULL,
-            src_contact TEXT DEFAULT '',
-            dst_account TEXT NOT NULL,
-            dst_contact TEXT NOT NULL,
-            keyword_filter TEXT DEFAULT '',
-            transform TEXT DEFAULT 'plain',
-            created_at REAL DEFAULT 0
-        );
-        """)
-        _conn.commit()
-    return _conn
+    return _db.get_conn("wechat")
 
 
 # ── 统一收件箱 ────────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     
     steps:
       - uses: actions/checkout@v4
@@ -27,9 +27,12 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio
       
+      - name: Run core infrastructure tests
+        run: pytest tests/test_db.py tests/test_memory_search.py -v
+
       - name: Run unit tests
         run: pytest tests/test_modules.py tests/test_auth.py tests/test_bridges.py tests/test_model_downloader.py tests/test_health.py tests/test_i18n.py tests/test_session.py tests/test_security.py tests/test_phase13.py -v
-      
+
       - name: Run server tests
         run: pytest tests/test_server.py -v
         env:

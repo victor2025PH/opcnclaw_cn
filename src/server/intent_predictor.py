@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 import time
 import json
+import collections
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -253,11 +254,17 @@ class IntentPredictor:
         }
 
 
-# session_id → IntentPredictor
-_predictors: Dict[str, IntentPredictor] = {}
+# session_id → IntentPredictor（LRU 淘汰，最多 100 个活跃会话）
+_predictors: collections.OrderedDict[str, IntentPredictor] = collections.OrderedDict()
+_MAX_PREDICTORS = 100
 
 
 def get_predictor(session_id: str = "default") -> IntentPredictor:
-    if session_id not in _predictors:
-        _predictors[session_id] = IntentPredictor()
+    if session_id in _predictors:
+        _predictors.move_to_end(session_id)
+        return _predictors[session_id]
+    # 淘汰最久未使用的
+    while len(_predictors) >= _MAX_PREDICTORS:
+        _predictors.popitem(last=False)
+    _predictors[session_id] = IntentPredictor()
     return _predictors[session_id]

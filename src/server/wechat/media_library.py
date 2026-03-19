@@ -28,40 +28,14 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
 
+from .. import db as _db
 
 MEDIA_DIR = Path(__file__).parent.parent.parent.parent / "data" / "media"
-MEDIA_DB = MEDIA_DIR / "media.db"
 SUPPORTED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
-
-_conn: Optional[sqlite3.Connection] = None
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(MEDIA_DB), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("""CREATE TABLE IF NOT EXISTS media (
-            id TEXT PRIMARY KEY,
-            filename TEXT NOT NULL,
-            path TEXT NOT NULL,
-            tags TEXT DEFAULT '[]',
-            category TEXT DEFAULT '',
-            description TEXT DEFAULT '',
-            width INTEGER DEFAULT 0,
-            height INTEGER DEFAULT 0,
-            file_size INTEGER DEFAULT 0,
-            added_at REAL DEFAULT 0,
-            last_used_at REAL DEFAULT 0,
-            use_count INTEGER DEFAULT 0,
-            ai_analyzed INTEGER DEFAULT 0,
-            source TEXT DEFAULT 'local'
-        )""")
-        _conn.execute("CREATE INDEX IF NOT EXISTS idx_media_tags ON media(tags)")
-        _conn.execute("CREATE INDEX IF NOT EXISTS idx_media_cat ON media(category)")
-        _conn.commit()
-    return _conn
+    return _db.get_conn("wechat")
 
 
 def _file_hash(path: str) -> str:

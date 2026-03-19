@@ -9,61 +9,17 @@
 
 import json
 import sqlite3
-import threading
 import time
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from loguru import logger
 
+from .. import db as _db
 from .models import Execution, ExecStatus, NodeResult, Workflow
-
-DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "workflows.db"
-
-_local = threading.local()
 
 
 def _get_conn() -> sqlite3.Connection:
-    if not hasattr(_local, "conn") or _local.conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        _local.conn = conn
-        _init_tables(conn)
-    return _local.conn
-
-
-def _init_tables(conn: sqlite3.Connection):
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS workflows (
-            id          TEXT PRIMARY KEY,
-            name        TEXT NOT NULL,
-            definition  TEXT NOT NULL,
-            enabled     INTEGER DEFAULT 0,
-            category    TEXT DEFAULT 'custom',
-            created_at  REAL,
-            updated_at  REAL
-        );
-        CREATE TABLE IF NOT EXISTS executions (
-            id              TEXT PRIMARY KEY,
-            workflow_id     TEXT NOT NULL,
-            workflow_name   TEXT DEFAULT '',
-            status          TEXT DEFAULT 'pending',
-            trigger_type    TEXT DEFAULT 'manual',
-            started_at      REAL,
-            finished_at     REAL,
-            node_results    TEXT DEFAULT '[]',
-            context_json    TEXT DEFAULT '{}',
-            error           TEXT DEFAULT ''
-        );
-        CREATE INDEX IF NOT EXISTS idx_exec_wf
-            ON executions(workflow_id, started_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_exec_time
-            ON executions(started_at DESC);
-    """)
-    conn.commit()
+    return _db.get_conn("main")
 
 
 # ── Workflow CRUD ──────────────────────────────────────────────────────────────
@@ -136,7 +92,7 @@ def toggle_workflow(wf_id: str, enabled: bool) -> bool:
 def save_execution(ex: Execution):
     conn = _get_conn()
     conn.execute(
-        """INSERT OR REPLACE INTO executions
+        """INSERT OR REPLACE INTO workflow_executions
            (id, workflow_id, workflow_name, status, trigger_type,
             started_at, finished_at, node_results, context_json, error)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -153,7 +109,7 @@ def save_execution(ex: Execution):
 def get_execution(ex_id: str) -> Optional[Execution]:
     conn = _get_conn()
     row = conn.execute(
-        "SELECT * FROM executions WHERE id = ?", (ex_id,)
+        "SELECT * FROM workflow_executions WHERE id = ?", (ex_id,)
     ).fetchone()
     if not row:
         return None
@@ -168,12 +124,12 @@ def list_executions(
     conn = _get_conn()
     if workflow_id:
         rows = conn.execute(
-            "SELECT * FROM executions WHERE workflow_id = ? ORDER BY started_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM workflow_executions WHERE workflow_id = ? ORDER BY started_at DESC LIMIT ? OFFSET ?",
             (workflow_id, limit, offset),
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT * FROM executions ORDER BY started_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM workflow_executions ORDER BY started_at DESC LIMIT ? OFFSET ?",
             (limit, offset),
         ).fetchall()
     return [_row_to_execution(r) for r in rows]
@@ -183,18 +139,18 @@ def count_executions(workflow_id: Optional[str] = None) -> int:
     conn = _get_conn()
     if workflow_id:
         row = conn.execute(
-            "SELECT COUNT(*) as c FROM executions WHERE workflow_id = ?",
+            "SELECT COUNT(*) as c FROM workflow_executions WHERE workflow_id = ?",
             (workflow_id,),
         ).fetchone()
     else:
-        row = conn.execute("SELECT COUNT(*) as c FROM executions").fetchone()
+        row = conn.execute("SELECT COUNT(*) as c FROM workflow_executions").fetchone()
     return row["c"] if row else 0
 
 
 def cleanup_old_executions(days: int = 30):
     conn = _get_conn()
     cutoff = time.time() - days * 86400
-    conn.execute("DELETE FROM executions WHERE started_at < ?", (cutoff,))
+    conn.execute("DELETE FROM workflow_executions WHERE started_at < ?", (cutoff,))
     conn.commit()
 
 
@@ -238,15 +194,15 @@ def get_stats() -> Dict:
 
     today_start = time.time() - (time.time() % 86400)
     today_runs = conn.execute(
-        "SELECT COUNT(*) as c FROM executions WHERE started_at >= ?",
+        "SELECT COUNT(*) as c FROM workflow_executions WHERE started_at >= ?",
         (today_start,),
     ).fetchone()["c"]
     today_success = conn.execute(
-        "SELECT COUNT(*) as c FROM executions WHERE started_at >= ? AND status = 'success'",
+        "SELECT COUNT(*) as c FROM workflow_executions WHERE started_at >= ? AND status = 'success'",
         (today_start,),
     ).fetchone()["c"]
     today_failed = conn.execute(
-        "SELECT COUNT(*) as c FROM executions WHERE started_at >= ? AND status = 'failed'",
+        "SELECT COUNT(*) as c FROM workflow_executions WHERE started_at >= ? AND status = 'failed'",
         (today_start,),
     ).fetchone()["c"]
 

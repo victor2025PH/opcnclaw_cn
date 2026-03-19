@@ -28,10 +28,11 @@ import time
 import uuid
 from collections import Counter
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
+
+from . import db as _db
 
 try:
     import jieba
@@ -41,8 +42,6 @@ except ImportError:
     _JIEBA = False
 
 
-DB_PATH = Path("data/knowledge_base.db")
-_conn: Optional[sqlite3.Connection] = None
 _lock = threading.Lock()
 
 # 停用词
@@ -56,38 +55,7 @@ _STOP_WORDS = {"的", "了", "是", "在", "我", "你", "他", "她", "它",
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS documents (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            source TEXT DEFAULT '',
-            chunk_count INTEGER DEFAULT 0,
-            created_at REAL DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS chunks (
-            id TEXT PRIMARY KEY,
-            doc_id TEXT NOT NULL,
-            content TEXT NOT NULL,
-            tokens TEXT DEFAULT '[]',
-            chunk_index INTEGER DEFAULT 0,
-            FOREIGN KEY (doc_id) REFERENCES documents(id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks(doc_id);
-
-        CREATE TABLE IF NOT EXISTS idf_cache (
-            term TEXT PRIMARY KEY,
-            idf REAL DEFAULT 0,
-            df INTEGER DEFAULT 0
-        );
-        """)
-        _conn.commit()
-    return _conn
+    return _db.get_conn("main")
 
 
 # ── 分词 ─────────────────────────────────────────────────────────────────────
@@ -123,14 +91,14 @@ def import_document(
     conn = _get_conn()
     with _lock:
         conn.execute(
-            "INSERT INTO documents (id, title, source, chunk_count, created_at) VALUES (?,?,?,?,?)",
+            "INSERT INTO kb_documents (id, title, source, chunk_count, created_at) VALUES (?,?,?,?,?)",
             (doc_id, title, source, len(chunks), time.time()),
         )
         for i, chunk_text in enumerate(chunks):
             chunk_id = f"{doc_id}_{i}"
             tokens = _tokenize(chunk_text)
             conn.execute(
-                "INSERT INTO chunks (id, doc_id, content, tokens, chunk_index) VALUES (?,?,?,?,?)",
+                "INSERT INTO kb_chunks (id, doc_id, content, tokens, chunk_index) VALUES (?,?,?,?,?)",
                 (chunk_id, doc_id, chunk_text, json.dumps(tokens, ensure_ascii=False), i),
             )
         conn.commit()
@@ -180,7 +148,7 @@ def _split_chunks(text: str, size: int, overlap: int) -> List[str]:
 def _rebuild_idf():
     """重建逆文档频率缓存"""
     conn = _get_conn()
-    all_chunks = conn.execute("SELECT tokens FROM chunks").fetchall()
+    all_chunks = conn.execute("SELECT tokens FROM kb_chunks").fetchall()
     total_docs = len(all_chunks)
     if total_docs == 0:
         return
@@ -192,10 +160,10 @@ def _rebuild_idf():
             df_counter[t] += 1
 
     with _lock:
-        conn.execute("DELETE FROM idf_cache")
+        conn.execute("DELETE FROM kb_idf_cache")
         for term, df in df_counter.items():
             idf = math.log((total_docs + 1) / (df + 1)) + 1
-            conn.execute("INSERT INTO idf_cache (term, idf, df) VALUES (?,?,?)", (term, idf, df))
+            conn.execute("INSERT INTO kb_idf_cache (term, idf, df) VALUES (?,?,?)", (term, idf, df))
         conn.commit()
 
 
@@ -214,7 +182,7 @@ def search(query: str, top_k: int = 3) -> List[Dict]:
     conn = _get_conn()
 
     # 加载 IDF
-    idf_rows = conn.execute("SELECT term, idf FROM idf_cache").fetchall()
+    idf_rows = conn.execute("SELECT term, idf FROM kb_idf_cache").fetchall()
     idf_map = {r["term"]: r["idf"] for r in idf_rows}
 
     # BM25 参数
@@ -222,7 +190,7 @@ def search(query: str, top_k: int = 3) -> List[Dict]:
     b = 0.75
 
     # 计算平均文档长度
-    all_chunks = conn.execute("SELECT id, tokens, doc_id FROM chunks").fetchall()
+    all_chunks = conn.execute("SELECT id, tokens, doc_id FROM kb_chunks").fetchall()
     if not all_chunks:
         return []
 
@@ -252,8 +220,8 @@ def search(query: str, top_k: int = 3) -> List[Dict]:
     # 获取内容
     results = []
     for chunk_id, doc_id, score in top:
-        row = conn.execute("SELECT content FROM chunks WHERE id=?", (chunk_id,)).fetchone()
-        doc_row = conn.execute("SELECT title FROM documents WHERE id=?", (doc_id,)).fetchone()
+        row = conn.execute("SELECT content FROM kb_chunks WHERE id=?", (chunk_id,)).fetchone()
+        doc_row = conn.execute("SELECT title FROM kb_documents WHERE id=?", (doc_id,)).fetchone()
         if row:
             results.append({
                 "chunk_id": chunk_id,
@@ -288,22 +256,22 @@ def build_rag_context(query: str, top_k: int = 3) -> str:
 
 def list_documents() -> List[Dict]:
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM documents ORDER BY created_at DESC").fetchall()
+    rows = conn.execute("SELECT * FROM kb_documents ORDER BY created_at DESC").fetchall()
     return [dict(r) for r in rows]
 
 
 def delete_document(doc_id: str):
     conn = _get_conn()
     with _lock:
-        conn.execute("DELETE FROM chunks WHERE doc_id=?", (doc_id,))
-        conn.execute("DELETE FROM documents WHERE id=?", (doc_id,))
+        conn.execute("DELETE FROM kb_chunks WHERE doc_id=?", (doc_id,))
+        conn.execute("DELETE FROM kb_documents WHERE id=?", (doc_id,))
         conn.commit()
     _rebuild_idf()
 
 
 def get_stats() -> Dict:
     conn = _get_conn()
-    docs = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
-    chunks = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-    terms = conn.execute("SELECT COUNT(*) FROM idf_cache").fetchone()[0]
+    docs = conn.execute("SELECT COUNT(*) FROM kb_documents").fetchone()[0]
+    chunks = conn.execute("SELECT COUNT(*) FROM kb_chunks").fetchone()[0]
+    terms = conn.execute("SELECT COUNT(*) FROM kb_idf_cache").fetchone()[0]
     return {"documents": docs, "chunks": chunks, "terms": terms}

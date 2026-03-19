@@ -15,47 +15,18 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
+from .. import db as _db
 
-
-RULES_DB = Path(__file__).parent.parent.parent.parent / "data" / "msg_rules.db"
 _regex_cache: Dict[str, re.Pattern] = {}  # pre-compiled regex for hot path
 
-_conn: Optional[sqlite3.Connection] = None
 
-
-def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        RULES_DB.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(RULES_DB), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS rules (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            enabled INTEGER DEFAULT 1,
-            priority INTEGER DEFAULT 50,
-            match_type TEXT DEFAULT 'keyword',
-            match_pattern TEXT DEFAULT '',
-            match_contacts TEXT DEFAULT '',
-            action_type TEXT DEFAULT 'workflow',
-            action_target TEXT DEFAULT '',
-            action_params TEXT DEFAULT '{}',
-            created_at REAL DEFAULT 0,
-            trigger_count INTEGER DEFAULT 0,
-            cooldown_seconds INTEGER DEFAULT 60,
-            last_triggered REAL DEFAULT 0
-        );
-        """)
-        _conn.commit()
-    return _conn
+def _get_conn():
+    return _db.get_conn("wechat")
 
 
 @dataclass

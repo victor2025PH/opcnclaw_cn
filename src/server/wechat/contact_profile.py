@@ -18,59 +18,17 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-DB_PATH = Path(__file__).parent.parent.parent.parent / "data" / "contact_profiles.db"
-
-_local = threading.local()
+from .. import db as _db
 
 
 def _get_conn() -> sqlite3.Connection:
-    if not hasattr(_local, "conn") or _local.conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        _local.conn = conn
-        _init_tables(conn)
-    return _local.conn
-
-
-def _init_tables(conn: sqlite3.Connection):
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS profiles (
-            name            TEXT PRIMARY KEY,
-            relationship    TEXT DEFAULT 'normal',
-            intimacy        REAL DEFAULT 30.0,
-            interests       TEXT DEFAULT '[]',
-            comment_style   TEXT DEFAULT 'casual',
-            notes           TEXT DEFAULT '',
-            total_likes     INTEGER DEFAULT 0,
-            total_comments  INTEGER DEFAULT 0,
-            total_replies   INTEGER DEFAULT 0,
-            last_interaction REAL DEFAULT 0,
-            created_at      REAL,
-            updated_at      REAL
-        );
-        CREATE TABLE IF NOT EXISTS interactions (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            contact     TEXT NOT NULL,
-            action      TEXT NOT NULL,
-            content     TEXT DEFAULT '',
-            post_text   TEXT DEFAULT '',
-            timestamp   REAL NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_inter_contact
-            ON interactions(contact, timestamp DESC);
-    """)
-    conn.commit()
+    return _db.get_conn("wechat")
 
 
 # ── 数据模型 ─────────────────────────────────────────────────────────────────────

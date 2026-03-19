@@ -1,0 +1,35 @@
+# OpenClaw Voice 项目规范
+
+## 项目概述
+自托管多模态 AI 语音助手平台。核心功能：语音交互、桌面控制、微信自动化、工作流引擎。
+
+## 技术栈
+- **后端**: Python 3.10+, FastAPI, SQLite (WAL), asyncio
+- **前端**: 原生 HTML/CSS/JS (正在迁移到 ES Module)
+- **AI**: OpenAI 兼容 API, 13+ 提供商路由
+- **语音**: Whisper STT, Edge-TTS, Silero VAD
+
+## 架构要点
+
+### 数据库层 (src/server/db.py)
+- 统一管理 2 个 SQLite: main.db (核心) + wechat.db (微信)
+- 单例连接 + WAL 模式，读不加锁，写用 `db.transaction()`
+- FTS5 全文搜索，触发器自动同步
+- 所有模块通过 `from . import db as _db` 获取连接
+
+### 路由器层 (src/router/)
+- AIRouter 管理 13+ AI 平台的轮询和故障转移
+- cost_saving 模式：顺序尝试 + 12s 首 chunk 超时
+- speed_first 模式：2 平台并行竞速
+
+### 前端 (src/client/)
+- app.html 是主界面 (正在拆分为 ES Module)
+- WebSocket 用于语音流和桌面流
+- SSE 用于聊天流式回复
+
+## 编码规范
+- 中文注释优先
+- 异步优先 (async/await)
+- 使用 loguru 记录日志
+- 新模块必须通过 db.py 访问数据库，禁止直接 sqlite3.connect()
+- 前端改动必须保持与 /api/* 端点的兼容性

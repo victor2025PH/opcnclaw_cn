@@ -25,32 +25,19 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Set
 
 from loguru import logger
 
+from . import db as _db
+
 _PERSIST_TYPES = frozenset({
     "anomaly_alert", "daily_report", "system_event",
     "broadcast_complete", "workflow_event", "circuit_breaker",
 })
 
-_DB_PATH = Path("data/events.db")
+_DB_PATH = Path("data/events.db")  # keep for compat
 _db_lock = threading.Lock()
 
 
 def _init_db() -> sqlite3.Connection:
-    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT NOT NULL,
-            data TEXT DEFAULT '{}',
-            timestamp REAL NOT NULL
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_evt_ts ON events(timestamp)")
-    conn.commit()
-    return conn
+    return _db.get_conn("main")
 
 
 class EventBus:

@@ -27,64 +27,15 @@ import sqlite3
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
-
-BROADCAST_DB = Path(__file__).parent.parent.parent.parent / "data" / "broadcast.db"
-
-_conn: Optional[sqlite3.Connection] = None
+from .. import db as _db
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        BROADCAST_DB.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(BROADCAST_DB), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS templates (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            content TEXT NOT NULL,
-            variables TEXT DEFAULT '[]',
-            category TEXT DEFAULT '',
-            created_at REAL DEFAULT 0,
-            use_count INTEGER DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS campaigns (
-            id TEXT PRIMARY KEY,
-            template_id TEXT DEFAULT '',
-            name TEXT NOT NULL,
-            message TEXT NOT NULL,
-            audience_filter TEXT DEFAULT '{}',
-            personalize INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'draft',
-            total_targets INTEGER DEFAULT 0,
-            sent_count INTEGER DEFAULT 0,
-            failed_count INTEGER DEFAULT 0,
-            created_at REAL DEFAULT 0,
-            started_at REAL DEFAULT 0,
-            completed_at REAL DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS send_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            campaign_id TEXT NOT NULL,
-            contact_name TEXT NOT NULL,
-            message_sent TEXT DEFAULT '',
-            status TEXT DEFAULT 'pending',
-            sent_at REAL DEFAULT 0,
-            error TEXT DEFAULT ''
-        );
-        CREATE INDEX IF NOT EXISTS idx_log_campaign ON send_log(campaign_id);
-        CREATE INDEX IF NOT EXISTS idx_log_status ON send_log(status);
-        """)
-        _conn.commit()
-    return _conn
+    return _db.get_conn("wechat")
 
 
 # ── 消息模板 ──────────────────────────────────────────────────────────────────

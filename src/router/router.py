@@ -121,7 +121,12 @@ class AIRouter:
         self.cfg = cfg
         self._states: Dict[str, ProviderState] = {}
         self._lock = asyncio.Lock()
+        self.s2s = None
         self._init_states()
+
+    @property
+    def s2s_available(self) -> bool:
+        return self.s2s is not None
 
     def _init_states(self):
         """根据配置初始化所有平台状态"""
@@ -193,6 +198,10 @@ class AIRouter:
     # 对外接口（兼容 openai.AsyncOpenAI 风格）
     # ──────────────────────────────────────────────────────
 
+    # 首 chunk 超时：如果平台在此时间内没有返回任何内容，立即切换
+    # 远低于 HTTP 超时（90s），实现快速故障转移
+    FIRST_CHUNK_TIMEOUT = 12.0
+
     async def chat_stream(
         self,
         messages: list,
@@ -202,6 +211,10 @@ class AIRouter:
         """
         流式对话，yield (text_chunk, provider_id)
         自动在限速/错误时切换平台。
+
+        优化：
+        - speed_first: 竞速（2 个并行，取最快）
+        - cost_saving/quality_first: 顺序 + 首 chunk 超时快速切换
         """
         mode = self.cfg.routing_mode
         tried = set()
@@ -224,16 +237,37 @@ class AIRouter:
                     return
                 tried.update(c.pid for c in candidates[:2])
             else:
-                # 顺序尝试
+                # 顺序尝试 + 首 chunk 超时
                 state = candidates[0]
                 tried.add(state.pid)
                 success = False
-                async for chunk in self._call_provider(state, messages, max_tokens, temperature):
-                    if chunk[0] == "__SWITCH__":
-                        break
-                    yield chunk
+                timed_out = False
+
+                gen = self._call_provider(state, messages, max_tokens, temperature)
+                try:
+                    # 等待首个 chunk，设超时
+                    first = await asyncio.wait_for(
+                        gen.__anext__(), timeout=self.FIRST_CHUNK_TIMEOUT
+                    )
+                    if first[0] == "__SWITCH__":
+                        continue
+                    yield first
                     success = True
-                if success:
+                    # 后续 chunk 正常流式
+                    async for chunk in gen:
+                        if chunk[0] == "__SWITCH__":
+                            break
+                        yield chunk
+                except asyncio.TimeoutError:
+                    timed_out = True
+                    state.record_error("first_chunk_timeout")
+                    logger.warning(
+                        f"⏱️ {state.pid} 首 chunk 超时 ({self.FIRST_CHUNK_TIMEOUT}s)，切换..."
+                    )
+                except StopAsyncIteration:
+                    pass
+
+                if success and not timed_out:
                     return
 
     async def _call_provider(

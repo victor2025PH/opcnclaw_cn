@@ -30,35 +30,16 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-DB_PATH = Path("data/audit.db")
-_conn: Optional[sqlite3.Connection] = None
+from . import db as _db
+
+DB_PATH = Path("data/audit.db")  # keep for compat
+_conn: Optional[sqlite3.Connection] = None  # deprecated, kept for compat
 _lock = threading.Lock()
 MAX_RECORDS = 10000
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS audit_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            action TEXT NOT NULL,
-            actor TEXT DEFAULT 'system',
-            target TEXT DEFAULT '',
-            detail TEXT DEFAULT '',
-            severity TEXT DEFAULT 'info',
-            ip TEXT DEFAULT '',
-            timestamp REAL DEFAULT 0
-        );
-        CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
-        """)
-        _conn.commit()
-    return _conn
+    return _db.get_conn("main")
 
 
 def log(

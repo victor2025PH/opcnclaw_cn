@@ -20,15 +20,14 @@
 from __future__ import annotations
 
 import re
-import sqlite3
-import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
+
+from . import db as _db
 
 
 # ── 情感词典 ─────────────────────────────────────────────────────────────────
@@ -171,33 +170,8 @@ def analyze(text: str) -> SentimentResult:
 
 # ── 时间序列追踪 ─────────────────────────────────────────────────────────────
 
-DB_PATH = Path("data/sentiment.db")
-_conn: Optional[sqlite3.Connection] = None
-_lock = threading.Lock()
-
-
-def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS sentiment_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            account_id TEXT DEFAULT 'default',
-            contact TEXT DEFAULT '',
-            score REAL DEFAULT 0,
-            label TEXT DEFAULT 'neutral',
-            message_preview TEXT DEFAULT '',
-            timestamp REAL DEFAULT 0
-        );
-        CREATE INDEX IF NOT EXISTS idx_sl_ts ON sentiment_log(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_sl_contact ON sentiment_log(contact);
-        """)
-        _conn.commit()
-    return _conn
+def _get_conn():
+    return _db.get_conn("main")
 
 
 def record(
@@ -211,7 +185,7 @@ def record(
     ts = timestamp or time.time()
 
     conn = _get_conn()
-    with _lock:
+    with _db.get_lock("main"):
         conn.execute(
             "INSERT INTO sentiment_log (account_id, contact, score, label, message_preview, timestamp) VALUES (?,?,?,?,?,?)",
             (account_id, contact, result.score, result.label, text[:100], ts),

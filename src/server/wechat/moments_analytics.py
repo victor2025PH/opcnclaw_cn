@@ -21,57 +21,15 @@ import sqlite3
 import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
-
-ANALYTICS_DB = Path(__file__).parent.parent.parent.parent / "data" / "moments_analytics.db"
-
-_conn: Optional[sqlite3.Connection] = None
+from .. import db as _db
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        ANALYTICS_DB.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(ANALYTICS_DB), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_type TEXT NOT NULL,
-            target_author TEXT DEFAULT '',
-            content_text TEXT DEFAULT '',
-            content_category TEXT DEFAULT '',
-            content_tags TEXT DEFAULT '[]',
-            hour INTEGER DEFAULT 0,
-            weekday INTEGER DEFAULT 0,
-            timestamp REAL DEFAULT 0,
-            extra TEXT DEFAULT '{}'
-        );
-        CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
-        CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_events_author ON events(target_author);
-
-        CREATE TABLE IF NOT EXISTS publish_metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            text TEXT DEFAULT '',
-            category TEXT DEFAULT '',
-            tags TEXT DEFAULT '[]',
-            published_at REAL DEFAULT 0,
-            hour INTEGER DEFAULT 0,
-            weekday INTEGER DEFAULT 0,
-            likes_received INTEGER DEFAULT 0,
-            comments_received INTEGER DEFAULT 0,
-            views_estimated INTEGER DEFAULT 0,
-            engagement_score REAL DEFAULT 0
-        );
-        CREATE INDEX IF NOT EXISTS idx_pub_ts ON publish_metrics(published_at);
-        """)
-        _conn.commit()
-    return _conn
+    return _db.get_conn("wechat")
 
 
 # ── 数据采集 ──────────────────────────────────────────────────────────────────
@@ -114,7 +72,7 @@ def record_publish(text: str, category: str = "", tags: List[str] = None):
     now = datetime.now()
     conn = _get_conn()
     conn.execute(
-        "INSERT INTO publish_metrics (text, category, tags, published_at, hour, weekday) "
+        "INSERT INTO moments_stats (text, category, tags, published_at, hour, weekday) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         (text[:500], category, json.dumps(tags or [], ensure_ascii=False),
          time.time(), now.hour, now.weekday()),
@@ -128,7 +86,7 @@ def update_publish_engagement(publish_id: int, likes: int = 0, comments: int = 0
     conn = _get_conn()
     score = likes * 1.0 + comments * 2.5
     conn.execute(
-        "UPDATE publish_metrics SET likes_received = ?, comments_received = ?, "
+        "UPDATE moments_stats SET likes_received = ?, comments_received = ?, "
         "engagement_score = ? WHERE id = ?",
         (likes, comments, score, publish_id),
     )
@@ -151,10 +109,10 @@ def get_overview(days: int = 30) -> Dict:
         counts[et] = row[0] if row else 0
 
     pub_count = conn.execute(
-        "SELECT COUNT(*) FROM publish_metrics WHERE published_at > ?", (since,)
+        "SELECT COUNT(*) FROM moments_stats WHERE published_at > ?", (since,)
     ).fetchone()[0]
     avg_eng = conn.execute(
-        "SELECT AVG(engagement_score) FROM publish_metrics WHERE published_at > ?", (since,)
+        "SELECT AVG(engagement_score) FROM moments_stats WHERE published_at > ?", (since,)
     ).fetchone()[0] or 0
 
     return {
@@ -225,7 +183,7 @@ def get_content_performance(days: int = 30) -> List[Dict]:
         "AVG(engagement_score) as avg_eng, "
         "SUM(likes_received) as total_likes, "
         "SUM(comments_received) as total_comments "
-        "FROM publish_metrics WHERE published_at > ? AND category != '' "
+        "FROM moments_stats WHERE published_at > ? AND category != '' "
         "GROUP BY category ORDER BY avg_eng DESC",
         (since,),
     ).fetchall()
@@ -243,7 +201,7 @@ def get_best_posting_times(days: int = 30) -> Dict:
 
     rows = conn.execute(
         "SELECT hour, AVG(engagement_score) as avg_eng, COUNT(*) as cnt "
-        "FROM publish_metrics WHERE published_at > ? "
+        "FROM moments_stats WHERE published_at > ? "
         "GROUP BY hour HAVING cnt >= 1 ORDER BY avg_eng DESC",
         (since,),
     ).fetchall()

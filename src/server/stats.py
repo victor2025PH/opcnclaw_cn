@@ -18,55 +18,24 @@
   效果：最近调用的技能权重高，长久不用的技能会"冷却"
 """
 
-import sqlite3
 import time
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-DB_PATH = Path("data/stats.db")
+from . import db as _dbmod
 
 
 @contextmanager
 def _db():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
-
-def _ensure_tables():
-    with _db() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS skill_usage (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                skill_id  TEXT    NOT NULL,
-                ts        REAL    NOT NULL,       -- Unix 时间戳
-                session   TEXT,                   -- 会话 ID（可空）
-                input     TEXT,                   -- 用户输入（脱敏截断）
-                success   INTEGER DEFAULT 1       -- 是否成功
-            );
-            CREATE INDEX IF NOT EXISTS idx_skill_ts ON skill_usage(skill_id, ts);
-
-            CREATE TABLE IF NOT EXISTS skill_meta_cache (
-                skill_id   TEXT PRIMARY KEY,
-                name_zh    TEXT,
-                category   TEXT,
-                icon       TEXT,
-                updated_at REAL
-            );
-        """)
-
-
-_ensure_tables()
+    conn = _dbmod.get_conn("main")
+    lock = _dbmod.get_lock("main")
+    with lock:
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
 
 # ──────────────────────────────────────────────────────────

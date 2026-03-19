@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import ctypes
 import json
-import sqlite3
 import threading
 import time
 from dataclasses import dataclass, field
@@ -34,48 +33,14 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
+from .. import db as _db
 
-
-DB_PATH = Path("data/accounts.db")
 ACCOUNTS_DIR = Path("data/accounts")
-_conn: Optional[sqlite3.Connection] = None
 _lock = threading.Lock()
 
 
-def _get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.executescript("""
-        CREATE TABLE IF NOT EXISTS accounts (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            wx_name TEXT DEFAULT '',
-            avatar_url TEXT DEFAULT '',
-            hwnd INTEGER DEFAULT 0,
-            pid INTEGER DEFAULT 0,
-            autoreply_config TEXT DEFAULT '{}',
-            moments_config TEXT DEFAULT '{}',
-            is_active INTEGER DEFAULT 1,
-            created_at REAL DEFAULT 0,
-            last_active REAL DEFAULT 0,
-            notes TEXT DEFAULT '',
-            status TEXT DEFAULT 'disconnected'
-        );
-        """)
-        # v2 schema migration: add columns if missing
-        try:
-            _conn.execute("SELECT hwnd FROM accounts LIMIT 1")
-        except sqlite3.OperationalError:
-            _conn.executescript("""
-            ALTER TABLE accounts ADD COLUMN hwnd INTEGER DEFAULT 0;
-            ALTER TABLE accounts ADD COLUMN pid INTEGER DEFAULT 0;
-            ALTER TABLE accounts ADD COLUMN status TEXT DEFAULT 'disconnected';
-            """)
-        _conn.commit()
-    return _conn
+def _get_conn():
+    return _db.get_conn("wechat")
 
 
 @dataclass
