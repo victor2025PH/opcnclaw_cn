@@ -1,9 +1,13 @@
 use std::process::{Child, Command};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+
+/// 用户主动退出标志
+static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
 
 const BACKEND_PORT: u16 = 8766;
 const BACKEND_URL: &str = "http://localhost:8766";
@@ -304,6 +308,7 @@ pub fn run() {
                         let _ = open::that(APP_URL);
                     }
                     "quit" => {
+                        SHOULD_QUIT.store(true, Ordering::SeqCst);
                         let state = app.state::<PythonBackend>();
                         state.stop();
                         app.exit(0);
@@ -417,10 +422,14 @@ pub fn run() {
                     let _ = w.hide();
                 }
             }
-            // 防止 splash 关闭时退出整个应用
+            // 防止 splash 关闭时退出整个应用（但用户主动退出时放行）
             RunEvent::ExitRequested { ref api, .. } => {
-                // 只要托盘还在，就不退出
-                api.prevent_exit();
+                if !SHOULD_QUIT.load(Ordering::SeqCst) {
+                    api.prevent_exit();
+                } else {
+                    let state = app_handle.state::<PythonBackend>();
+                    state.stop();
+                }
             }
             _ => {}
         });
