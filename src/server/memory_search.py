@@ -74,9 +74,11 @@ def search(
     """
     conn = _db.get_conn("main")
 
-    if query and _check_fts5():
+    if query and _check_fts5() and _is_fts_friendly(query):
+        # 纯英文/数字 → FTS5（精确 token 匹配，O(log n)）
         return _search_fts(conn, query, session, role, start_time, end_time, limit, offset)
     else:
+        # 含中文 → LIKE + jieba（中文分词更准确）
         return _search_like(conn, query, session, role, start_time, end_time, limit, offset)
 
 
@@ -180,6 +182,19 @@ def _search_like(
     ).fetchall()
 
     return _format_results(rows, query, total, offset, limit, engine="like")
+
+
+def _is_fts_friendly(query: str) -> bool:
+    """判断查询是否适合 FTS5 路径。
+
+    FTS5 + unicode61 对英文/数字匹配精确，
+    但对中文是单字切分，多字词搜索不如 LIKE + jieba 准确。
+    """
+    # 包含中文字符 → 走 LIKE（jieba 分词更准确）
+    if re.search(r'[\u4e00-\u9fff]', query):
+        return False
+    # 纯英文/数字/符号 → FTS5
+    return True
 
 
 def _build_fts_query(query: str) -> str:
