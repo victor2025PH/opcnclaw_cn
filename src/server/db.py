@@ -759,6 +759,19 @@ def migrate_from_old_dbs():
 
     if migrated_any:
         logger.info("[DB Migration] ✅ Migration complete")
+        # 清理已迁移的旧数据库文件（.bak 保留作为安全备份）
+        for db_name, old_path in old_dbs.items():
+            if old_path.exists() and old_path.with_suffix(".db.bak").exists():
+                try:
+                    old_path.unlink()
+                    # 清理 WAL/SHM 附属文件
+                    for suffix in ["-wal", "-shm", "-journal"]:
+                        wal = old_path.with_name(old_path.name + suffix)
+                        if wal.exists():
+                            wal.unlink()
+                    logger.debug(f"[DB Migration] Removed old {old_path.name}")
+                except Exception:
+                    pass
     else:
         logger.info("[DB Migration] No data to migrate (fresh install or already migrated)")
 
