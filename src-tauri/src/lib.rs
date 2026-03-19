@@ -35,10 +35,13 @@ impl PythonBackend {
         }
 
         let python = find_python()
-            .ok_or_else(|| "未找到 Python 3.10+，请安装 Python 或设置 OPENCLAW_PYTHON 环境变量".to_string())?;
+            .ok_or_else(|| "未找到 Python 3.10+".to_string())?;
 
-        // 确定工作目录：优先当前目录，其次 Inno Setup 安装目录
-        let work_dir = find_project_dir();
+        let work_dir = find_project_dir()
+            .ok_or_else(|| "未找到项目目录（src/server/main.py），请设置 OPENCLAW_HOME 环境变量".to_string())?;
+
+        eprintln!("[Tauri] Python: {}", python);
+        eprintln!("[Tauri] Project: {}", work_dir.display());
 
         let child = Command::new(&python)
             .args(["-m", "src.server.main"])
@@ -126,30 +129,52 @@ fn find_python() -> Option<String> {
 }
 
 /// 查找项目根目录（含 src/server/main.py 的目录）
-fn find_project_dir() -> std::path::PathBuf {
-    // 1. 当前目录
+fn find_project_dir() -> Option<std::path::PathBuf> {
+    let marker = "src/server/main.py";
+
+    // 逐个检查候选路径
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+
+    // 1. 环境变量指定
+    if let Ok(p) = std::env::var("OPENCLAW_HOME") {
+        candidates.push(std::path::PathBuf::from(p));
+    }
+
+    // 2. 当前目录
     if let Ok(cwd) = std::env::current_dir() {
-        if cwd.join("src/server/main.py").exists() {
-            return cwd;
+        candidates.push(cwd.clone());
+        // 当前目录的父级（从 src-tauri 运行时）
+        if let Some(parent) = cwd.parent() {
+            candidates.push(parent.to_path_buf());
         }
     }
-    // 2. EXE 所在目录
+
+    // 3. EXE 所在目录及其父级
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            if dir.join("src/server/main.py").exists() {
-                return dir.to_path_buf();
+            candidates.push(dir.to_path_buf());
+            if let Some(parent) = dir.parent() {
+                candidates.push(parent.to_path_buf());
             }
         }
     }
-    // 3. Inno Setup 安装目录
+
+    // 4. Inno Setup 安装目录
     if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
-        let inno_dir = std::path::PathBuf::from(&appdata).join("ShisanXiang");
-        if inno_dir.join("src/server/main.py").exists() {
-            return inno_dir;
+        candidates.push(std::path::PathBuf::from(&appdata).join("ShisanXiang"));
+    }
+
+    // 5. 常见开发路径
+    for dev_path in &["D:/xlx2026/openclaw-voice", "C:/openclaw-voice"] {
+        candidates.push(std::path::PathBuf::from(dev_path));
+    }
+
+    for dir in &candidates {
+        if dir.join(marker).exists() {
+            return Some(dir.clone());
         }
     }
-    // 回退到当前目录
-    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+    None
 }
 
 fn check_port_open(port: u16) -> bool {
@@ -209,11 +234,11 @@ pub fn run() {
         .manage(backend)
         .setup(|app| {
             let state = app.state::<PythonBackend>();
-            let python_missing = match state.start() {
-                Ok(_) => false,
+            let (python_missing, project_missing) = match state.start() {
+                Ok(_) => (false, false),
                 Err(e) => {
-                    eprintln!("Warning: {}", e);
-                    e.contains("未找到 Python")
+                    eprintln!("[Tauri] Start error: {}", e);
+                    (e.contains("未找到 Python"), e.contains("未找到项目"))
                 }
             };
 
@@ -270,11 +295,15 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // ── 启动画面 ──────────────────────────────
+            // ── 启动画面（内联HTML，不依赖文件系统）──
+            let splash_html = r#"data:text/html,<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>*{margin:0;padding:0}body{background:%230b0b16;color:%23e8e8f0;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;user-select:none}.logo{font-size:48px;margin-bottom:16px}h1{font-size:20px;font-weight:600;margin-bottom:24px;color:%23c8c8d8}.loader{width:120px;height:4px;background:%231a1a2e;border-radius:2px;overflow:hidden;margin-bottom:12px}.bar{width:40%25;height:100%25;background:linear-gradient(90deg,%237c6aef,%23e94560);border-radius:2px;animation:s 1.2s ease-in-out infinite}@keyframes s{0%25{transform:translateX(-100%25)}100%25{transform:translateX(350%25)}}.hint{font-size:12px;color:%23666}</style></head>
+<body><div class="logo">🦞</div><h1>十三香小龙虾 AI</h1><div class="loader"><div class="bar"></div></div><div class="hint">正在启动 AI 引擎...</div></body></html>"#;
+
             let _splash = WebviewWindowBuilder::new(
                 app,
                 "splash",
-                WebviewUrl::App("splash.html".into()),
+                WebviewUrl::External(splash_html.parse().unwrap()),
             )
             .title("十三香小龙虾 AI")
             .inner_size(400.0, 300.0)
@@ -290,15 +319,23 @@ pub fn run() {
                     let _ = w.close();
                 }
 
-                if python_missing {
-                    // Python 未安装 → 引导安装
+                if python_missing || project_missing {
+                    let msg = if python_missing {
+                        "未找到 Python 3.10%2B，请安装 Python 后重启"
+                    } else {
+                        "未找到项目文件，请设置 OPENCLAW_HOME 环境变量"
+                    };
+                    let error_html = format!(
+                        "data:text/html,<!DOCTYPE html><html><head><meta charset=utf-8><style>*{{margin:0}}body{{background:%230b0b16;color:%23e8e8f0;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:40px;text-align:center}}.icon{{font-size:48px;margin-bottom:16px}}h1{{font-size:20px;margin-bottom:12px}}p{{color:%23888;font-size:14px}}</style></head><body><div class=icon>⚠️</div><h1>启动失败</h1><p>{}</p></body></html>",
+                        msg
+                    );
                     let _ = WebviewWindowBuilder::new(
                         &app_handle,
                         "main",
-                        WebviewUrl::App("setup-python.html".into()),
+                        WebviewUrl::External(error_html.parse().unwrap()),
                     )
-                    .title("十三香小龙虾 AI - 安装 Python")
-                    .inner_size(500.0, 500.0)
+                    .title("十三香小龙虾 AI")
+                    .inner_size(500.0, 400.0)
                     .center()
                     .build();
                     return;
@@ -317,12 +354,13 @@ pub fn run() {
                     .center()
                     .build();
                 } else {
+                    let timeout_html = "data:text/html,<!DOCTYPE html><html><head><meta charset=utf-8><style>*{margin:0}body{background:%230b0b16;color:%23e8e8f0;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:40px;text-align:center}.icon{font-size:48px;margin-bottom:16px}h1{font-size:20px;margin-bottom:12px}p{color:%23888;font-size:14px;line-height:1.6}code{color:%237c6aef;background:%231a1a2e;padding:2px 6px;border-radius:4px}</style></head><body><div class=icon>⏱️</div><h1>AI 引擎启动超时</h1><p>Python 后端未能在 30 秒内就绪。<br>请尝试手动运行：<br><code>python -m src.server.main</code></p></body></html>";
                     let _ = WebviewWindowBuilder::new(
                         &app_handle,
                         "main",
-                        WebviewUrl::App("error.html".into()),
+                        WebviewUrl::External(timeout_html.parse().unwrap()),
                     )
-                    .title("十三香小龙虾 AI - 启动失败")
+                    .title("十三香小龙虾 AI - 启动超时")
                     .inner_size(500.0, 400.0)
                     .center()
                     .build();
@@ -346,10 +384,10 @@ pub fn run() {
                     let _ = w.hide();
                 }
             }
-            // 真正退出时停止后端
-            RunEvent::ExitRequested { .. } => {
-                let state = app_handle.state::<PythonBackend>();
-                state.stop();
+            // 防止 splash 关闭时退出整个应用
+            RunEvent::ExitRequested { ref api, .. } => {
+                // 只要托盘还在，就不退出
+                api.prevent_exit();
             }
             _ => {}
         });

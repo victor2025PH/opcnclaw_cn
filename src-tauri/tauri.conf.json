@@ -4,7 +4,8 @@
   "version": "3.5.2",
   "identifier": "com.shisanxiang.openclaw",
   "build": {
-    "frontendDist": "../src/client"
+    "frontendDist": "../src/client",
+    "devUrl": "http://localhost:8766/app"
   },
   "app": {
     "withGlobalTauri": true,
