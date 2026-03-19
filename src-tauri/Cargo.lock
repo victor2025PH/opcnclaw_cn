@@ -2324,6 +2324,7 @@ dependencies = [
 name = "openclaw-desktop"
 version = "3.5.2"
 dependencies = [
+ "open",
  "serde",
  "serde_json",
  "tauri",
