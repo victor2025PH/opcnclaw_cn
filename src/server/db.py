@@ -78,6 +78,25 @@ def _create_conn(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+_schema_done: set = set()
+
+
+def _ensure_schema(physical: str, conn: sqlite3.Connection):
+    """首次连接时自动初始化 schema（防止旧代码/测试跳过 init_schemas）"""
+    if physical in _schema_done:
+        return
+    _schema_done.add(physical)
+    try:
+        if physical == "main":
+            conn.executescript(_MAIN_SCHEMA)
+            conn.commit()
+        elif physical == "wechat":
+            conn.executescript(_WECHAT_SCHEMA)
+            conn.commit()
+    except Exception as e:
+        logger.debug(f"[DB] Auto schema init for {physical}: {e}")
+
+
 def get_conn(name: str = "main") -> sqlite3.Connection:
     """
     获取数据库连接（单例，线程安全）。
@@ -109,6 +128,9 @@ def get_conn(name: str = "main") -> sqlite3.Connection:
             _locks[physical] = threading.Lock()
 
         logger.info(f"[DB] Opened connection: {physical} → {db_path}")
+
+        # 首次连接时自动初始化该库的 schema
+        _ensure_schema(physical, conn)
         return conn
 
 
@@ -822,3 +844,4 @@ def close_all():
         except Exception:
             pass
     _connections.clear()
+    _schema_done.clear()

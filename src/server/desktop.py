@@ -10,15 +10,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import mss
 import numpy as np
-import pyautogui
-import pyperclip
-from PIL import Image
 from loguru import logger
 
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0.0
+# 桌面控制依赖（仅 Windows/Mac 可用，CI/Linux 无头环境延迟导入）
+try:
+    import mss
+    import pyautogui
+    import pyperclip
+    from PIL import Image
+    pyautogui.FAILSAFE = False
+    pyautogui.PAUSE = 0.0
+    _DESKTOP_AVAILABLE = True
+except ImportError as _e:
+    _DESKTOP_AVAILABLE = False
+    logger.debug(f"Desktop modules not available: {_e}")
 
 
 class DesktopStreamer:
