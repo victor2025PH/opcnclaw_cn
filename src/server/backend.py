@@ -4,6 +4,7 @@ v2.0: 集成 AI 路由器（多平台轮询）+ 技能引擎（技能优先执�
 """
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 from typing import Optional, List, Dict, AsyncGenerator
@@ -120,6 +121,13 @@ class AIBackend:
                 _memory.add_message(self.session_id, role, content)
             except Exception as e:
                 logger.warning(f"Memory persist failed: {e}")
+        if role == "user" and self.session_id.startswith("profile:"):
+            try:
+                from .profiles import learn_interests
+                pid = self.session_id.split(":", 1)[1]
+                learn_interests(pid, content)
+            except Exception:
+                pass
     
     def _setup_vision_client(self, api_key: str, url: str):
         """Set up the Zhipu vision client (OpenAI-compatible)."""
@@ -236,6 +244,13 @@ class AIBackend:
         system = self.system_prompt
         skill_context = None
 
+        _SKILL_ICONS = {
+            "time": "⏰", "calculator": "🔢", "unit_conversion": "📐",
+            "date_calc": "📅", "timer": "⏱️", "weather": "🌤️",
+            "iot": "🏠", "tool": "🔧",
+        }
+        _skill_meta = None
+
         # ── 2a. 离线技能（零延迟本地处理）────────────────────────────
         if not image_b64:
             try:
@@ -245,6 +260,7 @@ class AIBackend:
                     skill_name, skill_context = offline_result
                     logger.info(f"⚡ 离线技能命中: {skill_name}")
                     system = system + "\n\n[离线技能结果] " + skill_context
+                    _skill_meta = {"name": skill_name, "icon": _SKILL_ICONS.get(skill_name, "⚡"), "source": "offline"}
             except Exception as e:
                 logger.debug(f"离线技能处理失败: {e}")
 
@@ -259,6 +275,7 @@ class AIBackend:
                         skill_context = iot_result
                         logger.info(f"🏠 IoT 意图命中: {intent['action']} → {intent.get('entity_id', intent['entity_hint'])}")
                         system = system + "\n\n" + iot_result
+                        _skill_meta = {"name": intent["action"], "icon": "🏠", "source": "iot"}
             except Exception as e:
                 logger.debug(f"IoT 意图处理失败: {e}")
 
@@ -270,8 +287,12 @@ class AIBackend:
                     skill_name, skill_context = skill_result
                     logger.info(f"🧩 技能命中: {skill_name}")
                     system = system + "\n\n" + skill_context
+                    _skill_meta = {"name": skill_name, "icon": "🧩", "source": "skill"}
             except Exception as e:
                 logger.debug(f"技能引擎处理失败: {e}")
+
+        if _skill_meta:
+            yield "__SKILL__" + json.dumps(_skill_meta, ensure_ascii=False)
 
         if not skill_context:
             # 仅在无技能匹配时注入工具调用提示
@@ -412,6 +433,28 @@ class AIBackend:
             logger.error(f"智谱视觉 API 错误: {e}")
             yield "抱歉，图像分析时出现问题，请稍后再试。"
     
+    async def chat_simple(self, messages: list) -> str:
+        """简单对话接口（非流式），用于内部工具调用（记忆压缩、日报等）"""
+        if self._router:
+            try:
+                result = ""
+                async for chunk, _ in self._router.chat_stream(messages, max_tokens=400):
+                    if chunk != "__SWITCH__":
+                        result += chunk
+                return result
+            except Exception:
+                pass
+        if self._client:
+            try:
+                resp = await self._client.chat.completions.create(
+                    model=self.model, messages=messages,
+                    max_tokens=400, temperature=0.7,
+                )
+                return resp.choices[0].message.content or ""
+            except Exception as e:
+                return f"AI 调用失败: {e}"
+        return ""
+
     def clear_history(self):
         """Clear conversation history (both in-memory and SQLite)."""
         self._history_cache = []
