@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0b0b16;
+  color: #e8e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 40px;
+  text-align: center;
+}
+.icon { font-size: 48px; margin-bottom: 16px; }
+h1 { font-size: 22px; margin-bottom: 8px; }
+.sub { color: #888; font-size: 14px; margin-bottom: 24px; }
+.steps {
+  text-align: left;
+  background: #12121e;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 400px;
+}
+.step { margin-bottom: 12px; color: #c8c8d8; font-size: 14px; line-height: 1.5; }
+.step-num {
+  display: inline-block;
+  width: 22px; height: 22px;
+  background: #7c6aef;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 22px;
+  font-size: 12px;
+  margin-right: 8px;
+  color: white;
+}
+code {
+  background: #1a1a2e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #7c6aef;
+}
+a {
+  color: #7c6aef;
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+.btn {
+  background: #7c6aef;
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 4px;
+}
+.btn:hover { background: #6b59de; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #333;
+  color: #aaa;
+}
+</style>
+</head>
+<body>
+  <div class="icon">🐍</div>
+  <h1>需要安装 Python</h1>
+  <div class="sub">十三香小龙虾 AI 需要 Python 3.10+ 运行</div>
+
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">1</span>
+      下载 <a href="https://www.python.org/downloads/" target="_blank">Python 3.12+</a>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      安装时勾选 <code>Add to PATH</code>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      安装依赖：<code>pip install -r requirements.txt</code>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span>
+      重启本应用
+    </div>
+  </div>
+
+  <div>
+    <button class="btn" onclick="location.reload()">检测 Python</button>
+    <button class="btn btn-ghost" onclick="window.close()">退出</button>
+  </div>
+</body>
+</html>

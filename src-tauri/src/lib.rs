@@ -34,7 +34,9 @@ impl PythonBackend {
             return Ok(());
         }
 
-        let python = find_python();
+        let python = find_python()
+            .ok_or_else(|| "未找到 Python 3.10+，请安装 Python 或设置 OPENCLAW_PYTHON 环境变量".to_string())?;
+
         let child = Command::new(&python)
             .args(["-m", "src.server.main"])
             .env("PYTHONPATH", ".")
@@ -76,24 +78,35 @@ impl Drop for PythonBackend {
     }
 }
 
-fn find_python() -> String {
+fn find_python() -> Option<String> {
+    // 1. 内嵌 Python（安装包自带）
     if let Ok(cwd) = std::env::current_dir() {
-        let embedded = cwd.join("python").join("python.exe");
-        if embedded.exists() {
-            return embedded.to_string_lossy().to_string();
+        for sub in &["python/python.exe", "python/python3.exe", "embedded/python/python.exe"] {
+            let p = cwd.join(sub);
+            if p.exists() {
+                return Some(p.to_string_lossy().to_string());
+            }
         }
     }
-    for name in &["python", "python3"] {
-        if Command::new(name)
-            .arg("--version")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-        {
-            return name.to_string();
+    // 2. 环境变量指定
+    if let Ok(p) = std::env::var("OPENCLAW_PYTHON") {
+        if !p.is_empty() {
+            return Some(p);
         }
     }
-    "python".to_string()
+    // 3. 系统 Python（验证版本 >= 3.10）
+    for name in &["python", "python3", "python3.13", "python3.12", "python3.11", "python3.10"] {
+        if let Ok(output) = Command::new(name).arg("--version").output() {
+            if output.status.success() {
+                let ver = String::from_utf8_lossy(&output.stdout);
+                // 确认是 3.10+
+                if ver.contains("3.1") || ver.contains("3.2") {
+                    return Some(name.to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 fn check_port_open(port: u16) -> bool {
@@ -153,9 +166,13 @@ pub fn run() {
         .manage(backend)
         .setup(|app| {
             let state = app.state::<PythonBackend>();
-            if let Err(e) = state.start() {
-                eprintln!("Warning: {}", e);
-            }
+            let python_missing = match state.start() {
+                Ok(_) => false,
+                Err(e) => {
+                    eprintln!("Warning: {}", e);
+                    e.contains("未找到 Python")
+                }
+            };
 
             // ── 系统托盘 ──────────────────────────────
             let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
@@ -226,12 +243,25 @@ pub fn run() {
             // ── 后台等待后端就绪 ──────────────────────
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
-                let ready = wait_for_backend();
-
                 if let Some(w) = app_handle.get_webview_window("splash") {
                     let _ = w.close();
                 }
 
+                if python_missing {
+                    // Python 未安装 → 引导安装
+                    let _ = WebviewWindowBuilder::new(
+                        &app_handle,
+                        "main",
+                        WebviewUrl::App("setup-python.html".into()),
+                    )
+                    .title("十三香小龙虾 AI - 安装 Python")
+                    .inner_size(500.0, 500.0)
+                    .center()
+                    .build();
+                    return;
+                }
+
+                let ready = wait_for_backend();
                 if ready {
                     let _ = WebviewWindowBuilder::new(
                         &app_handle,
