@@ -3,7 +3,7 @@
 > **负责范围：** 前端 UI/UX、可视化、页面交互、CSS/HTML/JS、安装包编译
 > **不碰范围：** 后端 Python 逻辑、数据库 Schema、微信引擎、AI 路由（Claude Code 负责）
 > **基准版本：** v3.7.0 (2026-03-21)
-> **上次更新：** 2026-03-21 (第二轮对接后)
+> **上次更新：** 2026-03-21 (第三轮对接后)
 
 ---
 
@@ -73,12 +73,18 @@
 > camera.js 中已有 `startGazeCalibration()` (5点注视校准) 和 `CalibWizard` (7步完整向导)
 > settings.js 已绑定按钮事件，设置面板已有入口
 
-### B2. 手势绑定配置 UI — ✅ 已存在
-> tab-expression 面板已完整实现：嘴部/眉毛/眼睛/头部动作各区域
-> 每个动作可 enable/disable、调阈值、选预设方案
-> 保存到 `GET/PUT /api/access/config`（API 已存在）
+### B2. 手势绑定配置 UI — ✅ 已完成
+- [x] 新建 `src/client/js/gesture-bindings.js`（ES Module）
+- [x] 面部表情绑定编辑器：每个表情显示名称 + 分类 + 动作下拉选 + 启用/禁用开关
+- [x] 头部动作绑定编辑器：同上结构
+- [x] 14种可选动作（确认/取消/点击/右键/语音/滚动/撤销/重做/回车/截图/Escape/Tab/无动作）
+- [x] 保存到 `PUT /api/access/config`
+- [x] 恢复默认：`POST /api/access/config/reset`
+- [x] 保存反馈动效（按钮文字变 ✅ 已保存）
+- [x] 完整 CSS 样式（toggle 开关、action select、响应式）
+- [x] 通过 settings.js init() 初始化，挂载到 tab-expression 面板
 
-### B3. CoworkBus 协作状态面板 — ✅ 已完成
+### B3. CoworkBus 协作状态面板 — ✅ 已完成（已增强）
 - [x] 新建 `src/client/js/cowork-panel.js`（ES Module）
 - [x] app.html 头部 header-right 添加协作状态指示器按钮
 - [x] 状态图标：🟢 AI空闲 / 🔵 AI工作中 / 🟡 已暂停 / 🔴 冲突
@@ -91,22 +97,39 @@
 - [x] header-overflow-menu 适配
 - [x] CoworkBus CSS 完整样式 + 亮色主题适配 + 移动端适配
 - [x] 通过 settings.js init() 初始化
+- [x] **增强**：展示 `can_operate_desktop`（桌面操作权限标签 ✅/🚫）
+- [x] **增强**：展示 `tasks_running` / `tasks_pending`（🏃运行·排队指标）
+- [x] **增强**：展示 `human_window`（用户当前窗口信息）
+- [x] **增强**：队列项状态颜色区分（running/pending/completed）
+- [x] **增强**：截图查看按钮（📷 + overlay modal 对比视图）
 
-### B4. 操作日志时间线 — ✅ 已集成到 B3
-> 操作日志已集成到 CoworkBus 面板的 cw-journal-body 区域
-> 每条日志显示：操作类型图标 + 描述 + 时间 + 撤销按钮（可逆操作）
-> 数据来源：`GET /api/cowork/journal`
+### B4. 操作日志时间线 — ✅ 已完成
+- [x] 新建 `src/client/js/action-timeline.js`（ES Module）
+- [x] 垂直时间线布局：dot图标 + 连接线 + 内容区
+- [x] 每条记录：操作类型图标 + 描述 + 精确时间 + 相对时间
+- [x] 截图对比：点击📷按钮加载 `GET /api/cowork/journal/{id}/thumbnails`，展示操作前后截图
+- [x] 撤销到某步：「↩️ 撤销到这里」按钮 + 确认对话框
+- [x] 最新条目高亮（accent 边框）
+- [x] 缓存截图数据避免重复请求
+- [x] 兼容多种 journal 返回格式（数组/对象包裹）
+- [x] 刷新按钮 + bus 事件 `cowork:journal_update` 自动更新
+- [x] 通过 settings.js init() 初始化，挂载到 tab-expression 面板
+- [x] 数据来源：`GET /api/cowork/journal` + `GET /api/cowork/journal/{id}/thumbnails`
 
 ---
 
 ## 阶段 C：生态 & 体验
 
-### C1. MCP 工具市场 UI（3 天）
-- [ ] 设置面板新增「插件/工具」区域
-- [ ] 已安装 MCP Server 列表（`/api/mcp/desktop-tools`）
-- [ ] 卡片式：名称 + 描述 + 启用/禁用开关
-- [ ] 添加 MCP Server：输入 URL 或选预置
-- [ ] 工具测试：选工具 → 输参数 → 执行 → 显示结果
+### C1. MCP 工具市场 UI — ✅ 已完成
+- [x] MCP 面板已有完整 UI（`settings-models.js`）
+- [x] 已安装 MCP Server 列表，卡片式：名称 + 状态徽章 + 连接/断开 toggle 开关 + 移除按钮
+- [x] **增强**：每张服务器卡片增加启用/禁用 toggle 开关（`mcpToggle`）
+- [x] **增强**：服务器卡片增加移除按钮（`mcpRemove` → `DELETE /api/mcp/servers/{id}`）
+- [x] **增强**：预置服务器快速选择（桌面控制、微信工具、文件系统、Web搜索）
+- [x] 添加 MCP Server：名称 + 传输方式(STDIO/HTTP) + 命令/URL → `POST /api/mcp/servers/add`
+- [x] 工具测试：选工具 → 参数表单(自动生成) → JSON编辑 → 执行 → 显示结果
+- [x] 工具收藏、拖拽排序、调用历史
+- [x] 文件：`src/client/js/settings-models.js` + `src/client/app.html`
 
 ### C2. 移动端 PWA 增强（1 天）
 - [ ] QR 页面注册 Service Worker
@@ -147,10 +170,17 @@
 | API | 用途 | 我方消费位置 |
 |-----|------|-------------|
 | `GET /api/analytics/hourly` | 每小时消息量 | A2 图表 |
+| `GET /api/analytics/daily?days=7` | 每日回复数 | A4 图表 |
 | `POST /api/system/restart` | 重启服务 | A3 快捷操作 |
 | `POST /api/system/clear-cache` | 清除缓存 | A3 快捷操作 |
 | `GET /api/system/logs?lines=N` | 尾部日志 | A3 快捷操作 |
-| `GET /api/cowork/status` | 协作状态 | B3 状态面板 |
-| `GET /api/cowork/journal` | 操作日志 | B4 时间线 |
+| `GET /api/cowork/status` | 协作状态(含 can_operate_desktop, tasks_running, tasks_pending, human_window) | B3 状态面板 |
+| `GET /api/cowork/journal` | 操作日志 | B3/B4 时间线 |
+| `GET /api/cowork/journal/{id}/thumbnails` | 操作前后截图 | B4 时间线 |
 | `POST /api/cowork/undo` | 撤销操作 | B3/B4 |
 | `POST /api/cowork/pause\|resume` | 暂停/恢复 | B3 |
+| `POST /api/cowork/task` | 添加后台任务 | B3（可选） |
+| `PUT /api/access/config` | 保存手势绑定 | B2 |
+| `POST /api/access/config/reset` | 恢复默认绑定 | B2 |
+| `DELETE /api/mcp/servers/{id}` | 移除 MCP 服务器 | C1 |
+| `POST /api/mcp/disconnect/{id}` | 断开 MCP 服务器 | C1 |

@@ -3389,7 +3389,7 @@ dependencies = [
 
 [[package]]
 name = "shisanxiang"
-version = "3.7.0"
+version = "4.0.0"
 dependencies = [
  "open",
  "serde",

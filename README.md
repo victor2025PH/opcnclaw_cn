@@ -1,233 +1,125 @@
-# OpenClaw Voice
+# 十三香小龙虾 AI
 
-**Open-source browser-based voice interface for AI assistants.**
+**自托管全双工 AI 语音助手 — 语音交互 / 桌面控制 / 微信自动化 / 人机协作**
 
-Talk to your AI like you talk to Alexa — but self-hosted, private, and connected to your own agent.
-
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-4.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-green.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Tests](https://img.shields.io/badge/tests-185%20passed-brightgreen.svg)
 
-🌐 **Website:** [openclawvoice.com](https://openclawvoice.com)
+## 核心功能
 
-## Features
+| 功能 | 描述 |
+|------|------|
+| 🎤 **语音交互** | STT/TTS/VAD 全链路，支持唤醒词、连续对话、声音克隆 |
+| 🖥️ **桌面控制** | AI 看着屏幕帮你操作电脑（OCR + 鼠标键盘自动化） |
+| 💬 **微信 4.x** | 自动回复、朋友圈管理、多会话扫描、AI 智能评论 |
+| 🤝 **人机协作** | AI 知道你在做什么，不会打扰你，用户活跃时自动暂停 |
+| 🧩 **63+ 技能** | 天气、计算器、翻译、日程、食谱、编程辅助等 |
+| 🔌 **MCP 协议** | 标准 MCP Server，Claude Desktop / Cursor 可直接对接 |
+| 🌐 **多平台** | Windows 桌面（Tauri 15MB）+ 手机 H5 + 浏览器 |
 
-| Feature | Description |
-|---------|-------------|
-| 🎤 **Local STT** | Whisper runs locally via faster-whisper. Your voice never leaves your machine. |
-| 🔊 **Streaming TTS** | ElevenLabs with sentence-by-sentence streaming. Hear responses while they generate. |
-| 🎯 **Voice Activity Detection** | Silero VAD filters background noise. Works in noisy environments. |
-| 🧹 **Smart Text Cleaning** | Strips markdown, hashtags, URLs before TTS. No more "hash hash". |
-| 🔌 **Any AI Backend** | OpenAI, Claude, or full OpenClaw agent with memory and tools. |
-| 🌐 **Browser-Based** | No app install. Works on desktop and mobile. |
-| 🚗 **Continuous Mode** | Hands-free conversation. Auto-listens after each response. |
+## 快速开始
 
-## Quick Start
+### 方式一：安装包（推荐）
+
+下载 `十三香小龙虾-v4.0-Setup.exe` (150MB)，双击安装即可使用。
+
+### 方式二：源码运行
 
 ```bash
-# Clone
-git clone https://github.com/Purple-Horizons/openclaw-voice.git
-cd openclaw-voice
-
-# Install
-python3 -m venv .venv
-source .venv/bin/activate
+git clone https://github.com/victor2025PH/opcnclaw_cn.git
+cd opcnclaw_cn
 pip install -r requirements.txt
-
-# Optional: Install VAD support (better noise handling)
-pip install torch torchaudio
-
-# Configure (create .env from example)
-cp .env.example .env
-# Edit .env with your API keys
-
-# Run
-PYTHONPATH=. python -m src.server.main
-
-# Open http://localhost:8765
+python -m src.server.main
 ```
 
-## For OpenClaw Agents (Auto-Install)
+浏览器打开 `http://localhost:8766/app`
 
-One-liner for AI agents to self-install:
+### 方式三：Tauri 桌面客户端
 
 ```bash
-cd /tmp && \
-git clone https://github.com/Purple-Horizons/openclaw-voice.git && \
-cd openclaw-voice && \
-python3 -m venv .venv && source .venv/bin/activate && \
-pip install -r requirements.txt torch torchaudio && \
-PYTHONPATH=. ELEVENLABS_API_KEY="$ELEVENLABS_API_KEY" OPENAI_API_KEY="$OPENAI_API_KEY" \
-  nohup python -m src.server.main > /tmp/voice-server.log 2>&1 &
+npm install
+npx tauri dev
 ```
 
-## Configuration
+## 技术架构
 
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ELEVENLABS_API_KEY` | Yes* | — | ElevenLabs API key for TTS |
-| `OPENAI_API_KEY` | Yes* | — | OpenAI API key (if not using gateway) |
-| `OPENCLAW_GATEWAY_URL` | No | — | OpenClaw gateway URL for full agent |
-| `OPENCLAW_GATEWAY_TOKEN` | No | — | Gateway auth token |
-| `OPENCLAW_PORT` | No | `8765` | Server port |
-| `OPENCLAW_STT_MODEL` | No | `base` | Whisper model size |
-| `OPENCLAW_STT_DEVICE` | No | `auto` | Device: `auto`, `cpu`, `cuda`, `mps` |
-| `OPENCLAW_REQUIRE_AUTH` | No | `false` | Require API keys for clients |
-
-*One of `OPENAI_API_KEY` or `OPENCLAW_GATEWAY_URL` required.
-
-### Whisper Model Sizes
-
-| Model | Speed | Quality | VRAM | Best For |
-|-------|-------|---------|------|----------|
-| `tiny` | Fastest | Fair | ~400MB | Quick testing |
-| `base` | Fast | Good | ~1GB | **Default. Good balance.** |
-| `small` | Medium | Better | ~2GB | Clearer transcription |
-| `medium` | Slower | Great | ~5GB | Accuracy priority |
-| `large-v3-turbo` | Slow | Best | ~6GB | Maximum accuracy |
-
-### TTS Options
-
-| Backend | Type | Quality | Latency | Notes |
-|---------|------|---------|---------|-------|
-| **ElevenLabs** | Cloud | Excellent | ~500ms | Default. Streaming supported. |
-| Chatterbox | Local | Very Good | ~1s | MIT license, voice cloning |
-| XTTS-v2 | Local | Excellent | ~1s | Voice cloning supported |
-| Mock | Local | None | 0ms | For testing (silence) |
-
-ElevenLabs uses `eleven_turbo_v2_5` for fastest response.
-
-## OpenClaw Gateway Integration
-
-Connect to your full OpenClaw agent (same memory, tools, and persona as text chat):
-
-```bash
-# .env
-OPENCLAW_GATEWAY_URL=http://localhost:18789
-OPENCLAW_GATEWAY_TOKEN=your-token
-ELEVENLABS_API_KEY=your-key
+```
+┌─────────────────────────────────────────┐
+│  Tauri 桌面壳层 (15MB)                   │
+│  ├── WebView → localhost:8766/app       │
+│  ├── 系统托盘 + 启动画面                  │
+│  └── Python 后端生命周期管理              │
+├─────────────────────────────────────────┤
+│  FastAPI 后端 (Python)                   │
+│  ├── 13+ AI 平台路由 (智谱/OpenAI/...)   │
+│  ├── 微信 4.x 自动化引擎                 │
+│  ├── 桌面控制 (OCR + PyAutoGUI)          │
+│  ├── 人机协作调度 (CoworkBus)            │
+│  ├── MCP Server (5 工具)                 │
+│  └── 63 个内置技能                       │
+├─────────────────────────────────────────┤
+│  数据层                                  │
+│  ├── SQLite (main.db + wechat.db)       │
+│  ├── FTS5 双索引 (unicode61 + jieba)    │
+│  └── 自动迁移 + 定期备份                 │
+└─────────────────────────────────────────┘
 ```
 
-Add to your `openclaw.json`:
+## API 文档
+
+启动后访问 `http://localhost:8766/docs` (Swagger UI)
+
+## 微信 4.x 自动化
+
+```
+无障碍钩子激活 UI 树 → UIA 读取消息 → AI 生成回复 → UIA 发送
+```
+
+- 自动回复私聊和群聊(@me)
+- 朋友圈浏览 + AI 分析 + 自动点赞/评论
+- 30 天内容日历 + AI 文案生成
+- 多会话自动扫描 + 未读消息处理
+
+## MCP Server
+
+Claude Desktop / Cursor 可直接调用：
 
 ```json
 {
-  "gateway": {
-    "http": {
-      "endpoints": {
-        "chatCompletions": { "enabled": true }
-      }
+  "mcpServers": {
+    "shisanxiang": {
+      "command": "python",
+      "args": ["-m", "src.mcp.server"],
+      "cwd": "/path/to/openclaw-voice"
     }
-  },
-  "agents": {
-    "list": [
-      {
-        "id": "voice",
-        "workspace": "/path/to/workspace",
-        "model": "anthropic/claude-sonnet-4-5"
-      }
-    ]
   }
 }
 ```
 
-## Architecture
+可用工具：`wechat_send` / `wechat_read` / `wechat_status` / `cowork_status` / `action_journal`
 
-```
-┌─────────────┐   WebSocket   ┌─────────────────────────────────────┐
-│   Browser   │◄────────────►│          Voice Server               │
-│  (mic/spk)  │               │                                     │
-└─────────────┘               │  ┌─────────┐  ┌─────┐  ┌─────────┐ │
-                              │  │ Whisper │→│ AI  │→│ElevenLabs│ │
-                              │  │  (STT)  │  │     │  │  (TTS)  │ │
-                              │  └─────────┘  └─────┘  └─────────┘ │
-                              │       ↑                     │      │
-                              │    [VAD]              [streaming]  │
-                              └─────────────────────────────────────┘
-```
+## 安全
 
-**Streaming Flow:**
-1. User speaks → Whisper transcribes locally
-2. AI responds (streamed) → buffer sentences
-3. First sentence complete → TTS starts immediately
-4. Audio streams to browser while AI continues
-5. Result: ~50% faster perceived response
+- PIN 码保护敏感 API（`.env` 设置 `OPENCLAW_ADMIN_PIN`）
+- 写保护中间件（非 LAN 请求拦截）
+- 滑动窗口速率限制
+- Ed25519 设备认证
 
-## HTTPS for Mobile
+## 开发
 
-Mobile browsers require HTTPS for microphone access. Options:
-
-**Tailscale Funnel (easiest):**
 ```bash
-tailscale funnel 8765
-# Access via https://your-machine.tailnet-name.ts.net
+# 运行测试
+python -m pytest tests/ -q
+
+# 构建安装包
+build_installer.bat
+
+# Tauri 构建
+npx tauri build
 ```
 
-**nginx + Let's Encrypt:**
-```nginx
-server {
-    listen 443 ssl;
-    server_name voice.yourdomain.com;
-    
-    location / {
-        proxy_pass http://127.0.0.1:8765;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
+## 许可证
 
-## API
-
-### WebSocket Protocol
-
-Connect to `ws://localhost:8765/ws`:
-
-```javascript
-// Start recording
-{ "type": "start_listening" }
-
-// Send audio (base64 PCM float32, 16kHz)
-{ "type": "audio", "data": "base64..." }
-
-// Stop recording
-{ "type": "stop_listening" }
-
-// Receive events:
-{ "type": "transcript", "text": "...", "final": true }
-{ "type": "response_chunk", "text": "..." }        // Streaming text
-{ "type": "audio_chunk", "data": "...", "sample_rate": 24000 }  // Streaming audio
-{ "type": "response_complete", "text": "..." }     // Full response
-{ "type": "vad_status", "speech_detected": true }  // VAD feedback
-```
-
-## Roadmap
-
-- [x] WebSocket voice gateway
-- [x] Whisper STT (local)
-- [x] ElevenLabs TTS
-- [x] Streaming TTS (sentence-by-sentence)
-- [x] Voice Activity Detection (Silero)
-- [x] Text cleaning (markdown/hashtags/URLs)
-- [x] Continuous conversation mode
-- [x] OpenClaw gateway integration
-- [ ] WebRTC for lower latency
-- [ ] Voice cloning UI
-- [ ] Docker support
-
-## License
-
-MIT License — see [LICENSE](LICENSE).
-
-## Credits
-
-- [faster-whisper](https://github.com/guillaumekln/faster-whisper) — Local STT
-- [ElevenLabs](https://elevenlabs.io) — Text-to-Speech
-- [Silero VAD](https://github.com/snakers4/silero-vad) — Voice Activity Detection
-- Built for [OpenClaw](https://openclaw.ai)
-
----
-
-**Made with 🦞 by [Purple Horizons](https://purplehorizons.io)**
+MIT License
