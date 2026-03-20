@@ -448,6 +448,30 @@ async def wechat_activate():
         return {"ok": False, "error": str(e)}
 
 
+@router.post("/api/wechat/send")
+async def wechat_send_message(request: Request):
+    """发送微信消息（测试用）"""
+    if not _wechat_autoreply_available:
+        return {"ok": False, "error": "微信模块不可用"}
+    try:
+        data = await request.json()
+        contact = data.get("contact", "")
+        text = data.get("text", "")
+        if not text:
+            return {"ok": False, "error": "text 不能为空"}
+
+        adapter = get_adapter()
+        if not adapter:
+            return {"ok": False, "error": "adapter 未初始化"}
+
+        ok = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: adapter.send_message(contact, text)
+        )
+        return {"ok": ok, "message": "已发送" if ok else "发送失败"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # ── 朋友圈 API ─────────────────────────────────────────────────────────────────
 
 @router.post("/api/moments/browse")

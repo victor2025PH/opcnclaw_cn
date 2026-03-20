@@ -221,6 +221,19 @@ class WeChatAdapter:
             except Exception as e:
                 logger.warning(f"wxauto 发送失败: {e}")
 
+        # UIA 发送（微信 4.x）
+        if self._tracks["uia"].available and self._uia_reader:
+            try:
+                # 先切换到目标会话
+                self._uia_reader.click_session(contact)
+                import time; time.sleep(0.5)
+                ok = self._uia_reader.send_message(text)
+                if ok:
+                    self.stats["sends_success"] += 1
+                    return True
+            except Exception as e:
+                logger.warning(f"UIA 发送失败: {e}")
+
         # 降级到 desktop_skills
         if self._desktop:
             try:

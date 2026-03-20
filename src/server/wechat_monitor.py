@@ -193,6 +193,97 @@ class UIAReader:
         logger.warning("[Monitor] 未找到微信窗口，无法激活")
         return False
 
+    def send_message(self, text: str) -> bool:
+        """
+        在当前聊天窗口发送消息（微信 4.x 适配）。
+        需要先打开目标聊天窗口。
+        """
+        win = self._get_wechat_window(force_refresh=True)
+        if not win:
+            return False
+        try:
+            import time as _t
+            # 1. 找输入框 (mmui::ChatInputField 或 EditControl)
+            input_ctrl = None
+            for cls in ["mmui::ChatInputField", "mmui::XValidatorTextEdit"]:
+                try:
+                    c = win.Control(searchDepth=20, ClassName=cls)
+                    if c.Exists(1, 0) and "搜索" not in (c.Name or ""):
+                        input_ctrl = c
+                        break
+                except Exception:
+                    pass
+            if not input_ctrl:
+                logger.warning("[UIA] 未找到输入框")
+                return False
+
+            # 2. 点击聚焦 + 清空 + 输入
+            input_ctrl.Click()
+            _t.sleep(0.2)
+            input_ctrl.SendKeys("{Ctrl}a", waitTime=0.05)
+            input_ctrl.SendKeys(text, waitTime=0.02)
+            _t.sleep(0.3)
+
+            # 3. 发送：优先点击发送按钮，回退到 Enter
+            sent = False
+            try:
+                send_btn = win.Control(searchDepth=20, ClassName="mmui::XOutlineButton")
+                if send_btn.Exists(1, 0):
+                    send_btn.Click()
+                    sent = True
+            except Exception:
+                pass
+            if not sent:
+                input_ctrl.SendKeys("{Enter}", waitTime=0.05)
+
+            logger.info(f"[UIA] 消息已发送: {text[:30]}...")
+            return True
+        except Exception as e:
+            logger.error(f"[UIA] 发送失败: {e}")
+            return False
+
+    def click_session(self, contact_name: str) -> bool:
+        """
+        点击左侧会话列表中的指定联系人（微信 4.x 适配）。
+        """
+        win = self._get_wechat_window(force_refresh=True)
+        if not win:
+            return False
+        try:
+            import time as _t
+            # 找会话列表
+            table = win.Control(searchDepth=20, ClassName="mmui::XTableView")
+            if not table.Exists(2, 0):
+                # 3.x 回退
+                table = win.ListControl(searchDepth=6, timeout=1)
+            if not table or not table.Exists(0):
+                return False
+
+            for item in table.GetChildren():
+                name = (item.Name or "").split("\n")[0].strip()
+                if name == contact_name:
+                    item.Click()
+                    _t.sleep(0.5)
+                    logger.info(f"[UIA] 已切换到会话: {contact_name}")
+                    return True
+
+            # 搜索方式切换
+            search = win.Control(searchDepth=20, ClassName="mmui::XValidatorTextEdit")
+            if search.Exists(1, 0) and "搜索" in (search.Name or ""):
+                search.Click()
+                _t.sleep(0.2)
+                search.SendKeys(contact_name, waitTime=0.02)
+                _t.sleep(1.0)
+                search.SendKeys("{Enter}", waitTime=0.1)
+                _t.sleep(0.5)
+                logger.info(f"[UIA] 搜索切换到: {contact_name}")
+                return True
+
+            return False
+        except Exception as e:
+            logger.error(f"[UIA] 切换会话失败: {e}")
+            return False
+
     def get_unread_sessions(self) -> List[Dict]:
         """
         读取左侧会话列表，返回有未读消息的会话。
