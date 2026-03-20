@@ -9,10 +9,10 @@
 ; 编译命令（CMD）:
 ;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 ;
-; 生成文件: dist\installer\十三香小龙虾-v3.7.0-Setup.exe
+; 生成文件: dist\installer\十三香小龙虾-v3.8.0-Setup.exe
 
 #define AppName       "十三香小龙虾"
-#define AppVersion    "3.7.0"
+#define AppVersion    "3.8.0"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
 #define AppExeName    "十三香小龙虾.exe"
@@ -110,8 +110,8 @@ Source: "assets\tray_icon.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 ; ── 安装辅助脚本 ────────────────────────────────────────────
 Source: "install_full.bat";    DestDir: "{app}"; Flags: ignoreversion
 
-; ── 内嵌 Python 3.11.9 运行环境（离线可用）────────────────
-Source: "installer\embedded\python\*";  DestDir: "{app}\python"; Flags: ignoreversion recursesubdirs createallsubdirs
+; ── 内嵌 Python 3.11.9 运行环境（离线可用，排除大型 ML 库）────
+Source: "installer\embedded\python\*";  DestDir: "{app}\python"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "Lib\site-packages\torch\*,Lib\site-packages\torchaudio\*,Lib\site-packages\nvidia\*"
 
 ; ── VC++ 运行库（安装后自动删除临时文件）──────────────────
 Source: "installer\embedded\vcredist_x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion deleteafterinstall

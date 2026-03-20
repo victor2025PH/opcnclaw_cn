@@ -1,5 +1,40 @@
 # Changelog
 
+## v3.8.0 (2026-03-21)
+
+### 人机协作系统 (赛道B 40%→90%)
+- HumanDetector：鼠标/键盘空闲检测、前台窗口跟踪、注视方向
+- ActionJournal：AI 操作日志（前后截图、智能撤销）
+- CoworkBus：协作调度（冲突检测、任务队列、后台执行器）
+- 桌面安全：用户活跃时 AI 自动暂停桌面操作
+
+### API 新增
+- GET /api/cowork/status — 协作状态（真实 HumanDetector 数据）
+- GET /api/cowork/human-status — 详细人类活动
+- GET /api/cowork/journal — AI 操作日志
+- GET /api/cowork/journal/{id}/thumbnails — 前后截图
+- POST /api/cowork/task — 后台任务
+- POST /api/cowork/undo — 智能撤销
+- POST /api/cowork/pause|resume — 暂停/恢复
+- GET /api/analytics/daily — 每日统计（Cursor 图表用）
+- POST /api/system/clear-cache — 清除缓存
+- GET /api/system/logs — 日志尾部
+
+### 前端（Cursor）
+- Admin 仪表盘实时图表（CPU/内存/消息量）
+- Admin 数据分析（回复数/情感饼图）
+- 校准向导 HTML 容器
+- QR 控制台 GPU 检测修复
+- CoworkPanel 协作状态面板
+
+### 测试
+- 新增 test_cowork.py（19 tests）
+- 全量: 185 passed, 6 skipped, 0 failed
+
+### 安装包
+- 排除 torch/torchaudio/nvidia 大文件（减 ~500MB）
+- 完整安装模式改为 pip install 在线下载
+
 ## v3.7.0 (2026-03-21)
 
 ### 搜索引擎
