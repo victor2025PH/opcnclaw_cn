@@ -399,27 +399,35 @@ class UIAReader:
         messages = []
 
         try:
-            # ── 获取联系人名（聊天区标题）──────────────────────────────────────
-            title_texts = []
+            # ── 获取联系人名 ──────────────────────────────────────
+            # 微信 4.x: ChatInputField.Name 就是当前聊天对象名
             try:
-                title_bar = win.TitleBarControl(searchDepth=4, timeout=1)
-                if title_bar.Exists(0):
-                    title_texts = _extract_texts(title_bar, max_depth=3)
+                input_field = win.Control(searchDepth=20, ClassName="mmui::ChatInputField")
+                if input_field.Exists(1, 0):
+                    contact = (input_field.Name or "").strip()
             except Exception:
                 pass
 
-            if not title_texts:
+            # 回退: 标题栏
+            if not contact:
+                title_texts = []
                 try:
-                    all_top = _extract_texts(win, max_depth=3)
-                    title_texts = all_top[:3]
+                    title_bar = win.TitleBarControl(searchDepth=4, timeout=1)
+                    if title_bar.Exists(0):
+                        title_texts = _extract_texts(title_bar, max_depth=3)
                 except Exception:
                     pass
-
-            for t in title_texts:
-                t = t.strip()
-                if t and t not in ("微信", "WeChat", ""):
-                    contact = t
-                    break
+                if not title_texts:
+                    try:
+                        all_top = _extract_texts(win, max_depth=3)
+                        title_texts = all_top[:3]
+                    except Exception:
+                        pass
+                for t in title_texts:
+                    t = t.strip()
+                    if t and t not in ("微信", "WeChat", "MMUIRenderSubWindowHW", ""):
+                        contact = t
+                        break
 
             # ── 获取窗口边界（用于 is_mine 判断）────────────────────────────
             win_rect = None

@@ -118,6 +118,7 @@ class AutoReplyConfig:
         "身份证", "刷脸", "紧急", "救命",
     ])
     contacts: Dict[str, ContactRule] = field(default_factory=dict)
+    reply_all: bool = False            # 全局回复模式（回复所有人，不需要白名单）
 
 
 # ── 主引擎 ────────────────────────────────────────────────────────────────────
@@ -438,11 +439,16 @@ class WeChatAutoReply:
             if not self._config.enabled:
                 return
 
-            # ② 白名单检查
+            # ② 白名单检查（或全局回复模式）
             rule = self._config.contacts.get(msg.contact)
-            if not rule:
+            reply_all = getattr(self._config, 'reply_all', False)
+            if not rule and not reply_all:
                 logger.debug(f"[AutoReply] 跳过非白名单联系人：{msg.contact}")
                 return
+
+            # reply_all 模式：为未注册联系人创建临时规则
+            if not rule and reply_all:
+                rule = ContactRule(name=msg.contact)
 
             # ③ 单人开关
             if not rule.enabled:
@@ -576,19 +582,31 @@ class WeChatAutoReply:
             return ""
 
     def _send_reply(self, contact: str, reply: str, incoming: str):
-        """调用已实现的验证版发消息接口"""
+        """发送回复。优先 adapter（支持4.x），回退到 desktop_skills"""
         success = False
+
+        # 1. 优先用 v2 adapter（支持微信 4.x UIA 发送）
         try:
-            from .desktop_skills import execute_send_wechat_message
-            if self._desktop:
-                result = execute_send_wechat_message(self._desktop, contact, reply)
-                success = result.success
-                if not success:
-                    logger.warning(f"[AutoReply] 发送失败: {result.message}")
-            else:
-                logger.warning("[AutoReply] 无 desktop 实例，无法发送")
+            if _adapter is not None:
+                success = _adapter.send_message(contact, reply)
+                if success:
+                    logger.info(f"[AutoReply] ✅ 已回复 {contact}: {reply[:30]}...")
         except Exception as e:
-            logger.error(f"[AutoReply] send_reply: {e}")
+            logger.debug(f"[AutoReply] adapter send: {e}")
+
+        # 2. 回退到 desktop_skills
+        if not success:
+            try:
+                from .desktop_skills import execute_send_wechat_message
+                if self._desktop:
+                    result = execute_send_wechat_message(self._desktop, contact, reply)
+                    success = result.success
+                    if not success:
+                        logger.warning(f"[AutoReply] 发送失败: {result.message}")
+                else:
+                    logger.warning("[AutoReply] 无 desktop 实例，无法发送")
+            except Exception as e:
+                logger.error(f"[AutoReply] send_reply: {e}")
 
         # 记录健康度指标
         try:
