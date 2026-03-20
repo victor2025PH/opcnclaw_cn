@@ -92,7 +92,7 @@ class WeChatAccount:
 # ── 窗口发现 ──────────────────────────────────────────────────────────────────
 
 # 微信主窗口的 Win32 类名
-WX_CLASS_NAMES = ["WeChatMainWndForPC", "WeChat MainWndForPC", "WeChatMainWnd"]
+WX_CLASS_NAMES = ["WeChatMainWndForPC", "mmui::MainWindow", "WeChat MainWndForPC", "WeChatMainWnd"]
 
 EnumWindows = ctypes.windll.user32.EnumWindows
 EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int))

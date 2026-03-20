@@ -40,8 +40,10 @@ if IS_WINDOWS:
     except ImportError:
         logger.warning("uiautomation 未安装，将使用纯 OCR 模式")
 
-# 微信窗口类名（PC 版微信）
-WECHAT_CLASS = "WeChatMainWndForPC"
+# 微信窗口类名（兼容新旧版本）
+WECHAT_CLASS = "WeChatMainWndForPC"       # 微信 3.x
+WECHAT_CLASS_V4 = "mmui::MainWindow"      # 微信 4.x
+WECHAT_CLASSES = [WECHAT_CLASS, WECHAT_CLASS_V4]
 WECHAT_TITLE_KEYWORD = "微信"
 
 # 扫描间隔（秒）
@@ -113,18 +115,20 @@ class UIAReader:
 
         if not _uia_available:
             return None
-        try:
-            ctrl = auto.WindowControl(
-                ClassName=WECHAT_CLASS,
-                searchDepth=1,
-                timeout=2
-            )
-            if ctrl.Exists(0):
-                self._wechat_ctrl = ctrl
-                self._last_find = now
-                return ctrl
-        except Exception as e:
-            logger.debug(f"UIA find wechat window: {e}")
+        # 兼容微信 3.x 和 4.x 窗口类名
+        for cls in WECHAT_CLASSES:
+            try:
+                ctrl = auto.WindowControl(
+                    ClassName=cls,
+                    searchDepth=1,
+                    timeout=1
+                )
+                if ctrl.Exists(0):
+                    self._wechat_ctrl = ctrl
+                    self._last_find = now
+                    return ctrl
+            except Exception as e:
+                logger.debug(f"UIA find wechat window ({cls}): {e}")
         return None
 
     def get_unread_sessions(self) -> List[Dict]:
@@ -376,7 +380,7 @@ class UIAReader:
         """
         win = self._get_wechat_window(force_refresh=True)
         if not win:
-            return [{"error": "未找到微信窗口（WeChatMainWndForPC）"}]
+            return [{"error": f"未找到微信窗口（尝试: {', '.join(WECHAT_CLASSES)}）"}]
 
         result = []
 
@@ -848,15 +852,18 @@ def _check_at_me(content: str) -> bool:
 
 
 def _wechat_is_running() -> bool:
-    """检查微信进程是否在运行"""
+    """检查微信进程是否在运行（兼容 3.x WeChat.exe 和 4.x WeChatAppEx.exe）"""
     if not IS_WINDOWS:
         return False
     try:
         import subprocess
-        r = subprocess.run(
-            ["tasklist", "/FI", "IMAGENAME eq WeChat.exe", "/NH"],
-            capture_output=True, text=True, timeout=3
-        )
-        return "WeChat.exe" in r.stdout
+        for proc_name in ["WeChat.exe", "WeChatAppEx.exe"]:
+            r = subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {proc_name}", "/NH"],
+                capture_output=True, text=True, timeout=3
+            )
+            if proc_name in r.stdout:
+                return True
+        return False
     except Exception:
         return False

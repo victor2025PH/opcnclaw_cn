@@ -177,6 +177,8 @@ class SkillResult:
 # ── WeChat skill ──
 
 WECHAT_CLASS = "WeChatMainWndForPC"
+WECHAT_CLASS_V4 = "mmui::MainWindow"
+WECHAT_CLASSES = [WECHAT_CLASS, WECHAT_CLASS_V4]
 WECHAT_LOGIN_CLASS = "WeChatLoginWndForPC"
 WECHAT_PROCESS = "WeChat.exe"
 WECHAT_COMMON_PATHS_WIN = [
