@@ -40,6 +40,44 @@ if IS_WINDOWS:
     except ImportError:
         logger.warning("uiautomation 未安装，将使用纯 OCR 模式")
 
+# ── 微信 4.x 无障碍激活 ──────────────────────────────────────────
+# 微信 4.1+ 只在检测到无障碍客户端时暴露完整 UIA 控件树。
+# 注册 EVENT_OBJECT_FOCUS 钩子即可触发。
+_accessibility_hook = None
+
+def _ensure_accessibility_hook():
+    """注册全局焦点事件钩子，触发微信暴露完整 UI 树"""
+    global _accessibility_hook
+    if _accessibility_hook or not IS_WINDOWS:
+        return
+    try:
+        import ctypes
+        import ctypes.wintypes
+        user32 = ctypes.windll.user32
+        WinEventProc = ctypes.WINFUNCTYPE(
+            None, ctypes.wintypes.HANDLE, ctypes.wintypes.DWORD,
+            ctypes.wintypes.HWND, ctypes.c_long, ctypes.c_long,
+            ctypes.wintypes.DWORD, ctypes.wintypes.DWORD,
+        )
+        _cb = WinEventProc(lambda *a: None)
+        # 必须保持 _cb 引用，防止被 GC
+        _ensure_accessibility_hook._cb_ref = _cb
+        _accessibility_hook = user32.SetWinEventHook(
+            0x8005, 0x8005,  # EVENT_OBJECT_FOCUS
+            0, _cb, 0, 0,
+            0x0002,  # WINEVENT_SKIPOWNPROCESS
+        )
+        if _accessibility_hook:
+            logger.info("[Monitor] 无障碍钩子已注册 — 微信 4.x UI 树已激活")
+        else:
+            logger.warning("[Monitor] 无障碍钩子注册失败")
+    except Exception as e:
+        logger.debug(f"[Monitor] 无障碍钩子失败: {e}")
+
+# 模块加载时自动注册
+if IS_WINDOWS and _uia_available:
+    _ensure_accessibility_hook()
+
 # 微信窗口类名（兼容新旧版本）
 WECHAT_CLASS = "WeChatMainWndForPC"       # 微信 3.x
 WECHAT_CLASS_V4 = "mmui::MainWindow"      # 微信 4.x
