@@ -581,6 +581,16 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_author ON events(target_author);
+
+-- 微信对话历史（reply_all 模式下临时联系人的上下文持久化）
+CREATE TABLE IF NOT EXISTS wechat_conversations (
+    contact TEXT PRIMARY KEY,
+    history TEXT DEFAULT '[]',
+    persona TEXT DEFAULT '',
+    reply_count_today INTEGER DEFAULT 0,
+    last_reset_date TEXT DEFAULT '',
+    updated_at REAL DEFAULT 0
+);
 """
 
 

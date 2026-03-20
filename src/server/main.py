@@ -137,7 +137,14 @@ async def lifespan(app: FastAPI):
     yield
     await _shutdown()
 
-app = FastAPI(title="OpenClaw Voice", version=_read_version(), lifespan=lifespan)
+app = FastAPI(
+    title="十三香小龙虾 AI",
+    description="全双工 AI 语音助手 — 语音交互 / 桌面控制 / 微信自动化 / 工作流",
+    version=_read_version(),
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -558,6 +565,26 @@ async def _startup_models_deferred(app: FastAPI):
                 from .workflow.store import cleanup_old_executions
                 cleanup_old_executions(days=30)
                 logger.info("  ✅ Old workflow executions cleaned")
+
+                # 2b. Clean expired data (events 90d, audit 30d)
+                try:
+                    import time as _t
+                    conn_main = _db.get_conn("main")
+                    conn_wechat = _db.get_conn("wechat")
+                    # audit_log: 30 days
+                    cutoff_30d = _t.time() - 30 * 86400
+                    conn_main.execute("DELETE FROM audit_log WHERE timestamp < ? AND timestamp > 0", (cutoff_30d,))
+                    conn_main.commit()
+                    # events (main): 90 days
+                    cutoff_90d = _t.time() - 90 * 86400
+                    conn_main.execute("DELETE FROM events WHERE timestamp < ? AND timestamp > 0", (cutoff_90d,))
+                    conn_main.commit()
+                    # events (wechat): 90 days
+                    conn_wechat.execute("DELETE FROM events WHERE timestamp < ? AND timestamp > 0", (cutoff_90d,))
+                    conn_wechat.commit()
+                    logger.info("  ✅ Expired data cleaned (audit 30d, events 90d)")
+                except Exception as _ce:
+                    logger.debug(f"  Data cleanup: {_ce}")
 
                 # 3. VACUUM core databases (via unified db module)
                 _db.vacuum_all()

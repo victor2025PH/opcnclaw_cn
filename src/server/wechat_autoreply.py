@@ -446,12 +446,12 @@ class WeChatAutoReply:
                 logger.debug(f"[AutoReply] 跳过非白名单联系人：{msg.contact}")
                 return
 
-            # reply_all 模式：为未注册联系人创建/复用临时规则（保留上下文）
+            # reply_all 模式：从数据库加载/创建联系人规则（持久化上下文）
             if not rule and reply_all:
                 if not hasattr(self, '_temp_rules'):
                     self._temp_rules = {}
                 if msg.contact not in self._temp_rules:
-                    self._temp_rules[msg.contact] = ContactRule(name=msg.contact)
+                    self._temp_rules[msg.contact] = _load_or_create_temp_rule(msg.contact)
                 rule = self._temp_rules[msg.contact]
 
             # ③ 单人开关
@@ -578,6 +578,8 @@ class WeChatAutoReply:
             if reply:
                 rule.add_history("user", msg.content)
                 rule.add_history("assistant", reply)
+                # 持久化对话历史
+                _save_temp_rule(rule)
 
             return reply or ""
 
@@ -760,6 +762,42 @@ def get_monitor() -> Optional[WeChatMonitor]:
 
 def get_engine() -> Optional[WeChatAutoReply]:
     return _engine
+
+
+def _load_or_create_temp_rule(contact: str) -> ContactRule:
+    """从数据库加载对话历史，没有则创建新规则"""
+    try:
+        from . import db as _db
+        import json
+        conn = _db.get_conn("wechat")
+        row = conn.execute(
+            "SELECT history, persona, reply_count_today, last_reset_date FROM wechat_conversations WHERE contact = ?",
+            (contact,),
+        ).fetchone()
+        if row:
+            rule = ContactRule(name=contact)
+            rule.history = json.loads(row["history"] or "[]")
+            rule.persona = row["persona"] or ""
+            rule.reply_count_today = row["reply_count_today"] or 0
+            rule.last_reset_date = row["last_reset_date"] or ""
+            return rule
+    except Exception:
+        pass
+    return ContactRule(name=contact)
+
+
+def _save_temp_rule(rule: ContactRule):
+    """保存对话历史到数据库"""
+    try:
+        from . import db as _db
+        import json, time
+        with _db.transaction("wechat") as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO wechat_conversations (contact, history, persona, reply_count_today, last_reset_date, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (rule.name, json.dumps(rule.history, ensure_ascii=False), rule.persona, rule.reply_count_today, rule.last_reset_date, time.time()),
+            )
+    except Exception:
+        pass
 
 
 def get_adapter():
