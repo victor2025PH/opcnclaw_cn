@@ -20,6 +20,24 @@ from . import db as _db
 DB_PATH = Path("data/memory.db")
 _lock = _db.get_lock("main")
 
+# jieba 分词（延迟导入）
+_jieba = None
+
+def _jieba_tokenize(text: str) -> str:
+    """将文本用 jieba 分词后用空格连接（FTS5 token 匹配用）"""
+    global _jieba
+    if _jieba is None:
+        try:
+            import jieba
+            jieba.setLogLevel(20)
+            _jieba = jieba
+        except ImportError:
+            _jieba = False
+    if _jieba is False:
+        return ""
+    words = _jieba.cut(text)
+    return " ".join(w for w in words if len(w.strip()) > 0)
+
 
 def _get_conn() -> sqlite3.Connection:
     """获取主数据库连接（单例，通过 db 模块管理）"""
@@ -75,6 +93,17 @@ def add_message(session: str, role: str, content) -> None:
             "INSERT INTO messages (session, role, content) VALUES (?, ?, ?)",
             (session, role, text),
         )
+        # 同步写入 jieba 分词版 FTS（中文搜索用）
+        try:
+            row_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            tokenized = _jieba_tokenize(text)
+            if tokenized:
+                conn.execute(
+                    "INSERT INTO messages_fts_jieba(rowid, content) VALUES (?, ?)",
+                    (row_id, tokenized),
+                )
+        except Exception:
+            pass  # jieba 不可用时静默降级
 
 
 def get_history(session: str, limit: int = 20) -> List[Dict]:

@@ -75,10 +75,13 @@ def search(
     conn = _db.get_conn("main")
 
     if query and _check_fts5() and _is_fts_friendly(query):
-        # 纯英文/数字 → FTS5（精确 token 匹配，O(log n)）
+        # 纯英文/数字 → FTS5 unicode61
         return _search_fts(conn, query, session, role, start_time, end_time, limit, offset)
+    elif query and _check_fts5() and _check_jieba_fts():
+        # 含中文 → FTS5 jieba 分词表（精确词语匹配）
+        return _search_fts_jieba(conn, query, session, role, start_time, end_time, limit, offset)
     else:
-        # 含中文 → LIKE + jieba（中文分词更准确）
+        # 回退 → LIKE
         return _search_like(conn, query, session, role, start_time, end_time, limit, offset)
 
 
@@ -182,6 +185,73 @@ def _search_like(
     ).fetchall()
 
     return _format_results(rows, query, total, offset, limit, engine="like")
+
+
+_JIEBA_FTS_AVAILABLE: bool | None = None
+
+def _check_jieba_fts() -> bool:
+    """检查 jieba FTS5 表是否可用"""
+    global _JIEBA_FTS_AVAILABLE
+    if _JIEBA_FTS_AVAILABLE is not None:
+        return _JIEBA_FTS_AVAILABLE
+    try:
+        conn = _db.get_conn("main")
+        conn.execute("SELECT * FROM messages_fts_jieba LIMIT 0")
+        _JIEBA_FTS_AVAILABLE = True
+    except Exception:
+        _JIEBA_FTS_AVAILABLE = False
+    return _JIEBA_FTS_AVAILABLE
+
+
+def _search_fts_jieba(conn, query, session, role, start_time, end_time, limit, offset) -> Dict:
+    """用 jieba 分词 FTS5 表搜索中文"""
+    try:
+        # jieba 分词查询
+        keywords = _tokenize(query)
+        if not keywords:
+            return _search_like(conn, query, session, role, start_time, end_time, limit, offset)
+
+        # FTS5 MATCH: 每个 jieba 词作为 token
+        fts_query = " ".join(keywords[:5])
+
+        filters = []
+        params = []
+        if session:
+            filters.append("m.session = ?")
+            params.append(session)
+        if role:
+            filters.append("m.role = ?")
+            params.append(role)
+        if start_time:
+            filters.append("m.ts >= ?")
+            params.append(start_time)
+        if end_time:
+            filters.append("m.ts <= ?")
+            params.append(end_time)
+
+        filter_clause = (" AND " + " AND ".join(filters)) if filters else ""
+
+        count_sql = (
+            f"SELECT COUNT(*) FROM messages_fts_jieba f "
+            f"JOIN messages m ON m.id = f.rowid "
+            f"WHERE f.content MATCH ?{filter_clause}"
+        )
+        total = conn.execute(count_sql, [fts_query] + params).fetchone()[0]
+
+        result_sql = (
+            f"SELECT m.id, m.session, m.role, m.content, m.ts "
+            f"FROM messages_fts_jieba f "
+            f"JOIN messages m ON m.id = f.rowid "
+            f"WHERE f.content MATCH ?{filter_clause} "
+            f"ORDER BY f.rank LIMIT ? OFFSET ?"
+        )
+        rows = conn.execute(result_sql, [fts_query] + params + [limit, offset]).fetchall()
+
+        return _format_results(rows, query, total, offset, limit, engine="fts5_jieba")
+
+    except Exception as e:
+        logger.warning(f"[Search] jieba FTS failed, falling back to LIKE: {e}")
+        return _search_like(conn, query, session, role, start_time, end_time, limit, offset)
 
 
 def _is_fts_friendly(query: str) -> bool:

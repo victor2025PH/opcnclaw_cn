@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_msg_session ON messages(session);
 
--- FTS5 全文搜索索引（独立表，非 content table，兼容性更好）
+-- FTS5 全文搜索索引（unicode61 — 英文精确匹配）
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
     content,
     tokenize='unicode61'
@@ -221,6 +221,12 @@ CREATE TRIGGER IF NOT EXISTS trg_msg_au AFTER UPDATE ON messages BEGIN
     DELETE FROM messages_fts WHERE rowid = old.id;
     INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
 END;
+
+-- FTS5 jieba 分词索引（中文精确匹配 — 通过应用层同步）
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_jieba USING fts5(
+    content,
+    tokenize='unicode61'
+);
 
 -- 长期记忆片段（原 long_memory.db）
 CREATE TABLE IF NOT EXISTS segments (
@@ -626,6 +632,29 @@ def _sync_fts_index(conn: sqlite3.Connection):
             logger.info(f"[DB] FTS index synced: {msg_count} messages indexed")
     except Exception as e:
         logger.warning(f"[DB] FTS sync failed (non-fatal): {e}")
+
+    # jieba FTS 同步（后台，因为分词耗时）
+    try:
+        jieba_count = conn.execute("SELECT COUNT(*) FROM messages_fts_jieba").fetchone()[0]
+        if jieba_count == 0 and msg_count > 0:
+            import threading
+            def _sync_jieba():
+                try:
+                    import jieba
+                    jieba.setLogLevel(20)
+                    c = get_conn("main")
+                    rows = c.execute("SELECT id, content FROM messages").fetchall()
+                    for r in rows:
+                        tokenized = " ".join(jieba.cut(r["content"]))
+                        c.execute("INSERT OR IGNORE INTO messages_fts_jieba(rowid, content) VALUES (?, ?)",
+                                  (r["id"], tokenized))
+                    c.commit()
+                    logger.info(f"[DB] jieba FTS synced: {len(rows)} messages")
+                except Exception as e2:
+                    logger.debug(f"[DB] jieba FTS sync: {e2}")
+            threading.Thread(target=_sync_jieba, daemon=True).start()
+    except Exception:
+        pass
 
 
 def rebuild_fts_index():
