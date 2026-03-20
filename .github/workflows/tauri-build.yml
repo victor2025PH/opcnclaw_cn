@@ -16,10 +16,13 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
+            ext: 'exe'
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
+            ext: 'dmg'
           - platform: ubuntu-22.04
             args: ''
+            ext: 'deb'
 
     runs-on: ${{ matrix.platform }}
 
@@ -42,6 +45,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
+      - name: Generate macOS icon
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # icns needs to be generated from png
+          mkdir -p src-tauri/icons/icon.iconset
+          sips -z 1024 1024 src-tauri/icons/icon.png --out src-tauri/icons/icon.iconset/icon_512x512@2x.png
+          sips -z 512 512 src-tauri/icons/icon.png --out src-tauri/icons/icon.iconset/icon_512x512.png
+          sips -z 256 256 src-tauri/icons/icon.png --out src-tauri/icons/icon.iconset/icon_256x256.png
+          sips -z 128 128 src-tauri/icons/icon.png --out src-tauri/icons/icon.iconset/icon_128x128.png
+          sips -z 32 32 src-tauri/icons/icon.png --out src-tauri/icons/icon.iconset/icon_32x32.png
+          sips -z 16 16 src-tauri/icons/icon.png --out src-tauri/icons/icon.iconset/icon_16x16.png
+          iconutil -c icns src-tauri/icons/icon.iconset -o src-tauri/icons/icon.icns
+
       - name: Install frontend dependencies
         run: npm install
 
@@ -52,6 +68,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: '十三香小龙虾 ${{ github.ref_name }}'
-          releaseBody: 'AI 桌面客户端 - 跨平台构建'
+          releaseBody: 'AI 桌面客户端'
           releaseDraft: true
           args: ${{ matrix.args }}
