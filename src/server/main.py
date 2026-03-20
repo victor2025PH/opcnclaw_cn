@@ -22,7 +22,15 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-load_dotenv(override=True)
+_dotenv_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(_dotenv_path, override=True)
+
+# Ensure this module is registered under its canonical name even when run
+# via `python -m src.server.main` (which sets __name__ to "__main__").
+# Without this, relative imports (from ..main import backend) resolve to a
+# separate module object whose globals never get updated by the lifespan.
+if 'src.server.main' not in sys.modules:
+    sys.modules['src.server.main'] = sys.modules[__name__]
 
 import httpx
 import numpy as np
@@ -459,6 +467,26 @@ async def _startup_models_deferred(app: FastAPI):
     _startup_progress["message"] = "就绪"
     elapsed = time.time() - _startup_progress["started_at"]
     logger.info(f"✅ Phase 2 complete — all models loaded ({elapsed:.1f}s total)")
+
+    # ── 自动启动微信监控（Windows + 微信在运行时）──
+    if sys.platform == "win32" and _wechat_autoreply_available:
+        async def _auto_start_wechat():
+            await asyncio.sleep(3)  # 等其他组件就绪
+            try:
+                from .wechat_monitor import _wechat_is_running, UIAReader
+                if _wechat_is_running():
+                    UIAReader.activate_wechat_window()
+                    await asyncio.sleep(1)
+                    # 自动启用微信监控
+                    _, engine = init_wechat_v2(ai_backend=backend, desktop=desktop)
+                    if engine:
+                        engine.update_config({"enabled": True, "reply_all": True})
+                        logger.info("✅ 微信自动回复已自动启动")
+                else:
+                    logger.info("ℹ️ 微信未运行，跳过自动监控")
+            except Exception as e:
+                logger.debug(f"微信自动启动跳过: {e}")
+        asyncio.create_task(_auto_start_wechat())
 
     # Background tasks: account health heartbeat
     async def _health_heartbeat_loop():
@@ -1536,6 +1564,8 @@ if __name__ == "__main__":
         http_server = uvicorn.Server(http_config)
 
         async def _open_browser():
+            if os.environ.get("OPENCLAW_DESKTOP") == "1":
+                return
             await asyncio.sleep(2.0)
             import webbrowser
             qr_url = f"http://localhost:{http_port}/qr"

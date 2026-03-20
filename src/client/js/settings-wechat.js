@@ -439,24 +439,60 @@ export function initWechatPanel() {
   window.wxpSmartStats = async function() {
     const el = document.getElementById('wxp-smart-stats');
     el.style.display = 'block';
-    el.textContent = '加载中...';
+    el.innerHTML = '<div style="color:#8a9bb0">加载中...</div>';
     try {
-      const r = await fetch('/api/wechat/smart-stats');
-      const d = await r.json();
-      if (d.ok !== false) {
-        let txt = '智能回复统计\n';
-        txt += '─────────────\n';
-        txt += `意图分类: ${d.intent_counts || '无数据'}\n`;
-        txt += `情感分布: ${d.sentiment_dist || '无数据'}\n`;
-        txt += `批处理: ${d.batch_stats || '无数据'}\n`;
-        txt += `升级决策: ${d.escalation_count || 0} 次\n`;
-        txt += `平均回复延迟: ${d.avg_reply_ms || '?'}ms\n`;
-        el.textContent = txt;
-      } else {
-        el.textContent = d.error || '获取统计失败';
+      // 获取智能统计 + 状态 + 监控统计
+      const [sr, st, mr] = await Promise.all([
+        fetch('/api/wechat/smart-stats').then(r=>r.json()).catch(()=>({})),
+        fetch('/api/wechat/status').then(r=>r.json()).catch(()=>({})),
+        fetch('/api/wechat/monitor-stats').then(r=>r.json()).catch(()=>({})),
+      ]);
+      const s = mr.stats || {};
+      const v2 = st.v2 || {};
+      const tracks = v2.tracks || {};
+      const se = sr.smart_engine || {};
+
+      // 构建可视化 HTML
+      let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+
+      // 回复统计
+      const today = st.today_replied || 0;
+      const total = st.total_replied || 0;
+      html += `<div style="background:rgba(124,106,239,.1);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:20px;font-weight:700;color:#7c6aef">${today}</div>
+        <div style="font-size:10px;color:#8a9bb0">今日回复</div></div>`;
+      html += `<div style="background:rgba(74,222,128,.1);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:20px;font-weight:700;color:#4ade80">${total}</div>
+        <div style="font-size:10px;color:#8a9bb0">总计回复</div></div>`;
+
+      // 轨道状态
+      html += '</div><div style="margin-top:8px;font-size:11px">';
+      html += '<div style="color:#8a9bb0;margin-bottom:4px">轨道状态</div>';
+      for (const [k,t] of Object.entries(tracks)) {
+        const avail = t.available;
+        const reads = t.reads || 0;
+        const color = avail ? (t.healthy ? '#4ade80' : '#fbbf24') : '#555';
+        const icon = avail ? (t.healthy ? '✅' : '⚠️') : '⭕';
+        html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">
+          <span>${icon}</span>
+          <span style="width:50px;color:${color}">${k}</span>
+          <div style="flex:1;height:4px;background:#1a1a2e;border-radius:2px;overflow:hidden">
+            <div style="width:${Math.min(100,reads/2)}%;height:100%;background:${color};border-radius:2px"></div>
+          </div>
+          <span style="color:#666;width:40px;text-align:right">${reads}</span>
+        </div>`;
       }
+
+      // 智能引擎
+      if (se.total_batches || se.total_messages) {
+        html += '<div style="color:#8a9bb0;margin:8px 0 4px">智能引擎</div>';
+        html += `<div>消息: ${se.total_messages||0} | 批次: ${se.total_batches||0} | 回复: ${se.total_replies||0} | 升级: ${se.total_escalations||0}</div>`;
+      }
+
+      html += '</div>';
+      el.innerHTML = html;
     } catch(e) {
-      el.textContent = '请求失败: ' + e.message;
+      el.innerHTML = `<div style="color:#f87171">请求失败: ${e.message}</div>`;
     }
   };
 
