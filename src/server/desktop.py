@@ -481,10 +481,27 @@ class DesktopStreamer:
 
     def execute_actions(self, actions: list[dict]) -> list[str]:
         """Execute a list of AI-planned actions. Returns execution log lines."""
-        self.invalidate_ocr_cache()  # 操作前失效缓存
+        self.invalidate_ocr_cache()
+        # 操作日志
+        try:
+            from .action_journal import get_journal
+            journal = get_journal()
+        except Exception:
+            journal = None
+
         log = []
-        for i, act in enumerate(actions[:15]):  # safety limit
+        for i, act in enumerate(actions[:15]):
             a = act.get("action", "")
+
+            # 记录到 Journal
+            entry_id = None
+            if journal:
+                try:
+                    entry = journal.record(a, act)
+                    entry_id = entry.id
+                except Exception:
+                    pass
+
             try:
                 if a == "click":
                     self.mouse_click(act["x"], act["y"], act.get("button", "left"))
@@ -576,6 +593,13 @@ class DesktopStreamer:
 
             except Exception as e:
                 log.append(f"[{i+1}] ERROR {a}: {e}")
+
+            # Journal: 操作后截图
+            if journal and entry_id:
+                try:
+                    journal.record_after(entry_id)
+                except Exception:
+                    pass
 
         return log
 

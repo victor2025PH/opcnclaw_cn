@@ -824,53 +824,53 @@ async def system_logs(lines: int = 30):
 # ── Cowork API (协作调度) ──────────────────────────────────────────
 
 _cowork_paused = False
-_cowork_journal: list = []
 
 @app.get("/api/cowork/status")
 async def cowork_status():
-    """协作状态：人类/AI 各在做什么"""
-    human_active = False
-    try:
-        import ctypes
-        # 检查用户最后输入时间
-        class LASTINPUTINFO(ctypes.Structure):
-            _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_ulong)]
-        lii = LASTINPUTINFO()
-        lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
-        ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii))
-        idle_ms = ctypes.windll.kernel32.GetTickCount() - lii.dwTime
-        human_active = idle_ms < 30000  # 30秒内有操作=活跃
-    except Exception:
-        pass
-
+    """协作状态：人类活动 + AI 状态 + 操作日志"""
+    from .human_detector import get_human_state
+    from .action_journal import get_journal
+    hs = get_human_state()
+    journal = get_journal()
     return {
-        "human_zone": "active" if human_active else "idle",
+        "human_zone": "active" if hs.is_active else "idle",
+        "human": hs.to_dict(),
         "ai_zone": "paused" if _cowork_paused else "ready",
         "paused": _cowork_paused,
         "queue": [],
-        "journal_count": len(_cowork_journal),
+        "journal_count": len(journal._entries),
     }
+
+
+@app.get("/api/cowork/human-status")
+async def cowork_human_status():
+    """详细人类活动状态"""
+    from .human_detector import get_human_state
+    return get_human_state().to_dict()
 
 
 @app.get("/api/cowork/journal")
 async def cowork_journal(limit: int = 20):
-    """最近操作日志"""
-    return {"entries": _cowork_journal[-limit:]}
+    """最近 AI 操作日志"""
+    from .action_journal import get_journal
+    return {"entries": get_journal().get_recent(limit)}
+
+
+@app.get("/api/cowork/journal/{entry_id}/thumbnails")
+async def cowork_journal_thumbs(entry_id: str):
+    """获取操作前后截图"""
+    from .action_journal import get_journal
+    return get_journal().get_entry_thumbnails(entry_id)
 
 
 @app.post("/api/cowork/undo")
 async def cowork_undo():
-    """撤销最后一步操作"""
-    if not _cowork_journal:
-        return {"ok": False, "error": "无可撤销的操作"}
-    last = _cowork_journal.pop()
-    # 执行 Ctrl+Z 作为通用撤销
-    try:
-        import pyautogui
-        pyautogui.hotkey("ctrl", "z")
-        return {"ok": True, "undone": last.get("desc", "未知操作")}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    """撤销最后一步 AI 操作"""
+    from .action_journal import get_journal
+    result = get_journal().undo_last()
+    if result:
+        return {"ok": True, "undone": result.get("desc", "?")}
+    return {"ok": False, "error": "无可撤销的操作"}
 
 
 @app.post("/api/cowork/pause")
@@ -963,14 +963,18 @@ async def system_health():
     gpu_info = None
     try:
         import subprocess as _sp
-        r = _sp.run(
-            ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=3,
-        )
-        if r.returncode == 0:
-            parts = r.stdout.strip().split(",")
-            if len(parts) >= 3:
-                gpu_info = {"util": int(parts[0].strip()), "mem_used": int(parts[1].strip()), "mem_total": int(parts[2].strip())}
+        import shutil as _shutil
+        if _shutil.which("nvidia-smi"):
+            r = _sp.run(
+                ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=1,
+            )
+            if r.returncode == 0:
+                parts = r.stdout.strip().split(",")
+                if len(parts) >= 3:
+                    gpu_info = {"util": int(parts[0].strip()), "mem_used": int(parts[1].strip()), "mem_total": int(parts[2].strip())}
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError, ValueError):
+        pass
     except Exception:
         pass
     return {
