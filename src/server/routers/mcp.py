@@ -14,7 +14,7 @@ Exposes:
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel
@@ -161,3 +161,42 @@ async def del_skill(skill_id: str):
     """Delete a user-created skill by ID."""
     ok = delete_skill(skill_id)
     return {"ok": ok, "skill_id": skill_id}
+
+
+# ── MCP Server (HTTP 模式) ──────────────────────────────────────────
+
+_mcp_server = None
+
+def _get_mcp_server():
+    global _mcp_server
+    if _mcp_server is None:
+        from src.mcp.server import create_server
+        _mcp_server = create_server()
+    return _mcp_server
+
+
+@router.post("/rpc")
+async def mcp_rpc(request: Request):
+    """MCP Server HTTP 入口 — 接收 JSON-RPC 请求"""
+    body = await request.json()
+    server = _get_mcp_server()
+    response = server.handle_request(body)
+    if response:
+        return response
+    return {"ok": True}
+
+
+@router.get("/server-info")
+async def mcp_server_info():
+    """MCP Server 信息 — 供客户端发现"""
+    server = _get_mcp_server()
+    return {
+        "name": "ShisanXiang",
+        "version": "3.8.0",
+        "protocol": "2024-11-05",
+        "tools_count": len(server._tools),
+        "tools": [t.to_dict() for t in server._tools.values()],
+        "transports": ["http", "stdio"],
+        "http_endpoint": "/api/mcp/rpc",
+        "stdio_command": "python -m src.mcp.server",
+    }
