@@ -231,19 +231,32 @@ class MomentsReader:
             try:
                 if sys.platform == "win32":
                     import uiautomation as uia
-                    wechat_win = uia.WindowControl(Name="微信", ClassName="WeChatMainWndForPC")
-                    if not wechat_win.Exists(3):
-                        wechat_win = uia.WindowControl(Name="WeChat")
-                    if wechat_win.Exists(2):
+                    # 兼容 3.x 和 4.x 窗口
+                    wechat_win = None
+                    for cls in ["mmui::MainWindow", "WeChatMainWndForPC"]:
+                        w = uia.WindowControl(ClassName=cls, searchDepth=1)
+                        if w.Exists(2, 0):
+                            wechat_win = w
+                            break
+                    if not wechat_win:
+                        wechat_win = uia.WindowControl(Name="WeChat", searchDepth=1)
+                    if wechat_win and wechat_win.Exists(2):
+                        # 4.x: mmui::XTabBarItem Name="朋友圈"
+                        moments_btn = wechat_win.Control(
+                            searchDepth=10, Name="朋友圈"
+                        )
+                        if moments_btn.Exists(2, 0):
+                            moments_btn.Click()
+                            time.sleep(1)
+                            return
+                        # 3.x 回退
                         discover = wechat_win.ButtonControl(Name="发现")
                         if discover.Exists(2):
                             discover.Click()
                             time.sleep(0.5)
-                            moments_btn = wechat_win.ListItemControl(Name="朋友圈")
-                            if not moments_btn.Exists(1):
-                                moments_btn = wechat_win.TextControl(Name="朋友圈")
-                            if moments_btn.Exists(1):
-                                moments_btn.Click()
+                            fb = wechat_win.Control(Name="朋友圈", searchDepth=8)
+                            if fb.Exists(1, 0):
+                                fb.Click()
                                 time.sleep(1)
                                 return
             except Exception as e:

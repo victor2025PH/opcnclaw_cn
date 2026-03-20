@@ -134,9 +134,15 @@ class MomentsActor:
                 try:
                     import uiautomation as uia
                     # 尝试找到点赞按钮
-                    wechat_win = uia.WindowControl(Name="微信")
-                    if not wechat_win.Exists(2):
-                        wechat_win = uia.WindowControl(Name="WeChat")
+                    # 兼容 3.x 和 4.x
+                    wechat_win = None
+                    for cls in ["mmui::MainWindow", "WeChatMainWndForPC"]:
+                        w = uia.WindowControl(ClassName=cls, searchDepth=1)
+                        if w.Exists(1, 0):
+                            wechat_win = w
+                            break
+                    if not wechat_win:
+                        wechat_win = uia.WindowControl(Name="WeChat", searchDepth=1)
                     if wechat_win.Exists(2):
                         like_btns = wechat_win.GetChildren()
                         # 在朋友圈窗口中查找 "赞" 或心形按钮
@@ -242,9 +248,15 @@ class MomentsActor:
             if sys.platform == "win32":
                 try:
                     import uiautomation as uia
-                    wechat_win = uia.WindowControl(Name="微信")
-                    if not wechat_win.Exists(2):
-                        wechat_win = uia.WindowControl(Name="WeChat")
+                    # 兼容 3.x 和 4.x
+                    wechat_win = None
+                    for cls in ["mmui::MainWindow", "WeChatMainWndForPC"]:
+                        w = uia.WindowControl(ClassName=cls, searchDepth=1)
+                        if w.Exists(1, 0):
+                            wechat_win = w
+                            break
+                    if not wechat_win:
+                        wechat_win = uia.WindowControl(Name="WeChat", searchDepth=1)
                     if wechat_win.Exists(2):
                         # 尝试找到评论输入框
                         edit = wechat_win.EditControl(Name="评论")

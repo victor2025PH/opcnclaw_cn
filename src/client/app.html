@@ -27,7 +27,12 @@
   --shadow-sm:0 2px 8px rgba(0,0,0,.3);--shadow-md:0 8px 24px rgba(0,0,0,.4);--shadow-lg:0 16px 48px rgba(0,0,0,.5);
   --radius-sm:8px;--radius-md:12px;--radius-lg:20px;--radius-xl:28px;
   --header-h:56px;--transition:250ms cubic-bezier(.4,0,.2,1);
+  --ease:.25s cubic-bezier(.4,0,.2,1);
+  --ease-slow:.35s cubic-bezier(.4,0,.2,1);
   --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
 }
 html,body{height:100%;overflow:hidden}
 body{
@@ -90,7 +95,7 @@ body{
 
 /* Header — CSS Grid three-column layout: left | center | right */
 .chat-header{
-  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;
   height:var(--header-h);padding:0 16px;padding-top:var(--safe-top);
   background:linear-gradient(180deg,var(--bg-secondary),var(--bg-tertiary));
   border-bottom:1px solid var(--border);
@@ -217,7 +222,7 @@ body{
 }
 .ws-reconnect-bar.visible{transform:translateY(0)}
 .header-title{font-size:16px;font-weight:600}
-.header-right{display:flex;align-items:center;gap:4px;justify-self:end;position:relative}
+.header-right{display:flex;align-items:center;gap:4px;justify-self:end;position:relative;min-width:0;flex-wrap:nowrap}
 .icon-btn{
   width:40px;height:40px;display:flex;align-items:center;justify-content:center;
   border:none;background:transparent;color:var(--text-secondary);
@@ -437,11 +442,17 @@ body{
 .voice-stop:hover{border-color:var(--error);color:var(--error)}
 
 /* Camera Panel */
+#camera-backdrop{
+  position:fixed;inset:0;z-index:49;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(4px);
+  transition:opacity .3s cubic-bezier(.4,0,.2,1);
+}
+#camera-backdrop.hidden{opacity:0;pointer-events:none}
 #camera-panel{
   position:fixed;bottom:0;left:0;right:0;z-index:50;
   height:55vh;background:var(--bg-secondary);border-top:1px solid var(--border);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
-  transform:translateY(0);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  transform:translateY(0);transition:transform var(--ease-slow),opacity var(--ease);
   display:flex;flex-direction:column;
 }
 #camera-panel.hidden{transform:translateY(100%);pointer-events:none;opacity:0;visibility:hidden}
@@ -470,10 +481,10 @@ body{
   position:fixed;inset:0;z-index:220;
   background:rgba(10,10,20,.9);backdrop-filter:blur(16px);
   display:flex;flex-direction:column;
-  transition:opacity .3s, transform .3s;
+  transition:opacity var(--ease),transform var(--ease);
   transform:translateY(0);
 }
-#skills-center.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+#skills-center.hidden{opacity:0;pointer-events:none;transform:translateY(20px)}
 .sc-header{
   display:flex;align-items:center;gap:12px;
   padding:16px 20px;padding-top:calc(16px + var(--safe-top));
@@ -566,14 +577,14 @@ body{
   position:fixed;inset:0;z-index:240;
   background:rgba(10,10,20,.7);backdrop-filter:blur(8px);
   display:flex;align-items:flex-end;justify-content:center;
-  transition:opacity .2s;
+  transition:opacity var(--ease);
 }
 .sc-detail-overlay.hidden{opacity:0;pointer-events:none}
 .sc-detail-sheet{
   width:100%;max-width:480px;background:var(--bg-secondary);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
   padding:20px;padding-bottom:calc(20px + var(--safe-bottom));
-  transform:translateY(0);transition:transform .3s;
+  transform:translateY(0);transition:transform var(--ease-slow);
 }
 .sc-detail-overlay.hidden .sc-detail-sheet{transform:translateY(100%)}
 .sc-detail-title{font-size:18px;font-weight:700;margin-bottom:8px}
@@ -613,14 +624,14 @@ body{
   position:fixed;inset:0;z-index:200;
   background:rgba(10,10,20,.85);backdrop-filter:blur(12px);
   display:flex;align-items:flex-end;justify-content:center;
-  transition:opacity .25s;
+  transition:opacity var(--ease);
 }
 #settings-modal.hidden{opacity:0;pointer-events:none}
 .settings-sheet{
   width:100%;max-width:520px;max-height:85vh;overflow-y:auto;
   background:var(--bg-secondary);border-radius:var(--radius-lg) var(--radius-lg) 0 0;
   padding:24px 20px;padding-bottom:calc(24px + var(--safe-bottom));
-  transform:translateY(0);transition:transform .3s;
+  transform:translateY(0);transition:transform var(--ease-slow);
   display:flex;flex-direction:column;
 }
 #settings-modal.hidden .settings-sheet{transform:translateY(100%)}
@@ -673,9 +684,9 @@ body{
   position:fixed;inset:0;z-index:230;
   background:rgba(10,10,20,.9);backdrop-filter:blur(16px);
   display:flex;flex-direction:column;
-  transition:opacity .3s, transform .3s;
+  transition:opacity var(--ease),transform var(--ease);
 }
-#model-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+#model-panel.hidden{opacity:0;pointer-events:none;transform:translateY(20px)}
 .mp-header{
   display:flex;align-items:center;gap:12px;
   padding:16px 20px;padding-top:calc(16px + var(--safe-top));
@@ -722,9 +733,9 @@ body{
   position:fixed;inset:0;z-index:235;
   background:rgba(10,10,20,.9);backdrop-filter:blur(16px);
   display:flex;flex-direction:column;
-  transition:opacity .3s, transform .3s;
+  transition:opacity var(--ease),transform var(--ease);
 }
-#mcp-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+#mcp-panel.hidden{opacity:0;pointer-events:none;transform:translateY(20px)}
 .mcp-header{
   display:flex;align-items:center;gap:12px;
   padding:16px 20px;padding-top:calc(16px + var(--safe-top));
@@ -1018,9 +1029,10 @@ body{
 #perf-panel{
   position:fixed;inset:0;z-index:210;background:var(--bg-primary);
   display:flex;flex-direction:column;
-  transition:opacity .25s,transform .25s;
+  transition:transform var(--ease-slow);
+  box-shadow:-4px 0 20px rgba(0,0,0,.15);
 }
-#perf-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+#perf-panel.hidden{transform:translateX(100%);pointer-events:none}
 .perf-header{
   display:flex;align-items:center;gap:12px;
   padding:16px 20px;border-bottom:1px solid var(--border);
@@ -1046,9 +1058,10 @@ body{
 #voice-cmd-panel{
   position:fixed;inset:0;z-index:210;background:var(--bg-primary);
   display:flex;flex-direction:column;
-  transition:opacity .25s,transform .25s;
+  transition:transform var(--ease-slow);
+  box-shadow:-4px 0 20px rgba(0,0,0,.15);
 }
-#voice-cmd-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+#voice-cmd-panel.hidden{transform:translateX(100%);pointer-events:none}
 .vcmd-header{
   display:flex;align-items:center;gap:12px;
   padding:16px 20px;border-bottom:1px solid var(--border);
@@ -1243,7 +1256,7 @@ kbd{
   position:fixed;top:0;right:0;bottom:0;width:min(360px,88vw);z-index:255;
   background:var(--bg-secondary);border-left:1px solid var(--border);
   display:flex;flex-direction:column;
-  transform:translateX(100%);transition:transform .25s;
+  transform:translateX(100%);transition:transform var(--ease);
 }
 #bookmark-panel.open{transform:translateX(0)}
 .bm-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
@@ -1307,9 +1320,10 @@ kbd{
 #skill-chain-panel{
   position:fixed;inset:0;z-index:220;background:var(--bg-primary);
   display:flex;flex-direction:column;
-  transition:opacity .25s,transform .25s;
+  transition:transform var(--ease-slow);
+  box-shadow:-4px 0 20px rgba(0,0,0,.15);
 }
-#skill-chain-panel.hidden{opacity:0;pointer-events:none;transform:translateY(30px)}
+#skill-chain-panel.hidden{transform:translateX(100%);pointer-events:none}
 .sc-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary)}
 .sc-header h2{flex:1;font-size:16px;font-weight:700}
 .sc-body{flex:1;display:flex;overflow:hidden}
@@ -1387,10 +1401,10 @@ kbd{
 .msg-search-bar{
   display:flex;align-items:center;gap:8px;
   padding:8px 16px;background:var(--bg-secondary);border-bottom:1px solid var(--border);
-  transform:translateY(-100%);opacity:0;transition:transform .2s,opacity .2s;
+  transform:translateY(-100%);opacity:0;pointer-events:none;transition:transform .2s,opacity .2s;
   position:absolute;top:0;left:0;right:0;z-index:20;
 }
-.msg-search-bar.open{transform:translateY(0);opacity:1}
+.msg-search-bar.open{transform:translateY(0);opacity:1;pointer-events:auto}
 .msg-search-input{
   flex:1;padding:6px 12px;font-size:13px;font-family:inherit;
   background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;
@@ -1502,7 +1516,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   background:var(--bg-secondary);border:1px solid var(--border-strong);
   border-radius:var(--radius-md);box-shadow:0 12px 40px rgba(0,0,0,.35);
   display:flex;flex-direction:column;
-  opacity:0;transform:translateY(-10px);pointer-events:none;transition:opacity .2s,transform .2s;
+  opacity:0;transform:translateY(-10px);pointer-events:none;transition:opacity var(--ease),transform var(--ease);
 }
 #notif-panel.open{opacity:1;transform:translateY(0);pointer-events:auto}
 .notif-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
@@ -1800,12 +1814,19 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   color:var(--text-muted);cursor:pointer;padding:2px;font-size:16px;
 }
 
+/* ─── Panel back button (unified) ─── */
+.panel-back{flex-shrink:0;margin-right:6px}
+/* ─── Drag handle for bottom sheets ─── */
+.drag-handle{width:36px;height:4px;border-radius:2px;background:var(--text-muted);opacity:.35;margin:8px auto 0;flex-shrink:0;cursor:grab}
+.drag-handle:active{opacity:.6;cursor:grabbing}
+.settings-sheet>.drag-handle,.sc-detail-sheet>.drag-handle{margin-top:-12px;margin-bottom:8px}
+
 /* ─── Desktop Remote Panel ─── */
 #desktop-panel{
   position:fixed;inset:0;z-index:60;background:var(--bg-primary);
-  display:flex;flex-direction:column;transition:opacity .3s,transform .3s;
+  display:flex;flex-direction:column;transition:opacity var(--ease),transform var(--ease);
 }
-#desktop-panel.hidden{opacity:0;pointer-events:none;transform:scale(.95)}
+#desktop-panel.hidden{opacity:0;pointer-events:none;transform:scale(.97)}
 .desktop-header{
   display:flex;align-items:center;justify-content:space-between;
   padding:8px 12px;padding-top:calc(8px + var(--safe-top));
@@ -2320,6 +2341,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         💬
         <span id="wxp-badge" class="hidden" style="position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#fc8181"></span>
       </button>
+      <button class="icon-btn" id="moments-panel-toggle" title="朋友圈管理" onclick="openMomentsPanel()">
+        🌅
+      </button>
       <button class="icon-btn" id="model-panel-toggle" title="模型管理">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       </button>
@@ -2522,9 +2546,12 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
   </div>
 
-  <!-- Camera Panel -->
+  <!-- Camera Backdrop + Panel -->
+  <div id="camera-backdrop" class="hidden" onclick="document.getElementById('camera-close').click()"></div>
   <div id="camera-panel" class="hidden">
+    <div class="drag-handle"></div>
     <div class="camera-header">
+      <button class="icon-btn panel-back" onclick="document.getElementById('camera-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
       <span data-i18n="camera.title">摄像头和手势</span>
       <button class="icon-btn" id="camera-close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2612,7 +2639,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- ═══════════════ SETTINGS MODAL ═══════════════ -->
 <div id="settings-modal" class="hidden" role="dialog" aria-label="Settings">
   <div class="settings-sheet">
+    <div class="drag-handle"></div>
     <div class="settings-header">
+      <button class="icon-btn panel-back" onclick="document.getElementById('settings-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
       <h2 data-i18n="settings.title">设置</h2>
       <button class="icon-btn" id="settings-close" aria-label="Close settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -3085,6 +3114,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- 技能详情弹窗 -->
 <div class="sc-detail-overlay hidden" id="sc-detail-overlay">
   <div class="sc-detail-sheet">
+    <div class="drag-handle"></div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       <span id="sc-detail-icon" style="font-size:28px"></span>
       <div style="flex:1">
@@ -3108,6 +3138,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- ═══════════════ DESKTOP REMOTE ═══════════════ -->
 <div id="desktop-panel" class="hidden">
   <div class="desktop-header">
+    <button class="icon-btn panel-back" onclick="document.getElementById('desktop-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> <span data-i18n="desktop.title">远程桌面</span></span>
     <div class="desktop-controls">
       <span class="desktop-fps-badge" id="desktop-fps-badge">10 FPS</span>
@@ -3221,14 +3252,6 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       </div>
     </div>
 
-    <!-- 升级处理 -->
-    <div class="wxp-section" id="wxp-escalations-section">
-      <div class="wxp-section-title">🚨 需要人工处理 <span id="wxp-esc-count" style="background:#e94560;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px;display:none">0</span></div>
-      <div id="wxp-escalations-list">
-        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无需要人工处理的消息</div>
-      </div>
-    </div>
-
     <!-- 回复日志 -->
     <div class="wxp-section">
       <div class="wxp-section-title">📋 最近回复记录</div>
@@ -3265,28 +3288,80 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           </div>
           <div id="wxp-uia-result" style="font-size:11px;color:#e8f0fe;font-family:monospace;white-space:pre;max-height:300px;overflow:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;display:none"></div>
         </div>
-        <!-- 快捷操作 -->
-        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px">
-          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">快捷操作</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="wxp-btn-primary" onclick="wxpActivate()" style="padding:6px 14px;font-size:12px">🔄 激活微信窗口</button>
-            <button class="wxp-btn-primary" onclick="wxpSmartStats()" style="padding:6px 14px;font-size:12px">📊 智能统计</button>
-          </div>
-          <div id="wxp-smart-stats" style="margin-top:8px;font-size:11px;color:#e8f0fe;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;display:none"></div>
-        </div>
-        <!-- 测试发送 -->
-        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px">
-          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">测试发送消息</div>
-          <div style="display:flex;gap:6px;margin-bottom:6px">
-            <input type="text" id="wxp-send-contact" placeholder="联系人名称" class="wxp-text-input" style="flex:1;font-size:12px">
-            <input type="text" id="wxp-send-text" placeholder="消息内容" class="wxp-text-input" style="flex:2;font-size:12px">
-            <button class="wxp-btn-primary" onclick="wxpSendTest()" style="padding:6px 14px;font-size:12px">📤 发送</button>
-          </div>
-          <div id="wxp-send-result" style="font-size:11px;color:#8a9bb0;margin-top:4px"></div>
-        </div>
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ═══ 朋友圈管理面板 ═══ -->
+<div id="moments-panel" class="hidden" style="position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--bg-primary,#0b0b16);border-left:1px solid rgba(255,255,255,.08);z-index:200;overflow-y:auto;display:none;flex-direction:column;padding:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="icon-btn" id="mp-back" onclick="closeMomentsPanel()" style="font-size:18px">←</button>
+      <span style="font-size:16px;font-weight:600">🌅 朋友圈管理</span>
+    </div>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div class="wxp-stat-card"><div id="mp-stat-likes" style="font-size:18px;font-weight:700;color:#f472b6">0</div><div style="font-size:10px;color:#8a9bb0">今日点赞</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-comments" style="font-size:18px;font-weight:700;color:#7c6aef">0</div><div style="font-size:10px;color:#8a9bb0">今日评论</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-publishes" style="font-size:18px;font-weight:700;color:#4ade80">0</div><div style="font-size:10px;color:#8a9bb0">今日发布</div></div>
+  </div>
+
+  <!-- 浏览朋友圈 -->
+  <div class="wxp-section">
+    <div class="wxp-section-title">📖 浏览朋友圈</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="wxp-btn-primary" onclick="mpBrowse()" id="mp-browse-btn" style="flex:1;padding:8px;font-size:13px">开始浏览 + AI 分析</button>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#8a9bb0">
+        <input type="checkbox" id="mp-auto-interact" checked> 自动互动
+      </label>
+    </div>
+    <div id="mp-browse-result" style="font-size:12px;max-height:300px;overflow-y:auto"></div>
+  </div>
+
+  <!-- 发布朋友圈 -->
+  <div class="wxp-section">
+    <div class="wxp-section-title">✏️ 发布朋友圈</div>
+    <div style="margin-bottom:8px">
+      <input type="text" id="mp-pub-topic" placeholder="主题（如：今天的天气真好）" class="wxp-text-input" style="width:100%;font-size:12px;margin-bottom:6px">
+      <div style="display:flex;gap:6px">
+        <button class="wxp-btn-secondary" onclick="mpGenerate()" style="flex:1;padding:6px;font-size:12px">🤖 AI 生成文案</button>
+        <button class="wxp-btn-primary" onclick="mpPublish()" style="padding:6px 14px;font-size:12px">📤 发布</button>
+      </div>
+    </div>
+    <div id="mp-gen-result" style="font-size:12px"></div>
+    <textarea id="mp-pub-text" placeholder="朋友圈文案（可手写或 AI 生成）" style="width:100%;height:60px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e8f0fe;padding:8px;font-size:12px;resize:vertical;margin-top:6px"></textarea>
+  </div>
+
+  <!-- 30 天日历 -->
+  <div class="wxp-section">
+    <div class="wxp-section-title">📅 内容日历</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button class="wxp-btn-secondary" onclick="mpCalendarLoad()" style="flex:1;padding:6px;font-size:12px">查看日历</button>
+      <button class="wxp-btn-primary" onclick="mpCalendarGen()" style="flex:1;padding:6px;font-size:12px">🤖 生成 30 天计划</button>
+    </div>
+    <div id="mp-calendar" style="font-size:12px;max-height:250px;overflow-y:auto"></div>
+  </div>
+
+  <!-- 数据分析 -->
+  <div class="wxp-section">
+    <div class="wxp-section-title">📊 数据分析</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('overview')" style="padding:4px 10px;font-size:11px">总览</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('top-contacts')" style="padding:4px 10px;font-size:11px">活跃好友</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('best-times')" style="padding:4px 10px;font-size:11px">最佳时段</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('strategy-report')" style="padding:4px 10px;font-size:11px">🤖 AI 策略</button>
+    </div>
+    <div id="mp-analytics" style="font-size:12px;max-height:250px;overflow-y:auto"></div>
+  </div>
+
+  <!-- 风控状态 -->
+  <div class="wxp-section">
+    <div class="wxp-section-title">🛡️ 风控状态</div>
+    <div id="mp-guard-stats" style="font-size:12px;color:#8a9bb0"></div>
   </div>
 </div>
 
@@ -3548,7 +3623,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- ═══════════════ SKILL CHAIN EDITOR ═══════════════ -->
 <div id="skill-chain-panel" class="hidden" role="dialog" aria-label="Skill Chain Editor" tabindex="-1">
   <div class="sc-header">
-    <button class="icon-btn" id="sc-back" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button class="icon-btn" id="sc-chain-back" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <h2 data-i18n="sc.title">🔗 技能链编辑器</h2>
     <select id="sc-chain-select" style="padding:4px 10px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:6px;color:var(--text-primary);font-size:11px;font-family:inherit"></select>
   </div>
@@ -3570,6 +3645,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- ═══════════════ BOOKMARK PANEL ═══════════════ -->
 <div id="bookmark-panel" role="dialog" aria-label="Bookmarks">
   <div class="bm-header">
+    <button class="icon-btn panel-back" onclick="document.getElementById('bookmark-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
     <h3 data-i18n="bm.title">⭐ 收藏</h3>
     <button class="icon-btn" id="bookmark-close" aria-label="Close bookmarks" style="font-size:14px">✕</button>
   </div>
@@ -3724,7 +3800,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
 <script type="module">
 const _v = '?v=' + Date.now();
-const { init: initState } = await import('/js/state.js' + _v);
+const { init: initState, bus: _bus } = await import('/js/state.js' + _v);
 const { init: initWsManager } = await import('/js/ws-manager.js' + _v);
 const { init: initChat } = await import('/js/chat.js' + _v);
 const { init: initVoice } = await import('/js/voice.js' + _v);
@@ -3732,6 +3808,7 @@ const { init: initCamera } = await import('/js/camera.js' + _v);
 const { init: initSkills } = await import('/js/skills.js' + _v);
 const { init: initProfile } = await import('/js/profile.js' + _v);
 const { init: initSettings } = await import('/js/settings.js' + _v);
+const { init: initMoments } = await import('/js/settings-moments.js' + _v);
 
 const steps = [
   ['state', initState],
@@ -3742,6 +3819,7 @@ const steps = [
   ['camera', initCamera],
   ['skills', initSkills],
   ['profile', initProfile],
+  ['moments', initMoments],
 ];
 let failedAt = null;
 for (const [name, fn] of steps) {
@@ -3756,7 +3834,6 @@ if (failedAt) {
 if (window.__appLoadingDone) window.__appLoadingDone();
 
 // Sessions panel: only visually show when there are actual sessions
-// CSS rule: .open:not(.has-sessions) collapses the panel even if JS adds .open
 (function checkSessions() {
   const sp = document.getElementById('sessions-panel');
   if (!sp) return;
@@ -3770,6 +3847,222 @@ if (window.__appLoadingDone) window.__appLoadingDone();
       }
     })
     .catch(() => sp.classList.remove('has-sessions'));
+})();
+
+/* ═══ Panel Manager v3: Stack + Inert + Edge-swipe + Bus + API ═══ */
+(function() {
+  const $ = id => document.getElementById(id);
+
+  const REG = {
+    'bookmark-panel':    { close:'bookmark-close',   isOpen: e => e.classList.contains('open'),    modal:false },
+    'notif-panel':       { close:'notif-close',      isOpen: e => e.classList.contains('open'),    modal:false },
+    'sc-detail-overlay': { close:'sc-detail-close',  isOpen: e => !e.classList.contains('hidden'), modal:true  },
+    'mcp-panel':         { close:'mcp-back',         isOpen: e => !e.classList.contains('hidden'), modal:true, edgeSwipe:true },
+    'model-panel':       { close:'mp-back',          isOpen: e => !e.classList.contains('hidden'), modal:true, edgeSwipe:true },
+    'skill-chain-panel': { close:'sc-chain-back',    isOpen: e => !e.classList.contains('hidden'), modal:true, edgeSwipe:true },
+    'skills-center':     { close:'sc-back',          isOpen: e => !e.classList.contains('hidden'), modal:true, edgeSwipe:true },
+    'perf-panel':        { close:'perf-back',        isOpen: e => !e.classList.contains('hidden'), modal:true, edgeSwipe:true },
+    'voice-cmd-panel':   { close:'vcmd-back',        isOpen: e => !e.classList.contains('hidden'), modal:true, edgeSwipe:true },
+    'settings-modal':    { close:'settings-close',   isOpen: e => !e.classList.contains('hidden'), modal:true  },
+    'desktop-panel':     { close:'desktop-close',    isOpen: e => !e.classList.contains('hidden'), modal:true  },
+    'camera-panel':      { close:'camera-close',     isOpen: e => !e.classList.contains('hidden'), modal:true  },
+  };
+
+  const _stack = [];
+  const _focusStack = [];
+  const chatPage = $('chat-page');
+
+  /* ─── Inert management: block interaction behind modals ─── */
+  function updateInert() {
+    let topModal = -1;
+    for (let i = _stack.length - 1; i >= 0; i--) {
+      if (REG[_stack[i]]?.modal) { topModal = i; break; }
+    }
+    if (chatPage) chatPage.inert = topModal >= 0;
+    for (const id of Object.keys(REG)) {
+      const el = $(id);
+      if (!el) continue;
+      const si = _stack.indexOf(id);
+      el.inert = (si !== -1 && topModal >= 0 && si < topModal);
+    }
+  }
+
+  function onOpen(id) {
+    const idx = _stack.indexOf(id);
+    if (idx !== -1) { _stack.splice(idx, 1); _focusStack.splice(idx, 1); }
+    _stack.push(id);
+    _focusStack.push(document.activeElement);
+    const el = $(id);
+    if (el) el.style.willChange = 'transform,opacity';
+    updateInert();
+    if (typeof _bus !== 'undefined') _bus.emit('panel:open', { id, stack: [..._stack] });
+    requestAnimationFrame(() => {
+      if (el) {
+        const f = el.querySelector('.panel-back,button,input,select,textarea,[tabindex]');
+        if (f) f.focus();
+      }
+    });
+  }
+
+  function onClose(id) {
+    const idx = _stack.indexOf(id);
+    if (idx === -1) return;
+    _stack.splice(idx, 1);
+    const saved = _focusStack.splice(idx, 1)[0];
+    const el = $(id);
+    if (el) {
+      el.inert = false;
+      const clear = () => { el.style.willChange = ''; };
+      el.addEventListener('transitionend', clear, { once: true });
+      setTimeout(clear, 400);
+    }
+    updateInert();
+    if (typeof _bus !== 'undefined') _bus.emit('panel:close', { id, stack: [..._stack] });
+    if (saved && typeof saved.focus === 'function') {
+      requestAnimationFrame(() => { try { saved.focus(); } catch(_){} });
+    }
+  }
+
+  /* ─── MutationObserver: auto-detect open/close ─── */
+  const mo = new MutationObserver(muts => {
+    for (const m of muts) {
+      if (m.attributeName !== 'class') continue;
+      const el = m.target;
+      for (const [id, r] of Object.entries(REG)) {
+        if ($(id) !== el) continue;
+        const open = r.isOpen(el);
+        const inStack = _stack.includes(id);
+        if (open && !inStack) onOpen(id);
+        else if (!open && inStack) onClose(id);
+        break;
+      }
+    }
+  });
+  for (const id of Object.keys(REG)) {
+    const el = $(id);
+    if (el) {
+      mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+      if (REG[id].isOpen(el)) { _stack.push(id); _focusStack.push(null); }
+    }
+  }
+  updateInert();
+
+  /* ─── 1. ESC: close most-recently-opened panel ─── */
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !_stack.length) return;
+    const topId = _stack[_stack.length - 1];
+    const r = REG[topId];
+    if (r) { $(r.close)?.click(); e.preventDefault(); }
+  });
+
+  /* ─── 2. Backdrop click ─── */
+  ['settings-modal', 'sc-detail-overlay'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('click', e => {
+      if (e.target === el) $(REG[id].close)?.click();
+    });
+  });
+
+  /* ─── 3. Outside click for popovers ─── */
+  document.addEventListener('click', e => {
+    for (const [pid, tog] of [['bookmark-panel','#bookmark-toggle'],['notif-panel','#notif-toggle']]) {
+      const p = $(pid);
+      if (p?.classList.contains('open') && !p.contains(e.target) && !e.target.closest(tog))
+        $(REG[pid].close)?.click();
+    }
+  });
+
+  /* ─── 4. Swipe to dismiss (header / drag-handle) ─── */
+  function addSwipe(hSel, pId, dir) {
+    const h = document.querySelector(hSel);
+    if (!h) return;
+    let sx, sy, st, on;
+    const isX = dir === 'right' || dir === 'left';
+    const sign = dir === 'right' || dir === 'down' ? 1 : -1;
+    h.addEventListener('touchstart', e => {
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+      st = Date.now(); on = true;
+    }, { passive: true });
+    h.addEventListener('touchmove', e => {
+      if (!on) return;
+      let d = isX ? e.touches[0].clientX - sx : e.touches[0].clientY - sy;
+      if (d * sign < 0) d = 0;
+      const p = $(pId);
+      if (Math.abs(d) > 8 && p) {
+        p.style.transition = 'none';
+        p.style.transform = isX ? `translateX(${d}px)` : `translateY(${d}px)`;
+        p.style.opacity = String(1 - Math.min(Math.abs(d) / (isX ? p.offsetWidth : p.offsetHeight), 0.6));
+      }
+    }, { passive: true });
+    h.addEventListener('touchend', e => {
+      if (!on) return; on = false;
+      const p = $(pId);
+      if (!p) return;
+      const d = isX ? e.changedTouches[0].clientX - sx : e.changedTouches[0].clientY - sy;
+      const sz = isX ? p.offsetWidth : p.offsetHeight;
+      const v = Math.abs(d) / (Date.now() - st);
+      p.style.transition = ''; p.style.transform = ''; p.style.opacity = '';
+      if ((Math.abs(d) / sz > 0.28 || v > 0.5) && d * sign > 0)
+        $(REG[pId].close)?.click();
+    }, { passive: true });
+  }
+  addSwipe('#bookmark-panel .bm-header', 'bookmark-panel', 'right');
+  addSwipe('#camera-panel .camera-header', 'camera-panel', 'down');
+  addSwipe('#camera-panel > .drag-handle', 'camera-panel', 'down');
+  addSwipe('#settings-modal .settings-header', 'settings-modal', 'down');
+  addSwipe('.settings-sheet > .drag-handle', 'settings-modal', 'down');
+  addSwipe('.sc-detail-overlay .sc-detail-sheet', 'sc-detail-overlay', 'down');
+
+  /* ─── 5. Edge swipe: left-edge → right to go back (full-screen panels) ─── */
+  const EDGE_W = 24;
+  for (const [id, r] of Object.entries(REG)) {
+    if (!r.edgeSwipe) continue;
+    const panel = $(id);
+    if (!panel) continue;
+    let sx, sy, st, active, locked;
+
+    panel.addEventListener('touchstart', e => {
+      const t = e.touches[0];
+      const rect = panel.getBoundingClientRect();
+      active = (t.clientX - rect.left) < EDGE_W;
+      if (!active) return;
+      sx = t.clientX; sy = t.clientY; st = Date.now(); locked = false;
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', e => {
+      if (!active) return;
+      const dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      if (!locked) {
+        if (Math.abs(dy) > Math.abs(dx) * 1.2) { active = false; return; }
+        if (Math.abs(dx) > 10) locked = true; else return;
+      }
+      const d = Math.max(0, dx);
+      const w = panel.offsetWidth;
+      panel.style.transition = 'none';
+      panel.style.transform = `translateX(${d}px)`;
+      panel.style.boxShadow = `-6px 0 24px rgba(0,0,0,${0.25 * (1 - d / w)})`;
+    }, { passive: true });
+
+    panel.addEventListener('touchend', e => {
+      if (!active || !locked) { active = false; return; }
+      active = false;
+      const dx = Math.max(0, e.changedTouches[0].clientX - sx);
+      const w = panel.offsetWidth;
+      const v = dx / (Date.now() - st);
+      panel.style.transition = ''; panel.style.transform = ''; panel.style.boxShadow = '';
+      if (dx / w > 0.3 || v > 0.5) $(r.close)?.click();
+    }, { passive: true });
+  }
+
+  /* ─── 6. Public API ─── */
+  window.PM = {
+    get stack() { return [..._stack]; },
+    isOpen(id) { return _stack.includes(id); },
+    close(id) { const r = REG[id]; if (r) $(r.close)?.click(); },
+    closeTop() { if (!_stack.length) return false; this.close(_stack[_stack.length - 1]); return true; },
+    registry: Object.keys(REG),
+  };
 })();
 </script>
 </body>
