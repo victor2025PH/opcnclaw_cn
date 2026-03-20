@@ -481,6 +481,15 @@ class DesktopStreamer:
 
     def execute_actions(self, actions: list[dict]) -> list[str]:
         """Execute a list of AI-planned actions. Returns execution log lines."""
+        # CoworkBus 冲突检测
+        try:
+            from .cowork_bus import get_bus
+            bus = get_bus()
+            if not bus.can_operate_desktop():
+                return ["[BLOCKED] 用户正在操作，AI 桌面操作已暂停"]
+        except Exception:
+            pass
+
         self.invalidate_ocr_cache()
         # 操作日志
         try:

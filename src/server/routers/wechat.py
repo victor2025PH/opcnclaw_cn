@@ -1252,6 +1252,35 @@ async def analytics_overview(days: int = 30):
     return {"ok": True, **get_overview(days)}
 
 
+@router.get("/api/analytics/daily")
+async def analytics_daily(days: int = 7):
+    """每日回复/点赞/评论数统计（Cursor A4 图表用）"""
+    try:
+        from .. import db as _db
+        import time as _t
+        conn = _db.get_conn("main")
+        cutoff = _t.time() - days * 86400
+        # 从 messages 表统计每日 assistant 回复数
+        rows = conn.execute(
+            "SELECT DATE(ts) as day, COUNT(*) as count FROM messages "
+            "WHERE role='assistant' AND ts >= ? GROUP BY DATE(ts) ORDER BY day",
+            (cutoff,) if isinstance(cutoff, (int, float)) else ()
+        ).fetchall()
+        # 如果 ts 是 datetime 格式不是 timestamp
+        if not rows:
+            from datetime import datetime, timedelta
+            start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            rows = conn.execute(
+                "SELECT DATE(ts) as day, COUNT(*) as count FROM messages "
+                "WHERE role='assistant' AND ts >= ? GROUP BY DATE(ts) ORDER BY day",
+                (start,)
+            ).fetchall()
+        daily = [{"date": r["day"] or r[0], "count": r["count"] or r[1]} for r in rows]
+        return {"ok": True, "daily": daily, "days": days}
+    except Exception as e:
+        return {"ok": False, "daily": [], "error": str(e)}
+
+
 @router.get("/api/analytics/hourly")
 async def analytics_hourly(days: int = 30):
     from ..wechat.moments_analytics import get_hourly_distribution

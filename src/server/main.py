@@ -823,23 +823,21 @@ async def system_logs(lines: int = 30):
 
 # ── Cowork API (协作调度) ──────────────────────────────────────────
 
-_cowork_paused = False
-
 @app.get("/api/cowork/status")
 async def cowork_status():
-    """协作状态：人类活动 + AI 状态 + 操作日志"""
-    from .human_detector import get_human_state
+    """协作状态：人类活动 + AI 状态 + 任务队列"""
+    from .cowork_bus import get_bus
     from .action_journal import get_journal
-    hs = get_human_state()
-    journal = get_journal()
-    return {
-        "human_zone": "active" if hs.is_active else "idle",
-        "human": hs.to_dict(),
-        "ai_zone": "paused" if _cowork_paused else "ready",
-        "paused": _cowork_paused,
-        "queue": [],
-        "journal_count": len(journal._entries),
-    }
+    bus = get_bus()
+    status = bus.get_status()
+    status["journal_count"] = len(get_journal()._entries)
+    # 附加详细人类状态
+    try:
+        from .human_detector import get_human_state
+        status["human"] = get_human_state().to_dict()
+    except Exception:
+        pass
+    return status
 
 
 @app.get("/api/cowork/human-status")
@@ -875,18 +873,33 @@ async def cowork_undo():
 
 @app.post("/api/cowork/pause")
 async def cowork_pause():
-    """暂停 AI 操作"""
-    global _cowork_paused
-    _cowork_paused = True
+    """暂停 AI 桌面操作"""
+    from .cowork_bus import get_bus
+    get_bus().pause()
     return {"ok": True, "status": "paused"}
 
 
 @app.post("/api/cowork/resume")
 async def cowork_resume():
-    """恢复 AI 操作"""
-    global _cowork_paused
-    _cowork_paused = False
+    """恢复 AI 桌面操作"""
+    from .cowork_bus import get_bus
+    get_bus().resume()
     return {"ok": True, "status": "running"}
+
+
+@app.post("/api/cowork/task")
+async def cowork_add_task(request: Request):
+    """添加后台任务"""
+    from .cowork_bus import get_bus
+    data = await request.json()
+    bus = get_bus()
+    task = bus.add_task(
+        task_id=data.get("id", f"task_{int(time.time())}"),
+        description=data.get("description", ""),
+        target_window=data.get("target_window", ""),
+        priority=data.get("priority", 5),
+    )
+    return {"ok": True, "task": task.to_dict()}
 @app.post("/api/config/auto-open-qr")
 async def set_auto_open_qr(request: Request):
     """Toggle auto_open_qr in config.ini from the QR page."""
