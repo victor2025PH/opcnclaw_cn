@@ -489,6 +489,13 @@ async def moments_browse(request: Request):
 
         backend = _get_backend()
 
+        # 暂停自动回复扫描（避免 UIA 冲突）
+        adapter_was_running = False
+        if _wechat_adapter and hasattr(_wechat_adapter, '_running'):
+            adapter_was_running = _wechat_adapter._running
+            _wechat_adapter._running = False
+            await asyncio.sleep(2)  # 等当前扫描周期结束
+
         wxauto_r = None
         if _wechat_adapter and hasattr(_wechat_adapter, "_wxauto_reader"):
             wxauto_r = _wechat_adapter._wxauto_reader
@@ -513,6 +520,10 @@ async def moments_browse(request: Request):
     except Exception as e:
         logger.error(f"moments browse error: {e}")
         return {"ok": False, "error": str(e)}
+    finally:
+        # 恢复自动回复扫描
+        if _wechat_adapter and adapter_was_running:
+            _wechat_adapter._running = True
 
 
 @router.post("/api/moments/interact")
