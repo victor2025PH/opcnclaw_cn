@@ -516,11 +516,16 @@ class UIAReader:
                                     msg_type = "reference"
                                 elif "Voice" in clsn:
                                     msg_type = "voice"
+                                elif "ItemView" == clsn.split("::")[-1].replace("Chat", ""):
+                                    # mmui::ChatItemView = 时间分隔符，跳过
+                                    continue
+                                # is_mine: 气泡在右侧 = 自己发的
+                                is_mine = _is_mine_by_rect(item, win_rect)
                                 messages.append({
                                     "sender": "",
                                     "content": item_name,
                                     "time_str": "",
-                                    "is_mine": False,
+                                    "is_mine": is_mine,
                                     "msg_type": msg_type,
                                 })
                                 continue

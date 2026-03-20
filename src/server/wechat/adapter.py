@@ -362,16 +362,37 @@ class WeChatAdapter:
 
     # ── 监控循环 ──────────────────────────────────────────────────────────
 
+    _KEEPALIVE_INTERVAL = 30.0  # 每30秒检查微信窗口
+
     def _monitor_loop(self):
         """后台监控主循环"""
+        last_keepalive = 0.0
         while self._running:
             try:
+                now = time.time()
+                # 保活：定期激活微信窗口防止最小化后失联
+                if now - last_keepalive > self._KEEPALIVE_INTERVAL:
+                    last_keepalive = now
+                    self._keepalive()
+
                 interval = self._get_scan_interval()
                 self._scan_cycle()
                 time.sleep(interval)
             except Exception as e:
                 logger.debug(f"[WeChatAdapter] monitor error: {e}")
                 time.sleep(3.0)
+
+    def _keepalive(self):
+        """确保微信窗口可访问（不强制前台，仅检测并恢复）"""
+        if not self._uia_reader:
+            return
+        try:
+            win = self._uia_reader._get_wechat_window(force_refresh=True)
+            if not win:
+                # 窗口丢失，尝试激活
+                self._uia_reader.activate_wechat_window()
+        except Exception:
+            pass
 
     def _scan_cycle(self):
         """执行一次完整的扫描→去重→分发周期"""
