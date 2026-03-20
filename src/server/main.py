@@ -95,6 +95,8 @@ except Exception:
 
 class Settings(BaseSettings):
     """Server configuration."""
+    model_config = {"env_prefix": "OPENCLAW_", "env_file": ".env", "extra": "ignore"}
+
     host: str = "0.0.0.0"
     port: int = 8765
     require_auth: bool = False
@@ -112,11 +114,6 @@ class Settings(BaseSettings):
     openclaw_gateway_token: Optional[str] = None
     http_port: int = 0
     sample_rate: int = 16000
-
-    class Config:
-        env_prefix = "OPENCLAW_"
-        env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()
@@ -240,27 +237,40 @@ app.include_router(mcp_router)
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Startup / Shutdown
+# Startup / Shutdown (two-phase: fast → deferred)
 # ═══════════════════════════════════════════════════════════════════
 
 _startup_done = False
 
-async def _startup(app: FastAPI):
-    """Initialize models on server start."""
-    global stt, tts, backend, vad, _startup_done
+_startup_progress = {
+    "phase": "init",        # init → db → models → ready
+    "stt": "pending",       # pending → loading → ready → error
+    "tts": "pending",
+    "backend": "pending",
+    "workflow": "pending",
+    "ready": False,
+    "started_at": 0,
+    "message": "正在初始化...",
+}
 
-    # 防重入：双 uvicorn 共享 app 实例，startup 会被触发两次
+async def _startup(app: FastAPI):
+    """Phase 1 (fast): DB + config. Phase 2 (background): models."""
+    global _startup_done
+
     if _startup_done:
         return
     _startup_done = True
+    _startup_progress["started_at"] = time.time()
 
     logger.info("Initializing OpenClaw Voice server...")
 
-    # 初始化统一数据库（合并 13 个独立 SQLite → 2 个）
+    # ── Phase 1: fast essentials (< 2s) ──────────────────────
+    _startup_progress["phase"] = "db"
+    _startup_progress["message"] = "初始化数据库..."
+
     _db.init_schemas()
     _db.migrate_from_old_dbs()
 
-    # 清理过大消息（需在 schema 初始化后执行）
     try:
         mem_store.cleanup_oversized_messages()
     except Exception as e:
@@ -272,89 +282,6 @@ async def _startup(app: FastAPI):
     else:
         logger.warning("⚠️ Authentication DISABLED (dev mode)")
 
-    logger.info(f"Loading STT model: {settings.stt_model}")
-    stt = WhisperSTT(
-        model_name=settings.stt_model,
-        device=settings.stt_device,
-        language=settings.stt_language,
-    )
-    logger.info(f"STT language: {settings.stt_language or 'auto'}")
-
-    logger.info(f"Loading TTS model: {settings.tts_model}")
-    tts = ChatterboxTTS(voice_sample=settings.tts_voice)
-
-    gateway_url = settings.openclaw_gateway_url or os.getenv("OPENCLAW_GATEWAY_URL")
-    gateway_token = settings.openclaw_gateway_token or os.getenv("OPENCLAW_GATEWAY_TOKEN")
-    zhipu_vision_key = os.getenv("ZHIPU_VISION_API_KEY") or os.getenv("ZHIPU_API_KEY")
-    zhipu_vision_model = os.getenv("ZHIPU_VISION_MODEL", "glm-4v-flash")
-    if zhipu_vision_key:
-        logger.info(f"🖼️ Zhipu vision configured: {zhipu_vision_model}")
-
-    # Gateway health check: async，不阻塞 event loop
-    use_gateway = False
-    if gateway_url and gateway_token:
-        try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                r = await client.get(
-                    f"{gateway_url}/v1/models",
-                    headers={"Authorization": f"Bearer {gateway_token}"},
-                )
-                if r.status_code < 500:
-                    use_gateway = True
-                    logger.info(f"🦞 OpenClaw Gateway reachable: {gateway_url}")
-        except Exception:
-            logger.warning(f"⚠️ OpenClaw Gateway unreachable ({gateway_url}), falling back to direct API")
-
-    # Fallback: use Zhipu API key directly via Router
-    zhipu_key = os.getenv("ZHIPU_API_KEY")
-    fallback_url = "https://open.bigmodel.cn/api/paas/v4"
-    fallback_model = "glm-4-flash"
-
-    if use_gateway:
-        logger.info(f"🦞 Connecting to OpenClaw gateway: {gateway_url}")
-        backend = AIBackend(
-            backend_type="openai",
-            url=f"{gateway_url}/v1",
-            model="openclaw:voice",
-            api_key=gateway_token,
-            system_prompt=(
-                "This conversation is happening via real-time voice chat. "
-                "Keep responses concise and conversational — a few sentences "
-                "at most unless the topic genuinely needs depth. "
-                "No markdown, bullet points, code blocks, or special formatting."
-            ),
-            vision_api_key=zhipu_vision_key,
-            vision_model=zhipu_vision_model,
-        )
-    elif zhipu_key:
-        logger.info(f"🔗 Direct connect to Zhipu GLM-4-Flash (free, unlimited)")
-        backend = AIBackend(
-            backend_type="openai",
-            url=fallback_url,
-            model=fallback_model,
-            api_key=zhipu_key,
-            system_prompt=(
-                "你是十三香小龙虾，一个智能语音助手。回答简洁口语化，1-2句话为主，"
-                "除非用户明确要求详细说明。用中文回答。"
-            ),
-            vision_api_key=zhipu_vision_key,
-            vision_model=zhipu_vision_model,
-        )
-    else:
-        logger.info(f"Connecting to backend: {settings.backend_type}")
-        backend = AIBackend(
-            backend_type=settings.backend_type,
-            url=settings.backend_url,
-            model=settings.backend_model,
-            api_key=settings.openai_api_key or os.getenv("OPENAI_API_KEY"),
-            vision_api_key=zhipu_vision_key,
-            vision_model=zhipu_vision_model,
-        )
-
-    vad = VoiceActivityDetector()  # 懒加载：首次语音输入时才加载 Silero（节省 4s）
-    app.state.ai_backend = backend
-
-    # Expose desktop streamer from routers/desktop.py for wechat module
     global desktop
     try:
         from .routers.desktop import desktop as _desk
@@ -362,15 +289,149 @@ async def _startup(app: FastAPI):
     except Exception:
         pass
 
-    # Workflow + Ollama 并行启动（互不依赖，节省 1-3 秒）
+    logger.info("✅ Phase 1 complete — server accepting requests")
+
+    # ── Phase 2: heavy model loading (background) ─────────────
+    asyncio.create_task(_startup_models_deferred(app))
+
+
+async def _startup_models_deferred(app: FastAPI):
+    """Background model loading — server already accepting requests.
+
+    Load order optimized: backend first (fast, enables text chat immediately),
+    then STT/TTS (slow, enables voice features).
+    """
+    global stt, tts, backend, vad
+
+    _startup_progress["phase"] = "models"
+
+    # 1. AI Backend first — fast (~1s), enables text chat immediately
+    _startup_progress["backend"] = "loading"
+    _startup_progress["message"] = "连接AI后端..."
+    try:
+        gateway_url = settings.openclaw_gateway_url or os.getenv("OPENCLAW_GATEWAY_URL")
+        gateway_token = settings.openclaw_gateway_token or os.getenv("OPENCLAW_GATEWAY_TOKEN")
+        zhipu_vision_key = os.getenv("ZHIPU_VISION_API_KEY") or os.getenv("ZHIPU_API_KEY")
+        zhipu_vision_model = os.getenv("ZHIPU_VISION_MODEL", "glm-4v-flash")
+        if zhipu_vision_key:
+            logger.info(f"🖼️ Zhipu vision configured: {zhipu_vision_model}")
+
+        use_gateway = False
+        if gateway_url and gateway_token:
+            try:
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    r = await client.get(
+                        f"{gateway_url}/v1/models",
+                        headers={"Authorization": f"Bearer {gateway_token}"},
+                    )
+                    if r.status_code < 500:
+                        use_gateway = True
+                        logger.info(f"🦞 OpenClaw Gateway reachable: {gateway_url}")
+            except Exception:
+                logger.warning(f"⚠️ OpenClaw Gateway unreachable ({gateway_url}), falling back to direct API")
+
+        zhipu_key = os.getenv("ZHIPU_API_KEY")
+        fallback_url = "https://open.bigmodel.cn/api/paas/v4"
+        fallback_model = "glm-4-flash"
+
+        if use_gateway:
+            logger.info(f"🦞 Connecting to OpenClaw gateway: {gateway_url}")
+            backend = AIBackend(
+                backend_type="openai",
+                url=f"{gateway_url}/v1",
+                model="openclaw:voice",
+                api_key=gateway_token,
+                system_prompt=(
+                    "This conversation is happening via real-time voice chat. "
+                    "Keep responses concise and conversational — a few sentences "
+                    "at most unless the topic genuinely needs depth. "
+                    "No markdown, bullet points, code blocks, or special formatting."
+                ),
+                vision_api_key=zhipu_vision_key,
+                vision_model=zhipu_vision_model,
+            )
+        elif zhipu_key:
+            logger.info(f"🔗 Direct connect to Zhipu GLM-4-Flash (free, unlimited)")
+            backend = AIBackend(
+                backend_type="openai",
+                url=fallback_url,
+                model=fallback_model,
+                api_key=zhipu_key,
+                system_prompt=(
+                    "你是十三香小龙虾，一个智能语音助手。回答简洁口语化，1-2句话为主，"
+                    "除非用户明确要求详细说明。用中文回答。"
+                ),
+                vision_api_key=zhipu_vision_key,
+                vision_model=zhipu_vision_model,
+            )
+        else:
+            logger.info(f"Connecting to backend: {settings.backend_type}")
+            backend = AIBackend(
+                backend_type=settings.backend_type,
+                url=settings.backend_url,
+                model=settings.backend_model,
+                api_key=settings.openai_api_key or os.getenv("OPENAI_API_KEY"),
+                vision_api_key=zhipu_vision_key,
+                vision_model=zhipu_vision_model,
+            )
+
+        app.state.ai_backend = backend
+        _startup_progress["backend"] = "ready"
+    except Exception as e:
+        _startup_progress["backend"] = "error"
+        logger.error(f"Backend init failed: {e}")
+
+    # 2. STT — heavy model load, uses thread pool to avoid blocking event loop
+    _startup_progress["stt"] = "loading"
+    _startup_progress["message"] = "加载语音识别模型..."
+    try:
+        logger.info(f"Loading STT model: {settings.stt_model}")
+        stt = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: WhisperSTT(
+                model_name=settings.stt_model,
+                device=settings.stt_device,
+                language=settings.stt_language,
+            )
+        )
+        _startup_progress["stt"] = "ready"
+        logger.info(f"STT language: {settings.stt_language or 'auto'}")
+    except Exception as e:
+        _startup_progress["stt"] = "error"
+        logger.error(f"STT load failed: {e}")
+
+    # 3. TTS — heavy model load
+    _startup_progress["tts"] = "loading"
+    _startup_progress["message"] = "加载语音合成模型..."
+    try:
+        logger.info(f"Loading TTS model: {settings.tts_model}")
+        tts = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: ChatterboxTTS(voice_sample=settings.tts_voice)
+        )
+        _startup_progress["tts"] = "ready"
+    except Exception as e:
+        _startup_progress["tts"] = "error"
+        logger.error(f"TTS load failed: {e}")
+
+    vad = VoiceActivityDetector()
+
+    # Workflow + Ollama 并行启动
+    _startup_progress["workflow"] = "loading"
+    _startup_progress["message"] = "启动工作流引擎..."
+
     async def _start_workflow():
         if _WORKFLOW_AVAILABLE:
             try:
                 wf_engine = get_wf_engine()
                 await wf_engine.start(ai_backend=backend, tts_engine=tts)
                 logger.info("⚡ Workflow engine started")
+                _startup_progress["workflow"] = "ready"
             except Exception as e:
                 logger.warning(f"Workflow engine startup failed: {e}")
+                _startup_progress["workflow"] = "error"
+        else:
+            _startup_progress["workflow"] = "ready"
 
     async def _detect_ollama():
         try:
@@ -391,6 +452,13 @@ async def _startup(app: FastAPI):
             app.state.ollama_bridge = None
 
     await asyncio.gather(_start_workflow(), _detect_ollama())
+
+    # ── Mark startup complete ──
+    _startup_progress["phase"] = "ready"
+    _startup_progress["ready"] = True
+    _startup_progress["message"] = "就绪"
+    elapsed = time.time() - _startup_progress["started_at"]
+    logger.info(f"✅ Phase 2 complete — all models loaded ({elapsed:.1f}s total)")
 
     # Background tasks: account health heartbeat
     async def _health_heartbeat_loop():
@@ -543,13 +611,53 @@ location.replace('/chat');
 async def app_page(request: Request):
     if _is_mobile(request):
         return RedirectResponse("/chat#more")
-    return FileResponse("src/client/app.html")
+    return FileResponse("src/client/app.html",
+                        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 @app.get("/setup")
 @app.get("/setup/")
 async def setup_page():
     return FileResponse("src/client/setup.html")
+
+
+@app.get("/purge")
+@app.get("/purge/")
+async def purge_cache():
+    """Force-clear all browser caches using Clear-Site-Data header + JS cleanup, then redirect to /app"""
+    return HTMLResponse("""<!DOCTYPE html><html><head><meta charset="utf-8"><title>清除缓存</title></head>
+<body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0a0a14;color:#e8e8f0">
+<h2>正在清除浏览器缓存...</h2>
+<p id="s">请稍候</p>
+<script>
+(async()=>{
+  const s=document.getElementById('s');
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){await r.unregister();}
+      s.textContent='已清除 '+regs.length+' 个 Service Worker';
+    }
+    const keys=await caches.keys();
+    for(const k of keys){await caches.delete(k);}
+    try{localStorage.clear()}catch(e){}
+    try{sessionStorage.clear()}catch(e){}
+    s.textContent='缓存已清除，正在跳转...';
+    setTimeout(()=>{window.location.href='/app?_t='+Date.now();},1000);
+  }catch(e){
+    s.textContent='清除失败: '+e.message;
+  }
+})();
+</script></body></html>""", headers={
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Clear-Site-Data": '"cache", "storage"',
+    })
+
+
+@app.get("/error")
+@app.get("/error/")
+async def error_page():
+    return FileResponse("src/client/error.html")
 
 
 @app.get("/cert")
@@ -616,6 +724,25 @@ async def setup_page():
 @app.get("/api/ping")
 async def api_ping():
     return {"ok": True, "ts": time.time()}
+
+
+@app.get("/api/startup-status")
+async def startup_status():
+    """Report model loading progress for frontend loading screen."""
+    elapsed = time.time() - _startup_progress["started_at"] if _startup_progress["started_at"] else 0
+    return {
+        "ok": True,
+        "ready": _startup_progress["ready"],
+        "phase": _startup_progress["phase"],
+        "message": _startup_progress["message"],
+        "elapsed": round(elapsed, 1),
+        "components": {
+            "stt": _startup_progress["stt"],
+            "tts": _startup_progress["tts"],
+            "backend": _startup_progress["backend"],
+            "workflow": _startup_progress["workflow"],
+        },
+    }
 
 
 @app.post("/api/stt/wake-check")
@@ -943,7 +1070,7 @@ async def serve_js_module(filename: str):
     if not fpath.exists() or not fpath.suffix == ".js":
         return Response(content="Not found", status_code=404)
     return FileResponse(str(fpath), media_type="application/javascript",
-                        headers={"Cache-Control": "no-cache"})
+                        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 # ── Accessibility Config API ──
