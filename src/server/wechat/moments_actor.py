@@ -122,39 +122,53 @@ class MomentsActor:
             return False
 
     async def _try_gui_like(self, post: MomentPost) -> bool:
-        """通过 GUI 模拟点赞（在朋友圈页面中找到并点击点赞按钮）"""
+        """通过 Vision AI 定位并点击朋友圈点赞按钮"""
         try:
-            import pyautogui
-            # 朋友圈中，每条动态右下角有评论/点赞的操作按钮
-            # 策略：找到文字区域右侧的操作图标，点击展开，再点赞
-            # 由于 UI 布局可能变化，这里做最佳努力尝试
-            ox, oy = self._guard.get_click_offset()
+            import pyautogui, base64, io, json, re, os
 
-            if sys.platform == "win32":
-                try:
-                    import uiautomation as uia
-                    # 尝试找到点赞按钮
-                    # 兼容 3.x 和 4.x
-                    wechat_win = None
-                    for cls in ["mmui::MainWindow", "WeChatMainWndForPC"]:
-                        w = uia.WindowControl(ClassName=cls, searchDepth=1)
-                        if w.Exists(1, 0):
-                            wechat_win = w
-                            break
-                    if not wechat_win:
-                        wechat_win = uia.WindowControl(Name="WeChat", searchDepth=1)
-                    if wechat_win.Exists(2):
-                        like_btns = wechat_win.GetChildren()
-                        # 在朋友圈窗口中查找 "赞" 或心形按钮
-                        # 这部分高度依赖微信版本，最佳努力
-                        pass
-                except Exception:
-                    pass
+            key = os.getenv("ZHIPU_VISION_API_KEY") or os.getenv("ZHIPU_API_KEY")
+            if not key:
+                logger.debug("[MomentsActor] 无 Vision API Key")
+                return False
 
-            logger.debug("[MomentsActor] GUI 点赞：需要朋友圈页面处于正确位置")
+            # 截图
+            img = pyautogui.screenshot()
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=60)
+            b64 = base64.b64encode(buf.getvalue()).decode()
+
+            # Vision AI 定位操作按钮
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=key, base_url="https://open.bigmodel.cn/api/paas/v4")
+            resp = await client.chat.completions.create(
+                model="glm-4v-flash",
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": (
+                        f'微信朋友圈截图，屏幕{img.width}x{img.height}。'
+                        f'找到作者"{post.author}"的帖子旁边的操作按钮（通常是两个点"··"的图标）。'
+                        f'返回JSON：{{"x":数字,"y":数字,"found":true}} 或 {{"found":false}}'
+                    )},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}],
+                max_tokens=100,
+            )
+            text = resp.choices[0].message.content
+            m = re.search(r'\{[^}]+\}', text)
+            if m:
+                d = json.loads(m.group())
+                if d.get("found") and d.get("x") and d.get("y"):
+                    ox, oy = self._guard.get_click_offset()
+                    # 点击操作按钮展开菜单
+                    pyautogui.click(int(d["x"]) + ox, int(d["y"]) + oy)
+                    await asyncio.sleep(0.5)
+                    # 点击"赞"（通常在弹出菜单左侧）
+                    pyautogui.click(int(d["x"]) - 30 + ox, int(d["y"]) + oy)
+                    logger.info(f"[MomentsActor] Vision AI 点赞: {post.author}")
+                    return True
+            logger.debug("[MomentsActor] Vision AI 未找到点赞按钮")
             return False
-
-        except ImportError:
+        except Exception as e:
+            logger.debug(f"[MomentsActor] Vision 点赞失败: {e}")
             return False
 
     # ── 评论 ─────────────────────────────────────────────────────────────────────
@@ -238,44 +252,57 @@ class MomentsActor:
             return False
 
     async def _try_gui_comment(self, post: MomentPost, comment: str) -> bool:
-        """通过 GUI 模拟评论"""
+        """通过 Vision AI 定位评论按钮并输入评论"""
         try:
-            import pyautogui
-            import pyperclip
+            import pyautogui, pyperclip, base64, io, json, re, os
 
-            ox, oy = self._guard.get_click_offset()
+            key = os.getenv("ZHIPU_VISION_API_KEY") or os.getenv("ZHIPU_API_KEY")
+            if not key:
+                return False
 
-            if sys.platform == "win32":
-                try:
-                    import uiautomation as uia
-                    # 兼容 3.x 和 4.x
-                    wechat_win = None
-                    for cls in ["mmui::MainWindow", "WeChatMainWndForPC"]:
-                        w = uia.WindowControl(ClassName=cls, searchDepth=1)
-                        if w.Exists(1, 0):
-                            wechat_win = w
-                            break
-                    if not wechat_win:
-                        wechat_win = uia.WindowControl(Name="WeChat", searchDepth=1)
-                    if wechat_win.Exists(2):
-                        # 尝试找到评论输入框
-                        edit = wechat_win.EditControl(Name="评论")
-                        if not edit.Exists(1):
-                            edit = wechat_win.EditControl()
-                        if edit.Exists(1):
-                            edit.Click()
-                            time.sleep(0.3)
-                            pyperclip.copy(comment)
-                            pyautogui.hotkey("ctrl", "v")
-                            time.sleep(0.2)
-                            pyautogui.press("enter")
-                            return True
-                except Exception as e:
-                    logger.debug(f"UIA 评论失败: {e}")
+            # 截图
+            img = pyautogui.screenshot()
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=60)
+            b64 = base64.b64encode(buf.getvalue()).decode()
 
+            # Vision AI 定位评论按钮
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=key, base_url="https://open.bigmodel.cn/api/paas/v4")
+            resp = await client.chat.completions.create(
+                model="glm-4v-flash",
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": (
+                        f'微信朋友圈截图，屏幕{img.width}x{img.height}。'
+                        f'找到作者"{post.author}"的帖子的操作按钮（"··"图标），'
+                        f'返回JSON：{{"x":数字,"y":数字,"found":true}} 或 {{"found":false}}'
+                    )},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}],
+                max_tokens=100,
+            )
+            text = resp.choices[0].message.content
+            m = re.search(r'\{[^}]+\}', text)
+            if m:
+                d = json.loads(m.group())
+                if d.get("found") and d.get("x") and d.get("y"):
+                    ox, oy = self._guard.get_click_offset()
+                    # 点击操作按钮
+                    pyautogui.click(int(d["x"]) + ox, int(d["y"]) + oy)
+                    await asyncio.sleep(0.5)
+                    # 点击"评论"（通常在弹出菜单右侧）
+                    pyautogui.click(int(d["x"]) + 30 + ox, int(d["y"]) + oy)
+                    await asyncio.sleep(0.5)
+                    # 输入评论
+                    pyperclip.copy(comment)
+                    pyautogui.hotkey("ctrl", "v")
+                    await asyncio.sleep(0.3)
+                    pyautogui.press("enter")
+                    logger.info(f"[MomentsActor] Vision AI 评论: {post.author} → {comment[:20]}")
+                    return True
             return False
-
-        except ImportError:
+        except Exception as e:
+            logger.debug(f"[MomentsActor] Vision 评论失败: {e}")
             return False
 
     # ── 发布朋友圈 ────────────────────────────────────────────────────────────────
