@@ -204,27 +204,64 @@ class UIAReader:
 
         results = []
         try:
-            # 找左侧会话列表容器 —— 优先尝试 ListControl，再试 PaneControl
+            # 找左侧会话列表容器
             list_ctrl = None
-            for find_fn in [
-                lambda: win.ListControl(searchDepth=6, timeout=1),
-                lambda: win.PaneControl(searchDepth=4, timeout=1),
-            ]:
-                try:
-                    c = find_fn()
-                    if c.Exists(0):
-                        list_ctrl = c
-                        break
-                except Exception:
-                    pass
+            # 微信 4.x: mmui::XTableView (Name="会话")
+            try:
+                c = win.Control(searchDepth=20, ClassName="mmui::XTableView")
+                if c.Exists(1, 0):
+                    list_ctrl = c
+            except Exception:
+                pass
+            # 3.x 回退
+            if not list_ctrl:
+                for find_fn in [
+                    lambda: win.ListControl(searchDepth=6, timeout=1),
+                    lambda: win.PaneControl(searchDepth=4, timeout=1),
+                ]:
+                    try:
+                        c = find_fn()
+                        if c.Exists(0):
+                            list_ctrl = c
+                            break
+                    except Exception:
+                        pass
 
             if not list_ctrl:
                 return []
 
             # 遍历会话项
             items = list_ctrl.GetChildren()
-            for item in items[:50]:  # 最多扫描 50 个会话
+            for item in items[:50]:
                 try:
+                    clsn = item.ClassName or ""
+
+                    # 微信 4.x: mmui::ChatSessionCell 的 Name 包含完整信息
+                    # 格式: "联系人名\n[N条] \n最后消息\n时间"
+                    if "mmui::ChatSessionCell" in clsn:
+                        raw = item.Name or ""
+                        if not raw:
+                            continue
+                        lines = [l.strip() for l in raw.split('\n') if l.strip()]
+                        contact = lines[0] if lines else ""
+                        preview = ""
+                        unread = 0
+                        for line in lines:
+                            m = re.search(r'\[(\d+)条?\]', line)
+                            if m:
+                                unread = int(m.group(1))
+                            elif line != contact and not re.match(r'^\d{1,2}:\d{2}$|^\d{4}/', line):
+                                preview = line
+                        if contact:
+                            results.append({
+                                "contact": contact,
+                                "unread_count": unread,
+                                "preview": preview,
+                                "is_group": _is_group_name(contact),
+                            })
+                        continue
+
+                    # 3.x 回退
                     texts = _extract_texts(item, max_depth=4)
                     if not texts:
                         continue
@@ -232,8 +269,6 @@ class UIAReader:
                     contact = texts[0] if texts else ""
                     preview = texts[-1] if len(texts) > 1 else ""
                     unread = 0
-
-                    # 寻找未读数字（纯数字文本或 "[N条]" 格式）
                     for t in texts:
                         t = t.strip()
                         if t.isdigit():
@@ -315,7 +350,17 @@ class UIAReader:
                 except Exception:
                     pass
 
-            # 方法2: 找最大的 ListControl（消息列表子项最多）
+            # 方法2: 微信 4.x — 查找 mmui::RecyclerListView (Name="消息")
+            if not msg_list:
+                try:
+                    c = win.Control(searchDepth=20, ClassName="mmui::RecyclerListView")
+                    if c.Exists(1, 0):
+                        msg_list = c
+                        logger.debug("[UIA] 使用 mmui::RecyclerListView")
+                except Exception:
+                    pass
+
+            # 方法3: 找最大的 ListControl（消息列表子项最多）
             if not msg_list:
                 try:
                     all_lists: List = []
@@ -359,6 +404,28 @@ class UIAReader:
                 items = msg_list.GetChildren()
                 for item in items[-last_n:]:
                     try:
+                        clsn = item.ClassName or ""
+
+                        # 微信 4.x: mmui::ChatTextItemView 的 Name 直接是消息内容
+                        if "mmui::Chat" in clsn:
+                            item_name = item.Name or ""
+                            if item_name:
+                                msg_type = "text"
+                                if "Image" in clsn or "图片" in item_name:
+                                    msg_type = "image"
+                                elif "Refer" in clsn:
+                                    msg_type = "reference"
+                                elif "Voice" in clsn:
+                                    msg_type = "voice"
+                                messages.append({
+                                    "sender": "",
+                                    "content": item_name,
+                                    "time_str": "",
+                                    "is_mine": False,
+                                    "msg_type": msg_type,
+                                })
+                                continue
+
                         texts = _extract_texts(item, max_depth=5)
                         if not texts:
                             continue
