@@ -9,10 +9,10 @@
 ; 编译命令（CMD）:
 ;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 ;
-; 生成文件: dist\installer\十三香小龙虾-v3.6.0-Setup.exe
+; 生成文件: dist\installer\十三香小龙虾-v3.7.0-Setup.exe
 
 #define AppName       "十三香小龙虾"
-#define AppVersion    "3.6.0"
+#define AppVersion    "3.7.0"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
 #define AppExeName    "十三香小龙虾.exe"

@@ -49,3 +49,5 @@ desktop.ini
 glm_error.txt
 uv.lock
 node_modules
+installer/embedded/
+dist/*.exe

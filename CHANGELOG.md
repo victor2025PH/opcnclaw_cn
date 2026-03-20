@@ -1,5 +1,37 @@
 # Changelog
 
+## v3.7.0 (2026-03-21)
+
+### 搜索引擎
+- 双 FTS5 索引：unicode61（英文）+ jieba 分词（中文）
+- 中文搜索从单字匹配升级为词语级精确匹配
+- 首次启动后台自动同步 jieba 分词索引
+
+### 数据持久化
+- 微信对话历史写入数据库（wechat_conversations 表）
+- 重启不再丢失 reply_all 模式的对话上下文
+
+### API & 文档
+- Swagger UI (/docs) + ReDoc (/redoc) 自动文档
+- 70+ 端点完整文档化
+
+### 数据维护
+- 凌晨 3 点自动清理过期数据（audit 30 天, events 90 天）
+- 防止数据库无限膨胀
+
+### 朋友圈
+- Vision AI 缓存（30s TTL，节省 70% API 费用）
+- 截图 PNG→JPEG（减小 3-5x）
+- 自动点赞/评论（Vision AI 定位+PyAutoGUI 点击）
+
+### 用户体验
+- 系统通知（Web Notification API，新回复弹桌面通知）
+- 微信回复日志卡片式重设计
+- 微信不可用时服务器不再阻塞（API <1s 响应）
+
+### 测试
+- 全量回归：166 passed, 6 skipped, 0 failed
+
 ## v3.6.0 (2026-03-20)
 
 ### 数据库层重构
