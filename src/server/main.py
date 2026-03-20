@@ -764,6 +764,131 @@ async def server_info():
     }
 
 
+# ── System API (供 Cursor 前端用) ──────────────────────────────────
+
+@app.post("/api/system/restart")
+async def system_restart():
+    """重启服务（/api/restart 的别名）"""
+    return await restart()
+
+
+@app.post("/api/system/clear-cache")
+async def system_clear_cache():
+    """清除各类缓存"""
+    cleared = []
+    try:
+        # FTS jieba 缓存
+        from .memory_search import _FTS5_AVAILABLE, _JIEBA_FTS_AVAILABLE
+        import src.server.memory_search as ms
+        ms._FTS5_AVAILABLE = None
+        ms._JIEBA_FTS_AVAILABLE = None
+        cleared.append("fts")
+    except Exception:
+        pass
+    try:
+        # OCR 缓存
+        if desktop and hasattr(desktop, '_ocr_cache'):
+            desktop._ocr_cache = []
+            desktop._ocr_cache_ts = 0.0
+            cleared.append("ocr")
+    except Exception:
+        pass
+    try:
+        # Vision AI 缓存
+        from .wechat.moments_reader import MomentsReader
+        MomentsReader._vision_cache.clear()
+        cleared.append("vision")
+    except Exception:
+        pass
+    return {"ok": True, "cleared": cleared}
+
+
+@app.get("/api/system/logs")
+async def system_logs(lines: int = 30):
+    """读取服务器日志尾部"""
+    import subprocess
+    try:
+        log_file = _PROJECT_ROOT / "logs" / "server.log"
+        if log_file.exists():
+            result = subprocess.run(
+                ["tail", "-n", str(min(lines, 200)), str(log_file)],
+                capture_output=True, text=True, timeout=3
+            )
+            return {"lines": result.stdout.strip().split("\n")}
+        # 回退：从 loguru 获取最近日志
+        return {"lines": ["日志文件未找到，请检查 logs/server.log"]}
+    except Exception as e:
+        return {"lines": [f"读取日志失败: {e}"]}
+
+
+# ── Cowork API (协作调度) ──────────────────────────────────────────
+
+_cowork_paused = False
+_cowork_journal: list = []
+
+@app.get("/api/cowork/status")
+async def cowork_status():
+    """协作状态：人类/AI 各在做什么"""
+    human_active = False
+    try:
+        import ctypes
+        # 检查用户最后输入时间
+        class LASTINPUTINFO(ctypes.Structure):
+            _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_ulong)]
+        lii = LASTINPUTINFO()
+        lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
+        ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii))
+        idle_ms = ctypes.windll.kernel32.GetTickCount() - lii.dwTime
+        human_active = idle_ms < 30000  # 30秒内有操作=活跃
+    except Exception:
+        pass
+
+    return {
+        "human_zone": "active" if human_active else "idle",
+        "ai_zone": "paused" if _cowork_paused else "ready",
+        "paused": _cowork_paused,
+        "queue": [],
+        "journal_count": len(_cowork_journal),
+    }
+
+
+@app.get("/api/cowork/journal")
+async def cowork_journal(limit: int = 20):
+    """最近操作日志"""
+    return {"entries": _cowork_journal[-limit:]}
+
+
+@app.post("/api/cowork/undo")
+async def cowork_undo():
+    """撤销最后一步操作"""
+    if not _cowork_journal:
+        return {"ok": False, "error": "无可撤销的操作"}
+    last = _cowork_journal.pop()
+    # 执行 Ctrl+Z 作为通用撤销
+    try:
+        import pyautogui
+        pyautogui.hotkey("ctrl", "z")
+        return {"ok": True, "undone": last.get("desc", "未知操作")}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/cowork/pause")
+async def cowork_pause():
+    """暂停 AI 操作"""
+    global _cowork_paused
+    _cowork_paused = True
+    return {"ok": True, "status": "paused"}
+
+
+@app.post("/api/cowork/resume")
+async def cowork_resume():
+    """恢复 AI 操作"""
+    global _cowork_paused
+    _cowork_paused = False
+    return {"ok": True, "status": "running"}
+
+
 @app.get("/chat")
 @app.get("/chat/")
 async def chat_page():
