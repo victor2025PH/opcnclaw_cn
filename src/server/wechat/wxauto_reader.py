@@ -27,6 +27,35 @@ if sys.platform == "win32":
         import wxauto as _wxauto
         _wxauto_available = True
         logger.info(f"✅ wxauto 已加载 (version: {getattr(_wxauto, '__version__', '?')})")
+
+        # Monkey-patch: wxauto 硬编码了 WeChatMainWndForPC，微信 4.x 改为 mmui::MainWindow
+        try:
+            import win32gui
+            _orig_find = win32gui.FindWindow
+
+            def _patched_find_window(classname=None, windowname=None):
+                """兼容微信 3.x 和 4.x 的 FindWindow"""
+                if classname == "WeChatMainWndForPC":
+                    hwnd = _orig_find(classname, windowname)
+                    if not hwnd:
+                        hwnd = _orig_find("mmui::MainWindow", windowname)
+                    return hwnd
+                return _orig_find(classname, windowname)
+
+            # 替换 wxauto 内部使用的 FindWindow
+            if hasattr(_wxauto, 'uicontrol'):
+                _wxauto.uicontrol.FindWindow = _patched_find_window
+            if hasattr(_wxauto, 'utils'):
+                if hasattr(_wxauto.utils, 'FindWindow'):
+                    _wxauto.utils.FindWindow = _patched_find_window
+            # 也替换全局的
+            import wxauto.uicontrol as _uc
+            if hasattr(_uc, 'FindWindow'):
+                _uc.FindWindow = _patched_find_window
+            logger.debug("[wxauto] 已 patch FindWindow 兼容微信 4.x")
+        except Exception as _pe:
+            logger.debug(f"[wxauto] patch FindWindow 失败（非致命）: {_pe}")
+
     except ImportError:
         logger.info("wxauto 未安装，轨道B不可用 (pip install wxauto)")
     except Exception as e:

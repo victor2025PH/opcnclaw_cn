@@ -169,7 +169,7 @@ class WeChatAdapter:
             except Exception as e:
                 self._track_fail("wxauto", str(e))
 
-        # UIA 轨道（最后兜底，仅当前两条都没数据时）
+        # UIA 轨道
         if not messages and self._tracks["uia"].available and self._uia_reader:
             try:
                 contact, raw_msgs = self._uia_reader.get_current_chat_messages(last_n=5)
@@ -185,6 +185,23 @@ class WeChatAdapter:
                         ))
             except Exception as e:
                 self._track_fail("uia", str(e))
+
+        # OCR 轨道（最终兜底，截图识别消息）
+        if not messages and self._tracks["ocr"].available and self._ocr_reader:
+            try:
+                contact, raw_msgs = self._ocr_reader.get_current_chat_messages(last_n=5)
+                self._track_success("ocr")
+                for m in raw_msgs:
+                    if not m.get("is_mine", False):
+                        messages.append(WxMessage(
+                            contact=contact,
+                            sender=m.get("sender", ""),
+                            content=m.get("content", ""),
+                            msg_type=m.get("msg_type", "text"),
+                            source="ocr",
+                        ))
+            except Exception as e:
+                self._track_fail("ocr", str(e))
 
         # 去重
         unique = self._dedup(messages)
