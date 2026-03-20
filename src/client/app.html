@@ -2941,6 +2941,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       </div>
       <button class="btn" id="gaze-calibrate-btn" style="width:100%;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;margin-top:4px">🎯 开始5点校准</button>
       <div id="gaze-status" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+      <button class="btn" id="calib-wizard-btn" style="width:100%;background:linear-gradient(135deg,var(--accent),#c084fc);color:#fff;font-size:12px;padding:10px;margin-top:8px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer" onclick="CalibWizard.open()">🎯 完整无障碍校准向导 (3分钟)</button>
     </div>
     <div class="settings-group">
       <h3>🔄 工作流录制 <span style="font-size:11px;color:var(--text-muted);font-weight:normal">(实验性)</span></h3>
@@ -4160,6 +4161,19 @@ if (window.__appLoadingDone) window.__appLoadingDone();
   };
 })();
 </script>
+
+<!-- Calibration Wizard Overlay (B1) -->
+<div id="calib-wizard" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(10,10,20,.92);backdrop-filter:blur(16px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:var(--text-primary);font-family:inherit">
+  <div style="width:100%;max-width:420px;text-align:center">
+    <div id="calib-step-indicator" style="display:flex;gap:4px;margin-bottom:24px"></div>
+    <div id="calib-content" style="min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center"></div>
+    <div style="display:flex;gap:12px;margin-top:24px;justify-content:center">
+      <button id="calib-skip" class="btn" style="padding:10px 24px;background:var(--bg-surface);color:var(--text-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:14px">跳过</button>
+      <button id="calib-next" class="btn" style="padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;font-weight:600">开始校准</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
 

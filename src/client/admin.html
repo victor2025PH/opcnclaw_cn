@@ -203,6 +203,7 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
   .modal { max-width:95vw!important; margin:8px; }
   .table-wrap { overflow-x:auto; }
   #media-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important; }
+  #page-dashboard > div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr!important; }
 }
 @media(max-width:480px) {
   .sidebar { width:0; overflow:hidden; }
@@ -292,6 +293,22 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
       </div>
     </div>
     <div class="stat-cards" id="stat-cards"></div>
+
+    <!-- Real-time System Charts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0">
+      <div class="card" style="padding:16px">
+        <h4 style="margin-bottom:8px;font-size:13px;color:var(--text2)">CPU 使用率 (5分钟)</h4>
+        <div id="chart-cpu" style="height:200px"></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <h4 style="margin-bottom:8px;font-size:13px;color:var(--text2)">内存使用率 (5分钟)</h4>
+        <div id="chart-mem" style="height:200px"></div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:16px">
+      <h4 style="margin-bottom:8px;font-size:13px;color:var(--text2)">今日消息量分布 (每小时)</h4>
+      <div id="chart-msg-hourly" style="height:220px"></div>
+    </div>
 
     <h3 style="margin-bottom:12px">最近执行</h3>
     <div id="recent-execs" class="exec-timeline"></div>
@@ -409,6 +426,16 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
       <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
         <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">内容分类表现</h3>
         <div id="chart-content" style="height:280px"></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
+        <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">每日回复数 (7天)</h3>
+        <div id="chart-daily-replies" style="height:260px"></div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid var(--border)">
+        <h3 style="font-size:13px;color:var(--text2);margin-bottom:8px">情感分布</h3>
+        <div id="chart-sentiment" style="height:260px"></div>
       </div>
     </div>
     <div id="analytics-report" style="margin-top:16px"></div>
@@ -1007,6 +1034,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(el => {
     el.classList.add('active');
     document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
     document.getElementById('page-' + el.dataset.page).style.display = '';
+    if (el.dataset.page !== 'dashboard') _stopDashPolling();
     if (el.dataset.page === 'dashboard') refreshDashboard();
     if (el.dataset.page === 'workflows') loadWorkflows();
     if (el.dataset.page === 'history') { historyOffset = 0; loadHistory(); }
@@ -1114,6 +1142,89 @@ function triggerLabel(t) {
 
 // ── Dashboard ───────────────────────────────────────────────────
 
+const _dashCharts = { cpu: null, mem: null, msg: null };
+const _dashData = {
+  cpuTimes: [], cpuVals: [],
+  memTimes: [], memVals: [],
+  MAX_POINTS: 38,
+};
+let _dashPollTimer = null;
+
+function _initDashChart(id, name, color, unit) {
+  const el = document.getElementById(id);
+  if (!el || typeof echarts === 'undefined') return null;
+  const chart = echarts.init(el);
+  chart.setOption(chartOption({
+    tooltip: { trigger: 'axis', formatter: p => `${p[0].axisValueLabel}<br/>${p[0].marker} ${p[0].seriesName}: <b>${p[0].value}${unit}</b>` },
+    xAxis: { type: 'category', data: [], boundaryGap: false, axisLine:{lineStyle:{color:CHART_THEME.axisLine}}, axisLabel:{fontSize:10} },
+    yAxis: { type: 'value', min: 0, max: 100, splitLine:{lineStyle:{color:CHART_THEME.splitLine}}, axisLine:{show:false}, axisLabel:{formatter:v=>v+unit} },
+    series: [{
+      name, type: 'line', data: [], smooth: true, symbol: 'none',
+      lineStyle: { width: 2, color },
+      areaStyle: { color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[{offset:0,color:color+'40'},{offset:1,color:color+'05'}] } },
+    }],
+    grid: { left: 45, right: 12, top: 12, bottom: 24 },
+  }));
+  return chart;
+}
+
+function _pushDashPoint(times, vals, t, v) {
+  times.push(t);
+  vals.push(v);
+  if (times.length > _dashData.MAX_POINTS) {
+    times.shift();
+    vals.shift();
+  }
+}
+
+async function _pollDashHealth() {
+  try {
+    const h = await api('/api/system/health');
+    const now = new Date();
+    const tLabel = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+    _pushDashPoint(_dashData.cpuTimes, _dashData.cpuVals, tLabel, h.cpu || 0);
+    _pushDashPoint(_dashData.memTimes, _dashData.memVals, tLabel, h.mem_pct || 0);
+    if (_dashCharts.cpu) {
+      _dashCharts.cpu.setOption({ xAxis:{data:[..._dashData.cpuTimes]}, series:[{data:[..._dashData.cpuVals]}] });
+    }
+    if (_dashCharts.mem) {
+      _dashCharts.mem.setOption({ xAxis:{data:[..._dashData.memTimes]}, series:[{data:[..._dashData.memVals]}] });
+    }
+  } catch(_) {}
+}
+
+async function _loadMsgHourlyChart() {
+  try {
+    const data = await api('/api/analytics/hourly').catch(()=>({distribution:[]}));
+    const dist = data.distribution || [];
+    if (!dist.length || !_dashCharts.msg) return;
+    _dashCharts.msg.setOption(chartOption({
+      tooltip: { trigger: 'axis', axisPointer:{type:'shadow'} },
+      xAxis: { type:'category', data: dist.map(d=>(d.hour??d.h)+'时'), axisLine:{lineStyle:{color:CHART_THEME.axisLine}} },
+      yAxis: { type:'value', splitLine:{lineStyle:{color:CHART_THEME.splitLine}}, axisLine:{show:false} },
+      series: [
+        { name:'消息量', type:'bar', data: dist.map(d=>d.count??d.likes??0), itemStyle:{color:CHART_THEME.colors[0], borderRadius:[3,3,0,0]} },
+      ],
+      grid: { left: 45, right: 12, top: 12, bottom: 24 },
+    }));
+  } catch(_) {}
+}
+
+function _startDashPolling() {
+  if (_dashPollTimer) clearInterval(_dashPollTimer);
+  _dashCharts.cpu = _initDashChart('chart-cpu', 'CPU', '#6c63ff', '%');
+  _dashCharts.mem = _initDashChart('chart-mem', '内存', '#42a5f5', '%');
+  const msgEl = document.getElementById('chart-msg-hourly');
+  if (msgEl && typeof echarts !== 'undefined') _dashCharts.msg = echarts.init(msgEl);
+  _pollDashHealth();
+  _loadMsgHourlyChart();
+  _dashPollTimer = setInterval(_pollDashHealth, 8000);
+}
+
+function _stopDashPolling() {
+  if (_dashPollTimer) { clearInterval(_dashPollTimer); _dashPollTimer = null; }
+}
+
 async function refreshDashboard() {
   const [status, execs] = await Promise.all([
     api('/api/workflow/status'),
@@ -1123,17 +1234,17 @@ async function refreshDashboard() {
   const cards = document.getElementById('stat-cards');
   if (status.available === false) {
     cards.innerHTML = '<div class="empty"><div class="icon">⚠️</div><div class="text">工作流引擎不可用</div></div>';
-    return;
+  } else {
+    cards.innerHTML = `
+      <div class="stat-card"><div class="label">工作流总数</div><div class="value">${status.total_workflows || 0}</div></div>
+      <div class="stat-card"><div class="label">已启用</div><div class="value" style="color:var(--green)">${status.enabled_workflows || 0}</div></div>
+      <div class="stat-card"><div class="label">今日执行</div><div class="value">${status.today_runs || 0}</div><div class="sub">成功 ${status.today_success || 0} / 失败 ${status.today_failed || 0}</div></div>
+      <div class="stat-card"><div class="label">运行中</div><div class="value" style="color:var(--blue)">${status.active_executions || 0}</div></div>
+    `;
   }
 
-  cards.innerHTML = `
-    <div class="stat-card"><div class="label">工作流总数</div><div class="value">${status.total_workflows || 0}</div></div>
-    <div class="stat-card"><div class="label">已启用</div><div class="value" style="color:var(--green)">${status.enabled_workflows || 0}</div></div>
-    <div class="stat-card"><div class="label">今日执行</div><div class="value">${status.today_runs || 0}</div><div class="sub">成功 ${status.today_success || 0} / 失败 ${status.today_failed || 0}</div></div>
-    <div class="stat-card"><div class="label">运行中</div><div class="value" style="color:var(--blue)">${status.active_executions || 0}</div></div>
-  `;
-
   renderExecList(document.getElementById('recent-execs'), (execs.executions || []).slice(0, 8));
+  _startDashPolling();
 }
 
 // ── Workflows ───────────────────────────────────────────────────
@@ -1767,7 +1878,59 @@ async function loadAnalytics() {
         c4.setOption(chartOption({ title:{text:'暂无数据',left:'center',top:'center',textStyle:{color:CHART_THEME.textColor,fontSize:13}} }));
       }
 
-      window.addEventListener('resize', ()=>{ [c1,c2,c3,c4].forEach(c=>c.resize()); });
+      // Daily replies bar chart (7 days)
+      let c5 = null;
+      try {
+        const daily = await api('/api/analytics/daily?days=7').catch(()=>({daily:[]}));
+        const dd = daily.daily || daily.trend || [];
+        c5 = echarts.init(document.getElementById('chart-daily-replies'));
+        if (dd.length) {
+          c5.setOption(chartOption({
+            tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+            xAxis: { type:'category', data:dd.map(d=>d.date||d.day), axisLine:{lineStyle:{color:CHART_THEME.axisLine}} },
+            yAxis: { type:'value', splitLine:{lineStyle:{color:CHART_THEME.splitLine}}, axisLine:{show:false} },
+            series: [
+              { name:'回复数', type:'bar', data:dd.map(d=>d.count||d.replies||d.total||0), itemStyle:{color:CHART_THEME.colors[2], borderRadius:[3,3,0,0]} },
+            ],
+          }));
+        } else {
+          c5.setOption(chartOption({ title:{text:'暂无数据',left:'center',top:'center',textStyle:{color:CHART_THEME.textColor,fontSize:13}} }));
+        }
+      } catch(_){}
+
+      // Sentiment distribution pie chart
+      let c6 = null;
+      try {
+        const smart = await api('/api/wechat/smart-stats').catch(()=>({}));
+        const sentiments = smart.sentiment_distribution || smart.sentiments || null;
+        c6 = echarts.init(document.getElementById('chart-sentiment'));
+        if (sentiments && typeof sentiments === 'object') {
+          const sentData = Object.entries(sentiments).map(([k,v],i)=>({
+            name: {positive:'积极',negative:'消极',neutral:'中性',happy:'开心',sad:'低落',angry:'激动'}[k] || k,
+            value: v,
+            itemStyle:{color:CHART_THEME.colors[i%7]},
+          })).filter(d=>d.value>0);
+          if (sentData.length) {
+            c6.setOption(chartOption({
+              tooltip: { trigger:'item', formatter:'{b}: {c} ({d}%)' },
+              series: [{
+                type:'pie', radius:['40%','70%'],
+                label: { color:CHART_THEME.textColor, fontSize:11 },
+                data: sentData,
+              }],
+            }));
+          } else {
+            c6.setOption(chartOption({ title:{text:'暂无情感数据',left:'center',top:'center',textStyle:{color:CHART_THEME.textColor,fontSize:13}} }));
+          }
+        } else {
+          c6.setOption(chartOption({ title:{text:'暂无情感数据',left:'center',top:'center',textStyle:{color:CHART_THEME.textColor,fontSize:13}} }));
+        }
+      } catch(_){}
+
+      window.addEventListener('resize', ()=>{
+        [c1,c2,c3,c4,c5,c6].filter(Boolean).forEach(c=>c.resize());
+        Object.values(_dashCharts).forEach(c=>{ if(c) c.resize(); });
+      });
     }
   } catch(e) { console.warn('analytics:', e); }
 }

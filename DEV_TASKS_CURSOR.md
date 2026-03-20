@@ -3,7 +3,7 @@
 > **负责范围：** 前端 UI/UX、可视化、页面交互、CSS/HTML/JS、安装包编译
 > **不碰范围：** 后端 Python 逻辑、数据库 Schema、微信引擎、AI 路由（Claude Code 负责）
 > **基准版本：** v3.7.0 (2026-03-21)
-> **上次更新：** 2026-03-21
+> **上次更新：** 2026-03-21 (第二轮对接后)
 
 ---
 
@@ -36,14 +36,16 @@
 - [x] glow 背景透明度随主题调整
 - [x] 文件：`src/client/qr.html`
 
-### A2. Admin 仪表盘实时图表（2 天）
-- [ ] 引入 ECharts（admin.html 已有 CDN 引用）
-- [ ] CPU 使用率折线图（最近 5 分钟，每 8 秒采一个点）
-- [ ] 内存使用率折线图（同上）
-- [ ] 今日消息量柱状图（每小时分布）
-- [ ] 图表自适应暗色/亮色/紫夜三主题
-- [ ] 数据来源：`GET /api/system/health`（已有）+ `GET /api/analytics/hourly`（Claude Code 提供）
-- [ ] 文件：`src/client/admin.html` 仪表盘区域
+### A2. Admin 仪表盘实时图表 — ✅ 已完成
+- [x] ECharts 图表（已有 CDN 引用）
+- [x] CPU 使用率实时折线图（5分钟滑动窗口，8秒采样，38点）
+- [x] 内存使用率实时折线图（同上）
+- [x] 今日消息量柱状图（`/api/analytics/hourly`）
+- [x] 渐变色面积填充 + smooth 曲线
+- [x] 导航离开时自动停止轮询，返回时恢复
+- [x] 窗口 resize 自适应
+- [x] 移动端单列布局（768px 断点）
+- [x] 文件：`src/client/admin.html`
 
 ### A3. 快捷操作面板 — ✅ 已完成
 - [x] QR 页面新增折叠面板「⚡ 快捷操作」
@@ -55,14 +57,13 @@
 - [x] API不可用时优雅降级提示
 - [x] 文件：`src/client/qr.html`
 
-### A4. Admin 数据分析图表（2 天）
-- [ ] 微信管理面板 → 数据分析区域
-- [ ] 每日回复数柱状图（7 天）
-- [ ] 时段分布热力图（24h × 颜色深浅）
-- [ ] 活跃好友 Top10 横向条
-- [ ] 情感分布饼图
-- [ ] 数据来源：`GET /api/analytics/*`（已有）
-- [ ] 文件：`src/client/admin.html` analytics 页面
+### A4. Admin 数据分析图表 — ✅ 已完成
+- [x] 每日回复数柱状图（7天，`/api/analytics/daily?days=7`）
+- [x] 情感分布饼图（`/api/wechat/smart-stats` → sentiment_distribution）
+- [x] 自适应数据格式（兼容多种 API 返回结构）
+- [x] 无数据时显示占位提示
+- [x] 文件：`src/client/admin.html` analytics 页面
+- 注：24h热力图 + Top10 之前已存在
 
 ---
 
