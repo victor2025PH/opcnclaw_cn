@@ -1,88 +1,155 @@
-# Cursor 开发任务清单
+# Cursor 开发任务清单 v2
 
-> 负责：前端 UI/UX + 组件开发 + 可视化 + 用户交互
-> 不做：后端 Python 逻辑、数据库、微信引擎（Claude Code 负责）
+> **负责范围：** 前端 UI/UX、可视化、页面交互、CSS/HTML/JS、安装包编译
+> **不碰范围：** 后端 Python 逻辑、数据库 Schema、微信引擎、AI 路由（Claude Code 负责）
+> **基准版本：** v3.7.0 (2026-03-21)
+> **上次更新：** 2026-03-21
 
-## 阶段 1（本周）
+---
 
-### 1.1 校准向导 UI（2天）
-- [ ] 新建 `src/client/js/calibration.js`
-- [ ] 眼球追踪 5 点校准界面
-  - 全屏深色背景 + 5 个闪烁圆点（四角+中心）
-  - 用户注视每个点 2 秒，前端记录 gaze-tracker.js 的原始数据
-  - 完成后调用 gaze-tracker.js 的 `calibrate(points)` 方法
-  - 显示校准精度分数
-- [ ] 入口: 设置面板 → 无障碍 → "校准眼球追踪"按钮
-- [ ] 已有代码参考: `src/client/js/gaze-tracker.js` 的 `calibrate()` 方法
+## 已完成 (v3.6.0 → v3.7.0)
 
-### 1.2 手势绑定配置 UI（3天）
-- [ ] 新建 `src/client/js/gesture-bindings.js`
-- [ ] 在设置面板新增"手势绑定"区域
-- [ ] 展示当前所有手势→动作映射（从 expression-system.js 读取）
-- [ ] 可编辑：下拉选择目标动作
-- [ ] 保存到 `POST /api/access/config`（后端已有）
-- [ ] 预览：点击手势名称，摄像头区域高亮对应面部区域
-- [ ] 已有代码参考: `src/client/js/expression-system.js` 的 ACTION_MAP
+- [x] QR 控制台页面完整重设计（品牌、功能卡片、导航、系统状态面板）
+- [x] QR 页面 SSE 实时推送（EventSource → /api/events/stream）
+- [x] Toast 通知系统（右上角滑入/滑出，支持 success/warning/error/info）
+- [x] 数值动画过渡（CPU/内存等指标变化时淡入淡出）
+- [x] 移动端三级响应式（800px / 400px 断点）
+- [x] AI 配置状态卡片（智能检测 + 快捷操作入口）
+- [x] 最近活动折叠面板（基于 EventBus，10 种事件类型）
+- [x] SSE 连接状态指示器（绿色/红色小圆点 + 指数退避重连）
+- [x] Admin 侧栏加「控制台/QR」导航链接
+- [x] QR ↔ Admin 色系统一（CSS Variables 对齐）
+- [x] 断开连接 bug 修复（disconnectPermanently + _disconnectedByUser 标志）
+- [x] auto_open_qr 配置开关（前端 toggle + 后端 API）
+- [x] 安装包编译 × 3 次
 
-### 1.3 CoworkBus 状态面板（2天）
-- [ ] 在 app.html 头部添加"协作状态指示器"
-  - 小图标: 🟢 AI 空闲 / 🔵 AI 工作中 / 🟡 用户活跃(AI 暂停) / 🔴 冲突
-  - 点击展开面板: 当前任务列表、操作日志
-- [ ] 调用 API: `GET /api/cowork/status`（Claude Code 开发）
-- [ ] 调用 API: `GET /api/cowork/journal`（Claude Code 开发）
-- [ ] 撤销按钮: 调用 `POST /api/cowork/undo`
-- [ ] 暂停/恢复按钮: 调用 `POST /api/cowork/pause` / `resume`
+---
 
-## 阶段 2（下周）
+## 阶段 A：控制台 & 管理面板增强
 
-### 2.1 操作日志时间线（3天）
-- [ ] 新建 `src/client/js/action-timeline.js`
-- [ ] 可视化 AI 操作历史
-  - 竖向时间线：每个操作一个节点
-  - 节点内容: 操作类型图标 + 描述 + 时间 + 前后截图对比
-  - 点击节点展开详情
-  - "撤销到这里"按钮
-- [ ] 数据来源: `GET /api/cowork/journal`
+### A1. QR 控制台主题切换 — ✅ 已完成
+- [x] 右上角圆形主题切换按钮（☀️/🌙 图标）
+- [x] CSS Variables 定义 `[data-theme="light"]` 完整覆盖
+- [x] localStorage 持久化 `oc-qr-theme`
+- [x] `prefers-color-scheme` 自动检测 + 监听变化
+- [x] 亮色主题专属覆盖（nav-btn、collapse-hd、status-bar、toast）
+- [x] glow 背景透明度随主题调整
+- [x] 文件：`src/client/qr.html`
 
-### 2.2 MCP 工具市场 UI（3天）
-- [ ] 在设置面板新增"插件市场"区域
-- [ ] 展示已安装 MCP Server 列表（从 `/api/mcp/desktop-tools`）
-- [ ] 每个工具卡片: 名称 + 描述 + 启用/禁用开关
-- [ ] "添加 MCP Server"按钮: 输入 URL 或选择预置
-- [ ] 工具测试: 选择工具 → 输入参数 → 执行 → 显示结果
+### A2. Admin 仪表盘实时图表（2 天）
+- [ ] 引入 ECharts（admin.html 已有 CDN 引用）
+- [ ] CPU 使用率折线图（最近 5 分钟，每 8 秒采一个点）
+- [ ] 内存使用率折线图（同上）
+- [ ] 今日消息量柱状图（每小时分布）
+- [ ] 图表自适应暗色/亮色/紫夜三主题
+- [ ] 数据来源：`GET /api/system/health`（已有）+ `GET /api/analytics/hourly`（Claude Code 提供）
+- [ ] 文件：`src/client/admin.html` 仪表盘区域
 
-### 2.3 数据分析图表（2天）
+### A3. 快捷操作面板 — ✅ 已完成
+- [x] QR 页面新增折叠面板「⚡ 快捷操作」
+- [x] 一键重启服务：`POST /api/system/restart`（含确认对话框 + 5s后自动刷新）
+- [x] 清除缓存：`POST /api/system/clear-cache`（含结果Toast提示）
+- [x] 切换 AI 平台：跳转 /setup
+- [x] 查看后端日志：`GET /api/system/logs?lines=30`（可展开的日志面板）
+- [x] 2×2 网格按钮布局，hover动效，loading状态
+- [x] API不可用时优雅降级提示
+- [x] 文件：`src/client/qr.html`
+
+### A4. Admin 数据分析图表（2 天）
 - [ ] 微信管理面板 → 数据分析区域
-- [ ] 纯 CSS 图表（不引入 Chart.js）：
-  - 每日回复数柱状图（最近 7 天）
-  - 时段分布热力图（24 小时 × 颜色深浅）
-  - 活跃好友 Top5 横向条
-- [ ] 数据来源: `GET /api/analytics/*`（后端已有）
+- [ ] 每日回复数柱状图（7 天）
+- [ ] 时段分布热力图（24h × 颜色深浅）
+- [ ] 活跃好友 Top10 横向条
+- [ ] 情感分布饼图
+- [ ] 数据来源：`GET /api/analytics/*`（已有）
+- [ ] 文件：`src/client/admin.html` analytics 页面
 
-## 阶段 3（后续）
+---
 
-### 3.1 在线体验页
+## 阶段 B：多模态交互 UI（依赖 DEV_ROADMAP.md 阶段 1）
+
+### B1. 校准向导 UI — ✅ 已存在
+> camera.js 中已有 `startGazeCalibration()` (5点注视校准) 和 `CalibWizard` (7步完整向导)
+> settings.js 已绑定按钮事件，设置面板已有入口
+
+### B2. 手势绑定配置 UI — ✅ 已存在
+> tab-expression 面板已完整实现：嘴部/眉毛/眼睛/头部动作各区域
+> 每个动作可 enable/disable、调阈值、选预设方案
+> 保存到 `GET/PUT /api/access/config`（API 已存在）
+
+### B3. CoworkBus 协作状态面板 — ✅ 已完成
+- [x] 新建 `src/client/js/cowork-panel.js`（ES Module）
+- [x] app.html 头部 header-right 添加协作状态指示器按钮
+- [x] 状态图标：🟢 AI空闲 / 🔵 AI工作中 / 🟡 已暂停 / 🔴 冲突
+- [x] 下拉面板：状态区 + 任务队列 + 操作日志
+- [x] 撤销按钮：`POST /api/cowork/undo`（含单条撤销和撤销上一步）
+- [x] 暂停/恢复：`POST /api/cowork/pause|resume`（按钮文字动态切换）
+- [x] 数据来源：`GET /api/cowork/status` + `GET /api/cowork/journal`
+- [x] Mock 数据降级：API 不可用时自动使用 mock，显示 Mock 标签
+- [x] 5秒轮询 + bus 事件监听双通道
+- [x] header-overflow-menu 适配
+- [x] CoworkBus CSS 完整样式 + 亮色主题适配 + 移动端适配
+- [x] 通过 settings.js init() 初始化
+
+### B4. 操作日志时间线 — ✅ 已集成到 B3
+> 操作日志已集成到 CoworkBus 面板的 cw-journal-body 区域
+> 每条日志显示：操作类型图标 + 描述 + 时间 + 撤销按钮（可逆操作）
+> 数据来源：`GET /api/cowork/journal`
+
+---
+
+## 阶段 C：生态 & 体验
+
+### C1. MCP 工具市场 UI（3 天）
+- [ ] 设置面板新增「插件/工具」区域
+- [ ] 已安装 MCP Server 列表（`/api/mcp/desktop-tools`）
+- [ ] 卡片式：名称 + 描述 + 启用/禁用开关
+- [ ] 添加 MCP Server：输入 URL 或选预置
+- [ ] 工具测试：选工具 → 输参数 → 执行 → 显示结果
+
+### C2. 移动端 PWA 增强（1 天）
+- [ ] QR 页面注册 Service Worker
+- [ ] 离线可查看历史状态和活动
+- [ ] manifest.json 图标和主题色
+- [ ] 添加到主屏幕支持
+
+### C3. 在线体验 Demo 页（3 天）
 - [ ] 新建 `src/client/demo.html`
-- [ ] 无需安装的功能展示页
-  - 录屏 GIF/视频展示核心功能
-  - 交互式 Demo（模拟聊天界面）
-  - 功能对比表
-  - 下载按钮
-- [ ] 响应式设计（移动端可查看）
+- [ ] 录屏 GIF/视频展示核心功能
+- [ ] 交互式模拟聊天界面
+- [ ] 功能对比表 + 下载按钮
+- [ ] 响应式（移动端可看）
 
-### 3.2 移动端适配优化
-- [ ] chat.html 移动端 UI 优化
-- [ ] 触摸手势支持（滑动切换面板）
-- [ ] PWA 离线体验增强
+### C4. 国际化 (i18n) 架构（2 天）
+- [ ] 创建 `src/client/js/i18n.js`
+- [ ] 中/英文 JSON 语言包
+- [ ] QR + Admin 双页面文案替换
+- [ ] 语言切换 UI（admin 已有按钮框架）
+- [ ] localStorage 持久化
 
 ---
 
 ## 开发规范
 
-- 所有新 JS 文件放在 `src/client/js/` 目录
-- 使用 ES Module (import/export)
+- 所有新 JS 放 `src/client/js/`，ES Module 格式
 - 从 `state.js` 导入共享状态
-- 不引入新的 npm 依赖（纯原生 JS + CSS）
-- 调用后端 API 时用 `fetch()`，不用 axios
-- CSS 用 CSS Variables (已定义在 app.html 的 :root 中)
-- 新面板参考 settings-wechat.js 的面板模式
+- 不引入新 npm 依赖（纯原生 JS + CSS）
+- API 用 `fetch()`，不用 axios
+- CSS 用 CSS Variables
+- 新面板参考 `settings-wechat.js` 的面板模式
+- 每阶段完成后同步到安装目录 + 编译安装包
+
+---
+
+## 需要 Claude Code 提供的 API
+
+| API | 用途 | 我方消费位置 |
+|-----|------|-------------|
+| `GET /api/analytics/hourly` | 每小时消息量 | A2 图表 |
+| `POST /api/system/restart` | 重启服务 | A3 快捷操作 |
+| `POST /api/system/clear-cache` | 清除缓存 | A3 快捷操作 |
+| `GET /api/system/logs?lines=N` | 尾部日志 | A3 快捷操作 |
+| `GET /api/cowork/status` | 协作状态 | B3 状态面板 |
+| `GET /api/cowork/journal` | 操作日志 | B4 时间线 |
+| `POST /api/cowork/undo` | 撤销操作 | B3/B4 |
+| `POST /api/cowork/pause\|resume` | 暂停/恢复 | B3 |

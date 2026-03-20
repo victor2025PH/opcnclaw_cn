@@ -2,278 +2,757 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>十三香小龙虾 AI — 扫码聊天</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>十三香小龙虾 AI — 控制台</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0a0a14;--card:#111122;--border:#2a2a4a;
-  --accent:#7c6aef;--accent2:#22d3ee;--text:#e8e8f0;--muted:#666688;
+:root,[data-theme="dark"]{
+  --bg:#0f1117;--card:rgba(22,24,34,.82);--card-solid:#161822;
+  --border:#2e3148;--border-hover:#4a4c6a;
+  --accent:#6c63ff;--accent2:#8b83ff;--accent3:#f59e0b;--success:#10b981;--error:#ef4444;
+  --text:#e0e0e8;--muted:#9ca0b8;--dim:#5c6080;
+  --radius:14px;--shadow:0 2px 12px rgba(0,0,0,.3);
+  --glow-opacity:.13;--card-hover:rgba(255,255,255,.05);
 }
-html,body{height:100%;background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
-body{display:flex;align-items:center;justify-content:center}
-
-/* Animated background */
-.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
-.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.25;animation:drift 12s ease-in-out infinite}
-.orb1{width:400px;height:400px;background:var(--accent);top:-100px;left:-100px;animation-delay:0s}
-.orb2{width:300px;height:300px;background:var(--accent2);bottom:-80px;right:-80px;animation-delay:-5s}
-.orb3{width:200px;height:200px;background:#f59e0b;top:50%;left:50%;animation-delay:-3s}
-@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-20px,30px) scale(.95)}}
-
-.container{
-  position:relative;z-index:1;
-  display:flex;gap:64px;align-items:center;justify-content:center;
-  padding:32px;
+[data-theme="light"]{
+  --bg:#f5f6fa;--card:rgba(255,255,255,.88);--card-solid:#ffffff;
+  --border:#dfe2ea;--border-hover:#b8bdd0;
+  --accent:#6c63ff;--accent2:#8b83ff;--accent3:#f59e0b;--success:#10b981;--error:#ef4444;
+  --text:#1a1c2e;--muted:#6b7089;--dim:#9ea2b8;
+  --radius:14px;--shadow:0 2px 12px rgba(0,0,0,.08);
+  --glow-opacity:.06;--card-hover:rgba(0,0,0,.03);
 }
+html{scroll-behavior:smooth}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif}
 
-/* Left side — QR */
+.bg-glow{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.glow{position:absolute;border-radius:50%;filter:blur(100px);opacity:var(--glow-opacity,.13);animation:drift 20s ease-in-out infinite}
+.g1{width:450px;height:450px;background:var(--accent);top:-100px;left:-100px}
+.g2{width:300px;height:300px;background:#22d3ee;bottom:-80px;right:-40px;animation-delay:-7s}
+.g3{width:200px;height:200px;background:var(--accent3);top:38%;left:52%;animation-delay:-12s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(35px,-25px) scale(1.06)}70%{transform:translate(-25px,35px) scale(.95)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes slideIn{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+@keyframes slideOut{to{opacity:0;transform:translateX(60px)}}
+
+.page{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:28px 20px}
+.container{display:flex;gap:36px;align-items:stretch;max-width:1000px;width:100%}
+
+/* ── Left ── */
+.left{display:flex;flex-direction:column;gap:12px;width:290px;flex-shrink:0}
+
 .qr-card{
-  background:rgba(17,17,34,.8);backdrop-filter:blur(24px);
-  border:1px solid var(--border);border-radius:28px;
-  padding:32px;display:flex;flex-direction:column;align-items:center;gap:20px;
-  min-width:300px;
+  background:var(--card);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;display:flex;flex-direction:column;align-items:center;gap:12px;
 }
-.qr-title{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
-.qr-box{
-  position:relative;padding:12px;border-radius:16px;
-  background:#fff;
-}
-.qr-box canvas{display:block;border-radius:8px}
-.qr-box img{display:block;border-radius:8px;width:220px;height:220px}
-.qr-corner{position:absolute;width:20px;height:20px;border-color:var(--accent);border-style:solid}
-.qr-corner.tl{top:4px;left:4px;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
-.qr-corner.tr{top:4px;right:4px;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
-.qr-corner.bl{bottom:4px;left:4px;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
-.qr-corner.br{bottom:4px;right:4px;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
+.qr-badge{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;
+  color:#22d3ee;letter-spacing:1.5px;text-transform:uppercase}
+.qr-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
 
-.qr-url{
-  font-size:13px;color:var(--accent2);word-break:break-all;text-align:center;
-  background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);
-  border-radius:8px;padding:8px 14px;max-width:260px;font-family:monospace;
-}
-.scan-hint{font-size:14px;color:var(--text);display:flex;align-items:center;gap:6px}
-.scan-hint .icon{font-size:20px}
+.qr-frame{position:relative;padding:7px;border-radius:11px;background:#fff}
+.qr-frame img{display:block;border-radius:4px;width:175px;height:175px}
+.c{position:absolute;width:15px;height:15px;border-color:var(--accent);border-style:solid}
+.c.tl{top:2px;left:2px;border-width:3px 0 0 3px;border-radius:3px 0 0 0}
+.c.tr{top:2px;right:2px;border-width:3px 3px 0 0;border-radius:0 3px 0 0}
+.c.bl{bottom:2px;left:2px;border-width:0 0 3px 3px;border-radius:0 0 0 3px}
+.c.br{bottom:2px;right:2px;border-width:0 3px 3px 0;border-radius:0 0 3px 0}
 
-/* Right side — info */
-.info-panel{max-width:340px;display:flex;flex-direction:column;gap:24px}
-.brand{display:flex;align-items:center;gap:14px}
+.qr-url{font-size:10.5px;color:#22d3ee;word-break:break-all;text-align:center;
+  background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.12);
+  border-radius:7px;padding:5px 9px;width:100%;font-family:'Cascadia Code',Consolas,monospace;
+  cursor:pointer;transition:background .2s}
+.qr-url:hover{background:rgba(34,211,238,.1)}
+
+.nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.nav-btn{
+  display:flex;align-items:center;gap:6px;padding:9px 11px;
+  border-radius:10px;text-decoration:none;font-size:12px;font-weight:600;
+  transition:all .2s;border:1px solid var(--border);color:var(--text);
+  background:var(--card);backdrop-filter:blur(12px);
+}
+.nav-btn:hover{border-color:var(--border-hover);background:rgba(255,255,255,.05);transform:translateY(-1px)}
+.nav-btn .ico{font-size:15px;flex-shrink:0}
+.nav-btn.primary{background:linear-gradient(135deg,var(--accent),#5a52d5);border-color:transparent;color:#fff}
+.nav-btn.primary:hover{filter:brightness(1.12)}
+
+.status-bar{display:flex;align-items:center;font-size:10px;color:var(--muted);gap:7px;padding:0 2px}
+.progress-track{flex:1;height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:1px;transition:width 1s linear}
+.auto-toggle{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.auto-toggle:hover{color:var(--text)}
+
+/* SSE indicator */
+.sse-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .4s}
+.sse-dot.live{background:var(--success);box-shadow:0 0 6px var(--success)}
+.sse-dot.err{background:var(--error)}
+
+/* ── Right ── */
+.right{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0;overflow:hidden}
+
+.brand{display:flex;align-items:center;gap:12px}
 .brand-logo{
-  width:56px;height:56px;border-radius:18px;flex-shrink:0;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  display:flex;align-items:center;justify-content:center;font-size:28px;
-  box-shadow:0 8px 32px rgba(124,106,239,.4);
+  width:48px;height:48px;border-radius:14px;flex-shrink:0;
+  background:linear-gradient(135deg,#e74c3c,var(--accent3));
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 4px 18px rgba(231,76,60,.25);
 }
-.brand-name{font-size:28px;font-weight:800;letter-spacing:-.5px}
-.brand-sub{font-size:14px;color:var(--muted)}
+.brand-text .name{font-size:22px;font-weight:800;letter-spacing:-.4px;
+  background:linear-gradient(135deg,var(--text),#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand-text .tagline{font-size:11.5px;color:var(--muted);margin-top:1px}
 
-.features{display:flex;flex-direction:column;gap:12px}
-.feature{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 16px;border-radius:14px;
-  background:rgba(255,255,255,.03);border:1px solid var(--border);
+/* AI Card */
+.ai-card{
+  display:flex;align-items:center;gap:11px;
+  padding:12px 14px;border-radius:12px;
+  background:var(--card);border:1px solid var(--border);
+  animation:fadeIn .35s ease;
 }
-.feature-icon{font-size:22px;width:32px;text-align:center;flex-shrink:0}
-.feature-text{font-size:14px;line-height:1.5}
-.feature-text strong{color:var(--text);display:block;font-size:13px}
-.feature-text span{color:var(--muted);font-size:12px}
-
-.steps{display:flex;flex-direction:column;gap:8px}
-.step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
-.step-num{
-  width:22px;height:22px;border-radius:50%;border:1px solid var(--accent);
-  color:var(--accent);display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;flex-shrink:0;
+.ai-card .ai-icon{font-size:22px;flex-shrink:0}
+.ai-card .ai-body{flex:1;min-width:0}
+.ai-card .ai-name{font-size:12.5px;font-weight:700}
+.ai-card .ai-detail{font-size:10.5px;color:var(--muted);margin-top:1px}
+.ai-card .ai-action{
+  padding:5px 12px;border-radius:7px;font-size:10.5px;font-weight:600;
+  text-decoration:none;white-space:nowrap;transition:all .2s;
 }
+.ai-card .ai-action.ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:var(--success)}
+.ai-card .ai-action.ok:hover{background:rgba(16,185,129,.18)}
+.ai-card .ai-action.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--accent3)}
+.ai-card .ai-action.warn:hover{background:rgba(245,158,11,.18)}
 
-.ips{display:flex;flex-direction:column;gap:6px}
-.ip-item{
+/* Features */
+.features{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.feat{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px;border-radius:10px;
+  background:var(--card);backdrop-filter:blur(12px);
+  border:1px solid var(--border);transition:border-color .2s;
+}
+.feat:hover{border-color:var(--border-hover)}
+.feat-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0;line-height:1.5}
+.feat-body strong{font-size:11.5px;font-weight:700;display:block;margin-bottom:1px}
+.feat-body span{font-size:10px;color:var(--muted);line-height:1.3}
+
+/* System Status */
+.section-label{font-size:10px;font-weight:600;color:var(--dim);letter-spacing:1.5px;
+  text-transform:uppercase;margin-bottom:5px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.metric{
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:7px 3px;border-radius:9px;
+  background:var(--card);border:1px solid var(--border);
+}
+.m-icon{font-size:13px}
+.m-val{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;transition:color .3s}
+.m-label{font-size:9px;color:var(--muted)}
+.m-val.warn{color:var(--accent3)}
+.m-val.crit{color:var(--error)}
+
+.diag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.diag-item{
+  display:flex;align-items:center;gap:4px;
+  padding:5px 8px;border-radius:7px;font-size:10.5px;
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+}
+.d-dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .3s}
+.d-dot.ok{background:var(--success)}
+.d-dot.err{background:var(--error)}
+.d-dot.warn{background:var(--accent3)}
+.d-dot.spin{background:var(--accent);animation:pulse 1s infinite}
+.d-name{font-weight:600;white-space:nowrap}
+.d-status{color:var(--muted);font-size:9.5px}
+
+.diag-btn{
+  padding:4px 12px;border-radius:7px;
+  background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.18);
+  color:var(--accent);font-size:10.5px;font-weight:600;cursor:pointer;transition:all .2s;
+}
+.diag-btn:hover{background:rgba(108,99,255,.18)}
+.diag-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* IP */
+.ip-list{display:flex;flex-direction:column;gap:3px}
+.ip-row{
   display:flex;align-items:center;justify-content:space-between;
-  padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.03);
-  border:1px solid var(--border);font-size:12px;font-family:monospace;
+  padding:6px 9px;border-radius:7px;background:rgba(255,255,255,.02);
+  border:1px solid var(--border);font-size:10.5px;font-family:'Cascadia Code',Consolas,monospace;
 }
-.ip-label{color:var(--muted)}
-.ip-val{color:var(--accent2)}
+.ip-row .label{color:var(--muted);font-family:inherit}
+.ip-row .val{color:#22d3ee;cursor:pointer}
+.ip-row .val:hover{text-decoration:underline}
 
-/* Refresh timer */
-.refresh{font-size:11px;color:var(--muted);text-align:center;margin-top:4px}
-.refresh-bar{height:2px;background:var(--border);border-radius:1px;margin-top:4px;overflow:hidden}
-.refresh-fill{height:100%;background:var(--accent);border-radius:1px;width:100%;transition:width 1s linear}
+/* Collapse */
+.collapse{border-radius:10px;border:1px solid var(--border);overflow:hidden}
+.collapse-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 12px;background:rgba(255,255,255,.02);cursor:pointer;font-size:11.5px;font-weight:600;
+  user-select:none}
+.collapse-hd .arr{transition:transform .25s;font-size:10px;color:var(--muted)}
+.collapse-hd.open .arr{transform:rotate(180deg)}
+.collapse-bd{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease}
+.collapse-bd.open{max-height:500px;padding:9px 12px}
 
-@media (max-width:700px){
-  .container{flex-direction:column;gap:32px;padding:20px}
-  .info-panel{max-width:100%;order:-1}
+.step{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--muted);margin-bottom:4px}
+.step:last-child{margin-bottom:0}
+.step-num{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--accent);
+  color:var(--accent);display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;flex-shrink:0}
+
+/* Activity */
+.activity-list{display:flex;flex-direction:column;gap:2px;max-height:200px;overflow-y:auto}
+.activity-list::-webkit-scrollbar{width:3px}
+.activity-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.act-item{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:10.5px;
+  border-bottom:1px solid rgba(255,255,255,.03);animation:fadeIn .3s ease}
+.act-item:last-child{border-bottom:none}
+.act-time{color:var(--dim);font-size:9.5px;font-family:'Cascadia Code',monospace;flex-shrink:0;width:42px}
+.act-type{padding:1px 5px;border-radius:3px;font-size:8.5px;font-weight:600;flex-shrink:0}
+.act-type.chat{background:rgba(108,99,255,.15);color:var(--accent2)}
+.act-type.wechat{background:rgba(16,185,129,.15);color:var(--success)}
+.act-type.system{background:rgba(156,160,184,.12);color:var(--muted)}
+.act-type.error{background:rgba(239,68,68,.15);color:var(--error)}
+.act-type.voice{background:rgba(34,211,238,.15);color:#22d3ee}
+.act-msg{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.act-empty{color:var(--dim);font-size:10.5px;text-align:center;padding:10px 0}
+.act-new{background:rgba(108,99,255,.04)}
+
+/* Toast */
+.toast-container{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:8px;
+  padding:10px 14px;border-radius:10px;font-size:12px;font-weight:500;
+  background:var(--card-solid);border:1px solid var(--border);
+  box-shadow:var(--shadow);backdrop-filter:blur(16px);
+  animation:slideIn .3s ease;max-width:320px;
+}
+.toast.out{animation:slideOut .25s ease forwards}
+.toast .t-icon{font-size:16px;flex-shrink:0}
+.toast .t-msg{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast.success{border-color:rgba(16,185,129,.3)}
+.toast.warning{border-color:rgba(245,158,11,.3)}
+.toast.error{border-color:rgba(239,68,68,.3)}
+.toast.info{border-color:rgba(108,99,255,.3)}
+
+/* Footer */
+.footer{font-size:9.5px;color:var(--dim);text-align:center;
+  padding:2px 0;display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
+.auto-open-toggle{display:inline-flex;align-items:center;gap:3px;cursor:pointer;font-size:9.5px;color:var(--muted)}
+.auto-open-toggle input{width:12px;height:12px;accent-color:var(--accent);cursor:pointer}
+
+/* Quick Operations */
+.qops-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 0}
+.qops-btn{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  background:var(--card-solid);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:12px;cursor:pointer;transition:all .2s;
+}
+.qops-btn:hover{border-color:var(--accent);background:var(--card-hover);transform:translateY(-1px)}
+.qops-btn:active{transform:translateY(0)}
+.qops-btn.loading{opacity:.6;pointer-events:none}
+.qops-ico{font-size:15px;flex-shrink:0}
+.qops-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qops-log-area{margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.qops-log-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 10px;background:var(--card-solid);font-size:11px;color:var(--muted);
+}
+.qops-log-close{
+  background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;
+  padding:2px 6px;border-radius:4px;
+}
+.qops-log-close:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.qops-log-content{
+  font-family:'Cascadia Code',Consolas,monospace;font-size:10px;line-height:1.5;
+  padding:8px 10px;max-height:200px;overflow-y:auto;color:var(--muted);
+  background:var(--bg);white-space:pre-wrap;word-break:break-all;margin:0;
+}
+
+/* Theme toggle */
+.theme-toggle{
+  position:fixed;top:12px;right:12px;z-index:100;
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
+  background:var(--card);backdrop-filter:blur(12px);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;transition:all .25s;box-shadow:var(--shadow);
+}
+.theme-toggle:hover{border-color:var(--accent);transform:scale(1.1)}
+
+/* Light theme specific overrides */
+[data-theme="light"] .nav-btn:hover{background:var(--card-hover)}
+[data-theme="light"] .collapse-hd{background:var(--card-solid)}
+[data-theme="light"] .status-bar{background:var(--card)}
+[data-theme="light"] .toast{background:var(--card-solid)}
+
+/* ── Responsive ── */
+@media(max-width:800px){
+  .container{flex-direction:column;gap:18px}
+  .left{width:100%;order:0;max-width:340px;margin:0 auto}
+  .right{order:1}
+  .features{grid-template-columns:1fr}
+  .qr-frame img{width:150px;height:150px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .brand-logo{width:40px;height:40px;font-size:20px;border-radius:12px}
+  .brand-text .name{font-size:19px}
+  .toast-container{top:8px;right:8px;left:8px}
+  .toast{max-width:none}
+}
+@media(max-width:400px){
+  .page{padding:14px 10px}
+  .qr-frame img{width:130px;height:130px}
+  .nav-grid{gap:4px}
+  .nav-btn{padding:8px 9px;font-size:11.5px}
 }
 </style>
 </head>
 <body>
 
-<div class="bg-orbs">
-  <div class="orb orb1"></div>
-  <div class="orb orb2"></div>
-  <div class="orb orb3"></div>
-</div>
+<div class="bg-glow"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div></div>
+<div class="toast-container" id="toasts"></div>
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题"></button>
 
+<div class="page">
 <div class="container">
 
-  <!-- QR Code Cards -->
-  <div style="display:flex;flex-direction:column;gap:20px">
-
-    <!-- Single QR: scan to use -->
-    <div class="qr-card">
-      <div class="qr-title">📱 扫码使用 十三香小龙虾</div>
-      <div class="qr-box" id="qr-wrap">
-        <img id="qrImg" src="" alt="QR Code" style="width:220px;height:220px;border-radius:8px;display:block">
-        <div class="qr-corner tl"></div>
-        <div class="qr-corner tr"></div>
-        <div class="qr-corner bl"></div>
-        <div class="qr-corner br"></div>
-      </div>
-      <div class="qr-url" id="qrUrl">正在获取地址...</div>
-      <div class="scan-hint"><span class="icon">💬</span>扫码即用，文字 + 语音一站搞定</div>
+<!-- ═══ LEFT ═══ -->
+<div class="left">
+  <div class="qr-card">
+    <div class="qr-badge"><span class="dot"></span> 手机扫码 即刻使用</div>
+    <div class="qr-frame">
+      <img id="qrImg" src="" alt="QR">
+      <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
     </div>
+    <div class="qr-url" id="qrUrl" onclick="copyUrl()" title="点击复制地址">正在获取...</div>
+  </div>
 
-    <!-- Desktop shortcut -->
-    <div style="display:flex;gap:10px;justify-content:center">
-      <a href="/app" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-size:13px;font-weight:600">🖥️ 本机使用</a>
-      <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:rgba(255,255,255,.06);color:var(--text);text-decoration:none;font-size:13px;border:1px solid var(--border)">⚙️ 管理面板</a>
-    </div>
+  <div class="nav-grid">
+    <a class="nav-btn primary" href="/app"><span class="ico">🦞</span>全功能版</a>
+    <a class="nav-btn" href="/chat"><span class="ico">💬</span>文字聊天</a>
+    <a class="nav-btn" href="/setup"><span class="ico">⚙️</span>初始设置</a>
+    <a class="nav-btn" href="/admin"><span class="ico">📊</span>管理面板</a>
+  </div>
 
-    <div class="refresh">
-      <span id="refreshHint">30 秒后刷新</span>
-      <div class="refresh-bar"><div class="refresh-fill" id="rfill"></div></div>
+  <div class="status-bar">
+    <span class="sse-dot" id="sseDot" title="实时连接"></span>
+    <span id="timerText">30s</span>
+    <div class="progress-track"><div class="progress-fill" id="rfill"></div></div>
+    <span class="auto-toggle" id="autoToggle" onclick="toggleAuto()">自动</span>
+  </div>
+</div>
+
+<!-- ═══ RIGHT ═══ -->
+<div class="right">
+
+  <div class="brand">
+    <div class="brand-logo">🦞</div>
+    <div class="brand-text">
+      <div class="name">十三香小龙虾 AI</div>
+      <div class="tagline">语音 · 微信 · 桌面 · 智能家居 — 本地全能 AI 助手</div>
     </div>
   </div>
 
-  <!-- Info Panel -->
-  <div class="info-panel">
-    <div class="brand">
-      <div class="brand-logo">🤖</div>
-      <div>
-        <div class="brand-name">十三香小龙虾 AI</div>
-        <div class="brand-sub">本地 AI 语音助手</div>
-      </div>
+  <div class="ai-card" id="aiCard">
+    <div class="ai-icon">🤖</div>
+    <div class="ai-body">
+      <div class="ai-name" id="aiName">检测 AI 状态...</div>
+      <div class="ai-detail" id="aiDetail">正在连接后端</div>
     </div>
+    <a class="ai-action ok" id="aiAction" href="/setup" style="display:none">切换</a>
+  </div>
 
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon">💬</div>
-        <div class="feature-text">
-          <strong>文字聊天</strong>
-          <span>打字或语音输入，流式响应</span>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🔊</div>
-        <div class="feature-text">
-          <strong>AI 语音回复</strong>
-          <span>自动朗读 AI 的回答</span>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🎤</div>
-        <div class="feature-text">
-          <strong>语音输入</strong>
-          <span>Android Chrome 直接说话；iOS 键盘输入</span>
-        </div>
-      </div>
+  <div class="features">
+    <div class="feat"><div class="feat-icon">💬</div><div class="feat-body"><strong>AI 智能对话</strong><span>文字+语音，流式响应，多平台免费</span></div></div>
+    <div class="feat"><div class="feat-icon">📱</div><div class="feat-body"><strong>微信自动回复</strong><span>智能回复，白名单，人工审核</span></div></div>
+    <div class="feat"><div class="feat-icon">🖥️</div><div class="feat-body"><strong>桌面远程控制</strong><span>手势操控电脑，语音命令</span></div></div>
+    <div class="feat"><div class="feat-icon">🏠</div><div class="feat-body"><strong>智能家居</strong><span>语音控制灯光、空调等</span></div></div>
+    <div class="feat"><div class="feat-icon">📷</div><div class="feat-body"><strong>视觉识别</strong><span>摄像头分析，手势，人脸</span></div></div>
+    <div class="feat"><div class="feat-icon">🔊</div><div class="feat-body"><strong>实时语音</strong><span>唤醒词，连续对话模式</span></div></div>
+  </div>
+
+  <!-- System Status -->
+  <div>
+    <div class="section-label">系统状态</div>
+    <div class="metrics">
+      <div class="metric" id="mUp"><span class="m-icon">⏱️</span><span class="m-val">--</span><span class="m-label">运行</span></div>
+      <div class="metric" id="mCpu"><span class="m-icon">🧠</span><span class="m-val">--%</span><span class="m-label">CPU</span></div>
+      <div class="metric" id="mMem"><span class="m-icon">💾</span><span class="m-val">--%</span><span class="m-label">内存</span></div>
+      <div class="metric" id="mGpu"><span class="m-icon">🎮</span><span class="m-val">--</span><span class="m-label">GPU</span></div>
     </div>
-
-    <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:1px">使用步骤</div>
-      <div class="steps">
-        <div class="step"><div class="step-num">1</div>手机相机扫描左侧二维码</div>
-        <div class="step"><div class="step-num">2</div>点击链接，在浏览器中打开</div>
-        <div class="step"><div class="step-num">3</div>允许麦克风权限（可选）</div>
-        <div class="step"><div class="step-num">4</div>开始和 AI 对话！</div>
-      </div>
-    </div>
-
-    <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:1px">本机 IP 地址</div>
-      <div class="ips" id="ips">
-        <div class="ip-item"><span class="ip-label">正在获取...</span></div>
-      </div>
-    </div>
-
-    <div style="font-size:12px;color:var(--muted);padding:10px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)">
-      💡 扫码后在底部<strong style="color:var(--text)">"语音设置"</strong>标签页可一键开启语音、摄像头、唤醒词等完整功能
+    <div class="diag-row" id="diagRow">
+      <div class="diag-item" data-key="ai"><span class="d-dot"></span><span class="d-name">AI</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="stt"><span class="d-dot"></span><span class="d-name">语音识别</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="tts"><span class="d-dot"></span><span class="d-name">语音合成</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="wechat"><span class="d-dot"></span><span class="d-name">微信</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="network"><span class="d-dot"></span><span class="d-name">局域网</span><span class="d-status"></span></div>
+      <button class="diag-btn" id="diagBtn" onclick="runDiagnose()">🔍 诊断</button>
     </div>
   </div>
 
+  <!-- IP -->
+  <div>
+    <div class="section-label">访问地址</div>
+    <div class="ip-list" id="ips"><div class="ip-row"><span class="label">获取中...</span></div></div>
+  </div>
+
+  <!-- Activity (auto-populated via SSE) -->
+  <div class="collapse" id="activitySection">
+    <div class="collapse-hd" id="actHd" onclick="toggleActivity()">
+      📋 最近活动 <span class="act-count" id="actCount" style="font-size:10px;color:var(--accent);margin-left:4px"></span><span class="arr">▼</span>
+    </div>
+    <div class="collapse-bd" id="actBd">
+      <div class="activity-list" id="actList"><div class="act-empty">等待事件...</div></div>
+    </div>
+  </div>
+
+  <!-- Quick Operations -->
+  <div class="collapse" id="quickOpsSection">
+    <div class="collapse-hd" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+      ⚡ 快捷操作 <span class="arr">▼</span>
+    </div>
+    <div class="collapse-bd">
+      <div class="qops-grid" id="qopsGrid">
+        <button class="qops-btn" onclick="qopRestart()" title="优雅重启所有服务">
+          <span class="qops-ico">🔄</span><span class="qops-label">重启服务</span>
+        </button>
+        <button class="qops-btn" onclick="qopClearCache()" title="清除OCR/FTS/TTS缓存">
+          <span class="qops-ico">🗑️</span><span class="qops-label">清除缓存</span>
+        </button>
+        <button class="qops-btn" onclick="location.href='/setup'" title="切换AI平台配置">
+          <span class="qops-ico">🤖</span><span class="qops-label">AI 配置</span>
+        </button>
+        <button class="qops-btn" onclick="qopShowLogs()" title="查看最近30行后端日志">
+          <span class="qops-ico">📄</span><span class="qops-label">查看日志</span>
+        </button>
+      </div>
+      <div class="qops-log-area" id="qopsLogArea" style="display:none">
+        <div class="qops-log-header">
+          <span>后端日志 (最近30行)</span>
+          <button class="qops-log-close" onclick="$('qopsLogArea').style.display='none'">✕</button>
+        </div>
+        <pre class="qops-log-content" id="qopsLogContent">加载中...</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Start -->
+  <div class="collapse">
+    <div class="collapse-hd" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+      📖 手机使用步骤 <span class="arr">▼</span>
+    </div>
+    <div class="collapse-bd">
+      <div class="step"><div class="step-num">1</div>确保手机与电脑在同一 WiFi</div>
+      <div class="step"><div class="step-num">2</div>手机相机扫描左侧二维码</div>
+      <div class="step"><div class="step-num">3</div>在浏览器中打开链接</div>
+      <div class="step"><div class="step-num">4</div>允许麦克风权限（可选），开始对话</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>十三香小龙虾 AI</span>·<span id="verText">v3.6.0</span>·<span id="providerBadge">...</span>·
+    <label class="auto-open-toggle" title="服务启动时是否自动打开此页面">
+      <input type="checkbox" id="autoOpenCb" onchange="setAutoOpen(this.checked)">
+      <span>启动时打开</span>
+    </label>
+  </div>
+
+</div>
+</div>
 </div>
 
 <script>
-let chatUrl = '';
+const $=id=>document.getElementById(id);
+let chatUrl='',autoRefresh=true,countdown=30,_sse=null,_sseRetry=0;
+const _actEvents=[];
+const MAX_ACT=30;
 
-function pickLanIp(ips) {
-  // Prefer typical local WiFi / LAN ranges over VPN / other
-  const order = [
-    ip => /^192\.168\./.test(ip),   // home / office WiFi
-    ip => /^10\./.test(ip),          // enterprise LAN
-    ip => /^172\.(1[6-9]|2\d|3[01])\./.test(ip), // RFC1918 class B
-  ];
-  for (const test of order) {
-    const found = ips.find(test);
-    if (found) return found;
-  }
-  return ips[0] || '127.0.0.1';
+/* ── Utilities ── */
+function pickLanIp(ips){
+  const tests=[ip=>/^192\.168\./.test(ip),ip=>/^10\./.test(ip),ip=>/^172\.(1[6-9]|2\d|3[01])\./.test(ip)];
+  for(const t of tests){const f=ips.find(t);if(f)return f}return ips[0]||'127.0.0.1';
+}
+function fmtTime(s){
+  if(s<60)return s+'秒';
+  if(s<3600)return(s/60|0)+'分'+(s%60?(s%60)+'秒':'');
+  const h=s/3600|0,m=(s%3600)/60|0;
+  return h+'时'+(m?m+'分':'');
+}
+function cc(p){return p>=90?'crit':p>=70?'warn':''}
+function fmtTs(ts){const d=new Date(ts*1000);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+
+/* ── Toast System ── */
+function showToast(msg,type='info',duration=4000){
+  const icons={success:'✅',warning:'⚠️',error:'❌',info:'💡'};
+  const el=document.createElement('div');
+  el.className='toast '+type;
+  el.innerHTML=`<span class="t-icon">${icons[type]||'💡'}</span><span class="t-msg">${msg}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),300)},duration);
 }
 
-async function loadInfo() {
-  try {
-    const r = await fetch('/api/server-info');
-    const info = await r.json();
+/* ── Copy URL ── */
+function copyUrl(){
+  if(!chatUrl)return;
+  navigator.clipboard.writeText(chatUrl).catch(()=>{});
+  const el=$('qrUrl'),o=el.textContent;
+  el.textContent='✓ 已复制';setTimeout(()=>el.textContent=o,1200);
+  showToast('地址已复制到剪贴板','success',2000);
+}
+function toggleAuto(){autoRefresh=!autoRefresh;$('autoToggle').textContent=autoRefresh?'自动':'暂停'}
 
-    const ips = (info.ips || []).filter(ip => ip !== '127.0.0.1' && !ip.startsWith('::'));
-    const mainIp = pickLanIp(ips);
-    const port = info.http_port || (info.port + 1);
+/* ── Load Info ── */
+async function loadInfo(){
+  try{
+    const r=await fetch('/api/server-info'),info=await r.json();
+    const ips=(info.ips||[]).filter(ip=>ip!=='127.0.0.1'&&!ip.startsWith('::'));
+    const mainIp=pickLanIp(ips),port=info.http_port||(info.port+1);
+    chatUrl=`http://${mainIp}:${port}/chat`;
+    $('qrUrl').textContent=chatUrl;
+    const img=$('qrImg');
+    img.src=`/api/qr?url=${encodeURIComponent(chatUrl)}&size=200`;
+    img.onerror=()=>{img.src=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(chatUrl)}`};
+    if(info.version)$('verText').textContent='v'+info.version;
+    const sorted=[...ips].sort((a,b)=>{const s=ip=>/^192\.168/.test(ip)?0:/^10\./.test(ip)?1:2;return s(a)-s(b)});
+    $('ips').innerHTML=sorted.map((ip,i)=>{
+      const l=i===0?'📱 手机':'🌐 IP',u=`http://${ip}:${port}/chat`;
+      return `<div class="ip-row"><span class="label">${l}</span><span class="val" onclick="navigator.clipboard.writeText('${u}');showToast('已复制','success',1500)" title="点击复制">${u}</span></div>`;
+    }).join('');
+  }catch(e){$('qrUrl').textContent='获取失败，请刷新'}
+}
 
-    chatUrl = `http://${mainIp}:${port}/chat`;
+/* ── AI Status ── */
+async function loadAiStatus(){
+  try{
+    const r=await fetch('/api/setup/status'),st=await r.json();
+    const badge=$('providerBadge');
+    if(st.has_provider){
+      $('aiName').textContent=st.provider_name||'AI 已就绪';
+      $('aiDetail').textContent=st.can_chat?'运行正常，可以对话':'已配置但不可用';
+      $('aiCard').querySelector('.ai-icon').textContent='✅';
+      const act=$('aiAction');act.style.display='';act.className='ai-action ok';act.textContent='切换平台';act.href='/setup';
+      badge.innerHTML=`<span style="color:var(--success)">● ${st.provider_name}</span>`;
+    }else{
+      $('aiName').textContent='未配置 AI 平台';
+      $('aiDetail').textContent='点击右侧按钮进入配置向导';
+      $('aiCard').querySelector('.ai-icon').textContent='⚠️';
+      const act=$('aiAction');act.style.display='';act.className='ai-action warn';act.textContent='立即配置';act.href='/setup?force';
+      badge.innerHTML='<span style="color:var(--accent3)">● 未配置</span>';
+    }
+  }catch(_){$('aiName').textContent='无法连接后端';$('aiDetail').textContent='请确认服务已启动'}
+}
 
-    document.getElementById('qrUrl').textContent = chatUrl;
+/* ── Health Metrics (animated values) ── */
+let _prevHealth={};
+function animateVal(el,newText,colorClass){
+  if(el.textContent===newText&&el._cc===colorClass)return;
+  el._cc=colorClass;
+  el.style.transition='none';el.style.opacity='0.4';el.style.transform='translateY(-2px)';
+  requestAnimationFrame(()=>{
+    el.textContent=newText;el.className='m-val '+(colorClass||'');
+    el.style.transition='opacity .3s,transform .3s';el.style.opacity='1';el.style.transform='none';
+  });
+}
+async function loadHealth(){
+  try{
+    const r=await fetch('/api/system/health'),h=await r.json();
+    animateVal(document.querySelector('#mUp .m-val'),fmtTime(h.uptime));
+    animateVal(document.querySelector('#mCpu .m-val'),h.cpu+'%',cc(h.cpu));
+    animateVal(document.querySelector('#mMem .m-val'),h.mem_pct+'%',cc(h.mem_pct));
+    const gpuEl=document.querySelector('#mGpu .m-val');
+    animateVal(gpuEl,h.gpu?h.gpu.util+'%':'N/A',h.gpu?cc(h.gpu.util):'');
+    const cm={backend:'ai',stt:'stt',tts:'tts'};
+    for(const[k,dk]of Object.entries(cm)){
+      const el=document.querySelector(`.diag-item[data-key="${dk}"]`);if(!el)continue;
+      const dot=el.querySelector('.d-dot'),s=h.components[k];
+      dot.className='d-dot '+(s==='ready'?'ok':s==='loading'?'spin':s==='error'?'err':'');
+    }
+    _prevHealth=h;
+  }catch(_){}
+}
 
-    const sortedIps = [...ips].sort((a, b) => {
-      const score = ip => /^192\.168\./.test(ip) ? 0 : /^10\./.test(ip) ? 1 : 2;
-      return score(a) - score(b);
+/* ── Diagnose ── */
+async function runDiagnose(){
+  const btn=$('diagBtn');btn.disabled=true;btn.textContent='⏳...';
+  document.querySelectorAll('.d-dot').forEach(d=>d.className='d-dot spin');
+  try{
+    const r=await fetch('/api/system/diagnose'),d=await r.json();
+    let allOk=true;
+    for(const[k,info]of Object.entries(d)){
+      const el=document.querySelector(`.diag-item[data-key="${k}"]`);if(!el)continue;
+      el.querySelector('.d-dot').className='d-dot '+(info.ok?'ok':'err');
+      const st=el.querySelector('.d-status');
+      st.textContent=k==='network'?(info.ok?info.ips.length+'个IP':'无'):(info.provider||info.status||(info.ok?'正常':'异常'));
+      if(!info.ok)allOk=false;
+    }
+    showToast(allOk?'所有组件运行正常':'部分组件存在异常',allOk?'success':'warning');
+  }catch(e){
+    document.querySelectorAll('.d-dot').forEach(d=>d.className='d-dot err');
+    showToast('诊断请求失败','error');
+  }
+  btn.disabled=false;btn.textContent='🔍 诊断';
+}
+
+/* ── Activity Feed ── */
+const _actTypeMap={
+  inbox_message:['微信','wechat'],msg_route_match:['路由','wechat'],broadcast_progress:['群发','wechat'],
+  anomaly_alert:['异常','error'],daily_report:['日报','system'],forward_event:['转发','wechat'],
+  workflow_run:['工作流','system'],broadcast_complete:['群发','wechat'],
+  system_event:['系统','system'],circuit_breaker:['熔断','error'],
+};
+function actBadge(type){const m=_actTypeMap[type];return m?`<span class="act-type ${m[1]}">${m[0]}</span>`:`<span class="act-type system">${type.split('_')[0]}</span>`}
+function actMsg(e){
+  const d=e.data||{};
+  return d.contact||d.content||d.rule||d.detail||d.status||d.message||
+    (typeof d==='string'?d:JSON.stringify(d).slice(0,50));
+}
+
+function renderActivity(){
+  const list=$('actList');
+  if(!_actEvents.length){list.innerHTML='<div class="act-empty">等待事件...</div>';return}
+  list.innerHTML=_actEvents.map((e,i)=>
+    `<div class="act-item${i===0?' act-new':''}"><span class="act-time">${fmtTs(e.timestamp)}</span>${actBadge(e.type)}<span class="act-msg">${actMsg(e)}</span></div>`
+  ).join('');
+  list.scrollTop=0;
+}
+
+function pushActivity(event){
+  _actEvents.unshift(event);
+  if(_actEvents.length>MAX_ACT)_actEvents.pop();
+  $('actCount').textContent=_actEvents.length;
+  renderActivity();
+}
+
+function toggleActivity(){
+  const hd=$('actHd'),bd=$('actBd');
+  hd.classList.toggle('open');bd.classList.toggle('open');
+}
+
+async function loadInitialActivity(){
+  try{
+    const r=await fetch('/api/events?limit=15'),d=await r.json();
+    const events=d.events||[];
+    events.forEach(e=>{_actEvents.push(e)});
+    if(_actEvents.length>MAX_ACT)_actEvents.splice(MAX_ACT);
+    $('actCount').textContent=_actEvents.length||'';
+    renderActivity();
+  }catch(_){}
+}
+
+/* ── SSE Real-time Connection ── */
+function connectSSE(){
+  if(_sse){try{_sse.close()}catch(_){}_sse=null}
+  const dot=$('sseDot');
+  dot.className='sse-dot';dot.title='连接中...';
+  try{
+    _sse=new EventSource('/api/events/stream');
+    _sse.onopen=()=>{
+      dot.className='sse-dot live';dot.title='实时连接已建立';
+      _sseRetry=0;
+    };
+    _sse.onerror=()=>{
+      dot.className='sse-dot err';dot.title='连接断开，重试中...';
+      _sse.close();_sse=null;
+      const delay=Math.min(2000*Math.pow(2,_sseRetry),30000);
+      _sseRetry++;
+      setTimeout(connectSSE,delay);
+    };
+    _sse.onmessage=(ev)=>{
+      try{
+        const event=JSON.parse(ev.data);
+        pushActivity(event);
+        const m=_actTypeMap[event.type];
+        if(event.type==='anomaly_alert'){
+          showToast('异常告警: '+(event.data?.detail||'检测到异常'),'error',6000);
+        }else if(event.type==='broadcast_complete'){
+          const d=event.data||{};
+          showToast(`群发完成: 发送${d.sent||0}人，失败${d.failed||0}人`,d.failed?'warning':'success');
+        }else if(event.type==='daily_report'){
+          showToast('智能日报已生成','info');
+        }
+      }catch(_){}
+    };
+    const knownTypes=['inbox_message','msg_route_match','broadcast_progress','broadcast_complete',
+      'anomaly_alert','daily_report','forward_event','workflow_run','system_event','circuit_breaker'];
+    knownTypes.forEach(type=>{
+      _sse.addEventListener(type,ev=>{
+        try{
+          const event=JSON.parse(ev.data);
+          pushActivity(event);
+          if(type==='anomaly_alert'){
+            showToast('异常: '+(event.data?.detail||''),'error',6000);
+          }else if(type==='broadcast_complete'){
+            const d=event.data||{};
+            showToast(`群发完成: ${d.sent||0}发/${d.failed||0}败`,d.failed?'warning':'success');
+          }
+        }catch(_){}
+      });
     });
-    const ipsEl = document.getElementById('ips');
-    ipsEl.innerHTML = sortedIps.map((ip, i) =>
-      `<div class="ip-item">
-        <span class="ip-label">${i === 0 ? '📱 手机访问' : 'IP'}</span>
-        <span class="ip-val">http://${ip}:${port}/chat</span>
-      </div>`
-    ).join('');
-
-    renderQR(chatUrl, 'qrImg');
-  } catch (e) {
-    document.getElementById('qrUrl').textContent = '获取地址失败，请刷新页面';
-    console.error(e);
+  }catch(e){
+    dot.className='sse-dot err';
+    setTimeout(connectSSE,5000);
   }
 }
 
-function renderQR(url, imgId) {
-  const img = document.getElementById(imgId || 'qrImg');
-  if (!img) return;
-  const size = img.width || 220;
-  const src = `/api/qr?url=${encodeURIComponent(url)}&size=${size}`;
-  img.src = src;
-  img.onerror = () => {
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}`;
-  };
+/* ── Quick Operations ── */
+async function qopRestart(){
+  if(!confirm('确定要重启服务吗？所有连接将断开。'))return;
+  const btn=document.querySelector('.qops-btn');
+  btn?.classList.add('loading');
+  try{
+    const r=await fetch('/api/system/restart',{method:'POST'});
+    if(r.ok){showToast('服务正在重启...','success');setTimeout(()=>location.reload(),5000)}
+    else showToast('重启失败: '+r.status,'error');
+  }catch(_){showToast('重启请求失败（API 可能尚未实现）','warning')}
+  finally{btn?.classList.remove('loading')}
+}
+async function qopClearCache(){
+  try{
+    const r=await fetch('/api/system/clear-cache',{method:'POST'});
+    if(r.ok){const d=await r.json();showToast('缓存已清除'+(d.detail?' - '+d.detail:''),'success')}
+    else showToast('清除失败: '+r.status,'error');
+  }catch(_){showToast('清除缓存请求失败（API 可能尚未实现）','warning')}
+}
+async function qopShowLogs(){
+  const area=$('qopsLogArea'),pre=$('qopsLogContent');
+  area.style.display='';pre.textContent='加载中...';
+  try{
+    const r=await fetch('/api/system/logs?lines=30');
+    if(r.ok){const d=await r.json();pre.textContent=Array.isArray(d.lines)?d.lines.join('\n'):(d.logs||JSON.stringify(d,null,2))}
+    else pre.textContent='请求失败: HTTP '+r.status;
+  }catch(_){pre.textContent='日志接口尚未实现，等待 Claude Code 完成后端开发。'}
 }
 
-// Auto-refresh countdown
-let countdown = 30;
-function tick() {
-  countdown--;
-  document.getElementById('refreshHint').textContent = `${countdown} 秒后刷新`;
-  document.getElementById('rfill').style.width = (countdown / 30 * 100) + '%';
-  if (countdown <= 0) { countdown = 30; loadInfo(); }
+/* ── Config ── */
+async function setAutoOpen(e){try{await fetch('/api/config/auto-open-qr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:e})})}catch(_){}}
+async function loadAutoOpen(){try{const r=await fetch('/api/config/auto-open-qr'),d=await r.json();$('autoOpenCb').checked=d.auto_open_qr}catch(_){}}
+
+/* ── Timer ── */
+setInterval(()=>{if(!autoRefresh)return;countdown--;$('timerText').textContent=countdown+'s';$('rfill').style.width=(countdown/30*100)+'%';if(countdown<=0){countdown=30;loadInfo()}},1000);
+setInterval(loadHealth,8000);
+
+/* ── Theme ── */
+function getPreferredTheme(){
+  const saved=localStorage.getItem('oc-qr-theme');
+  if(saved)return saved;
+  return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark';
 }
-setInterval(tick, 1000);
-loadInfo();
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme',theme);
+  $('themeToggle').textContent=theme==='light'?'\u{1F319}':'\u2600\uFE0F';
+  localStorage.setItem('oc-qr-theme',theme);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'dark';
+  applyTheme(cur==='dark'?'light':'dark');
+}
+applyTheme(getPreferredTheme());
+window.matchMedia('(prefers-color-scheme:light)').addEventListener('change',e=>{
+  if(!localStorage.getItem('oc-qr-theme'))applyTheme(e.matches?'light':'dark');
+});
+
+/* ── Init ── */
+loadInfo();loadHealth();loadAiStatus();loadAutoOpen();loadInitialActivity();connectSSE();
 </script>
 </body>
 </html>

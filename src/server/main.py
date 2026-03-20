@@ -887,6 +887,34 @@ async def cowork_resume():
     global _cowork_paused
     _cowork_paused = False
     return {"ok": True, "status": "running"}
+@app.post("/api/config/auto-open-qr")
+async def set_auto_open_qr(request: Request):
+    """Toggle auto_open_qr in config.ini from the QR page."""
+    body = await request.json()
+    enabled = body.get("enabled", True)
+    cfg_path = str(_PROJECT_ROOT / "config.ini")
+    import configparser
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_path, encoding="utf-8")
+    if not cfg.has_section("system"):
+        cfg.add_section("system")
+    cfg.set("system", "auto_open_qr", str(enabled).lower())
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        cfg.write(f)
+    return {"ok": True, "auto_open_qr": enabled}
+
+
+@app.get("/api/config/auto-open-qr")
+async def get_auto_open_qr():
+    """Read auto_open_qr setting."""
+    try:
+        import configparser
+        cfg = configparser.ConfigParser()
+        cfg.read(str(_PROJECT_ROOT / "config.ini"), encoding="utf-8")
+        val = cfg.get("system", "auto_open_qr", fallback="true").lower() == "true"
+        return {"auto_open_qr": val}
+    except Exception:
+        return {"auto_open_qr": True}
 
 
 @app.get("/chat")
@@ -923,6 +951,93 @@ async def startup_status():
             "workflow": _startup_progress["workflow"],
         },
     }
+
+
+@app.get("/api/system/health")
+async def system_health():
+    """Lightweight system health snapshot for the QR dashboard."""
+    import psutil
+    uptime = time.time() - _startup_progress["started_at"] if _startup_progress["started_at"] else 0
+    cpu = psutil.cpu_percent(interval=0)
+    mem = psutil.virtual_memory()
+    gpu_info = None
+    try:
+        import subprocess as _sp
+        r = _sp.run(
+            ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=3,
+        )
+        if r.returncode == 0:
+            parts = r.stdout.strip().split(",")
+            if len(parts) >= 3:
+                gpu_info = {"util": int(parts[0].strip()), "mem_used": int(parts[1].strip()), "mem_total": int(parts[2].strip())}
+    except Exception:
+        pass
+    return {
+        "uptime": round(uptime),
+        "cpu": round(cpu),
+        "mem_used": mem.used // (1024**2),
+        "mem_total": mem.total // (1024**2),
+        "mem_pct": round(mem.percent),
+        "gpu": gpu_info,
+        "components": {
+            "stt": _startup_progress.get("stt", "unknown"),
+            "tts": _startup_progress.get("tts", "unknown"),
+            "backend": _startup_progress.get("backend", "unknown"),
+            "workflow": _startup_progress.get("workflow", "unknown"),
+        },
+        "ready": _startup_progress.get("ready", False),
+    }
+
+
+@app.get("/api/system/diagnose")
+async def system_diagnose():
+    """Run quick connectivity checks on all subsystems."""
+    results = {}
+
+    # AI check
+    try:
+        from src.router.config import RouterConfig
+        rc = RouterConfig()
+        active = None
+        for p in rc.all_providers_meta():
+            if p.get("has_key"):
+                active = p
+                break
+        if active:
+            results["ai"] = {"ok": True, "provider": active.get("name", "?"), "status": active.get("status", "?")}
+        else:
+            results["ai"] = {"ok": False, "error": "未配置 AI 平台"}
+    except Exception as e:
+        results["ai"] = {"ok": False, "error": str(e)}
+
+    # TTS check
+    results["tts"] = {"ok": _startup_progress.get("tts") == "ready", "status": _startup_progress.get("tts", "unknown")}
+
+    # STT check
+    results["stt"] = {"ok": _startup_progress.get("stt") == "ready", "status": _startup_progress.get("stt", "unknown")}
+
+    # WeChat check (Windows only)
+    try:
+        if sys.platform == "win32":
+            from .wechat_monitor import _wechat_is_running
+            running = _wechat_is_running()
+            results["wechat"] = {"ok": running, "status": "运行中" if running else "未运行"}
+        else:
+            results["wechat"] = {"ok": False, "status": "仅支持 Windows"}
+    except Exception:
+        results["wechat"] = {"ok": False, "status": "模块不可用"}
+
+    # Network check
+    try:
+        import socket
+        ips = socket.gethostbyname_ex(socket.gethostname())[2]
+        lan_ips = [ip for ip in ips if not ip.startswith("127.")]
+        results["network"] = {"ok": len(lan_ips) > 0, "ips": lan_ips}
+    except Exception:
+        results["network"] = {"ok": False, "ips": []}
+
+    return results
 
 
 @app.post("/api/stt/wake-check")
@@ -1718,6 +1833,15 @@ if __name__ == "__main__":
         async def _open_browser():
             if os.environ.get("OPENCLAW_DESKTOP") == "1":
                 return
+            try:
+                import configparser
+                cfg = configparser.ConfigParser()
+                cfg.read(str(_PROJECT_ROOT / "config.ini"), encoding="utf-8")
+                if cfg.get("system", "auto_open_qr", fallback="true").lower() == "false":
+                    logger.info("🌐 auto_open_qr=false, skipping browser open")
+                    return
+            except Exception:
+                pass
             await asyncio.sleep(2.0)
             import webbrowser
             qr_url = f"http://localhost:{http_port}/qr"

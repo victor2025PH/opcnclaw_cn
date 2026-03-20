@@ -2090,6 +2090,101 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 }
 
 /* ═══════════════════════════════════════════════════
+   CoworkBus Collaboration Panel (B3)
+   ═══════════════════════════════════════════════════ */
+.cw-badge{
+  position:relative;font-size:14px;line-height:1;transition:all .2s;
+}
+.cw-badge.active{background:var(--bg-surface-hover);border-radius:var(--radius-sm)}
+.cw-badge.cw-working::after{
+  content:'';position:absolute;bottom:2px;right:2px;width:6px;height:6px;
+  border-radius:50%;background:var(--accent);
+  animation:cwPulse 1.2s infinite;
+}
+@keyframes cwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+
+.cw-panel{
+  position:absolute;top:calc(100% + 6px);right:40px;z-index:40;
+  width:340px;max-height:70vh;overflow-y:auto;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);
+  border-radius:var(--radius-md);box-shadow:0 12px 40px rgba(0,0,0,.5);
+  opacity:0;transform:translateY(-8px);pointer-events:none;
+  transition:opacity .2s,transform .2s;
+}
+.cw-panel.open{opacity:1;transform:translateY(0);pointer-events:auto}
+.cw-header{
+  display:flex;align-items:center;gap:8px;padding:12px 14px;
+  border-bottom:1px solid var(--border);
+}
+.cw-header-title{font-weight:600;font-size:14px;flex:1}
+.cw-close-btn{
+  background:none;border:none;color:var(--text-muted);cursor:pointer;
+  font-size:14px;padding:2px 6px;border-radius:4px;transition:.15s;
+}
+.cw-close-btn:hover{color:var(--text-primary);background:var(--bg-surface)}
+.cw-section{padding:10px 14px;border-bottom:1px solid var(--border)}
+.cw-section:last-of-type{border-bottom:none}
+.cw-section-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.cw-state-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 10px;background:var(--bg-surface);border-radius:var(--radius-sm);
+}
+.cw-state-icon{font-size:18px}
+.cw-state-label{font-weight:600;font-size:13px}
+.cw-task-name{font-size:12px;color:var(--text-secondary);margin-left:auto}
+.cw-zone-info{
+  display:flex;gap:10px;width:100%;margin-top:4px;
+  font-size:11px;color:var(--text-muted);
+}
+.cw-queue-item{
+  display:flex;align-items:center;gap:8px;padding:6px 8px;
+  border-radius:6px;transition:background .15s;font-size:12px;
+}
+.cw-queue-item:hover{background:var(--bg-surface)}
+.cw-qi-idx{color:var(--text-muted);font-size:11px;min-width:22px}
+.cw-qi-desc{flex:1;color:var(--text-primary)}
+.cw-qi-status{
+  font-size:10px;padding:2px 6px;border-radius:8px;
+  background:var(--bg-surface);color:var(--text-secondary);
+}
+.cw-journal-item{
+  display:flex;align-items:center;gap:8px;padding:6px 8px;
+  border-radius:6px;transition:background .15s;
+}
+.cw-journal-item:hover{background:var(--bg-surface)}
+.cw-ji-icon{font-size:14px;min-width:20px;text-align:center}
+.cw-ji-info{flex:1;min-width:0}
+.cw-ji-desc{display:block;font-size:12px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-ji-time{font-size:10px;color:var(--text-muted)}
+.cw-undo-btn{
+  background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;
+  border-radius:4px;opacity:.5;transition:.15s;
+}
+.cw-undo-btn:hover{opacity:1;background:var(--bg-surface)}
+.cw-actions{
+  display:flex;gap:8px;padding:10px 14px;
+}
+.cw-btn{
+  flex:1;padding:8px;border:none;border-radius:var(--radius-sm);
+  font-size:12px;font-weight:500;cursor:pointer;transition:.15s;
+  background:var(--bg-surface);color:var(--text-primary);
+}
+.cw-btn:hover{background:var(--bg-surface-hover)}
+.cw-empty{font-size:12px;color:var(--text-muted);padding:8px;text-align:center}
+.cw-mock-tag{animation:cwMockBlink 2s infinite}
+@keyframes cwMockBlink{0%,100%{opacity:1}50%{opacity:.5}}
+
+:root[data-theme="light"] .cw-panel{background:#fff;border-color:rgba(0,0,0,.1);box-shadow:0 8px 32px rgba(0,0,0,.12)}
+:root[data-theme="light"] .cw-header{border-color:rgba(0,0,0,.06)}
+:root[data-theme="light"] .cw-section{border-color:rgba(0,0,0,.06)}
+:root[data-theme="light"] .cw-state-row{background:rgba(0,0,0,.03)}
+:root[data-theme="light"] .cw-btn{background:rgba(0,0,0,.05)}
+
+@media(max-width:480px){
+  .cw-panel{width:calc(100vw - 24px);right:4px}
+}
+
+/* ═══════════════════════════════════════════════════
    R16-fix: Responsive Layout Polish
    ═══════════════════════════════════════════════════ */
 

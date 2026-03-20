@@ -3,6 +3,7 @@ import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, bus } from '/js/state.js'
 import { initWechatPanel } from '/js/settings-wechat.js';
 import { initModelPanel, initMcpPanel, initModelDepGraph } from '/js/settings-models.js';
 import { initMessageSearch, initBookmarks, initReactions, initTranslate, initMessageExport, initMessageEdit, initPinnedMessages, initSummary } from '/js/settings-chat.js';
+import { initCoworkPanel } from '/js/cowork-panel.js';
 
 // ══════════════════════════════════════════════════════════════
 // EMOTION INDICATOR (module-scope)
@@ -2405,6 +2406,7 @@ export function init() {
   initTranslate();
   initKeymapPanel();
   initOnboarding();
+  initCoworkPanel();
 
   fn.showEmotionBadge = showEmotionBadge;
 }
