@@ -56,11 +56,15 @@ class CoworkBus:
 
     IDLE_THRESHOLD = 30.0  # 秒：用户空闲超过此时间 AI 才操作桌面
 
+    TASK_TIMEOUT = 300.0  # 单个任务最多 5 分钟
+
     def __init__(self):
         self._paused = False
         self._tasks: List[CoworkTask] = []
         self._lock = threading.Lock()
         self._human_detector = None
+        self._executor_running = False
+        self._executor_thread: Optional[threading.Thread] = None
 
     def set_detector(self, detector):
         """注入 HumanDetector"""
@@ -151,6 +155,95 @@ class CoworkBus:
             "queue": [t.to_dict() for t in (running + pending)[:10]],
         }
 
+    # ── 后台任务执行器 ──────────────────────────────────────────
+
+    def start_executor(self):
+        """启动后台任务执行线程"""
+        if self._executor_running:
+            return
+        self._executor_running = True
+        self._executor_thread = threading.Thread(
+            target=self._executor_loop, daemon=True, name="CoworkExecutor"
+        )
+        self._executor_thread.start()
+        logger.info("[CoworkBus] 任务执行器已启动")
+
+    def stop_executor(self):
+        self._executor_running = False
+
+    def _executor_loop(self):
+        """持续检查并执行待处理任务"""
+        while self._executor_running:
+            try:
+                task = self._pick_next_task()
+                if task:
+                    self._run_task(task)
+                else:
+                    time.sleep(2.0)  # 无任务时等待
+            except Exception as e:
+                logger.debug(f"[CoworkExecutor] error: {e}")
+                time.sleep(3.0)
+
+    def _pick_next_task(self) -> Optional[CoworkTask]:
+        """选择下一个可执行的任务"""
+        if self._paused:
+            return None
+        with self._lock:
+            for t in self._tasks:
+                if t.status == "pending":
+                    # 需要桌面操作的任务要检查冲突
+                    if t.target_window:
+                        if not self.can_operate_desktop():
+                            continue
+                        if self.check_window_conflict(t.target_window):
+                            continue
+                    t.status = "running"
+                    t.started_at = time.time()
+                    return t
+        return None
+
+    def _run_task(self, task: CoworkTask):
+        """执行单个任务（带超时保护）"""
+        logger.info(f"[CoworkExecutor] 开始: {task.description}")
+        try:
+            if task.executor:
+                # 超时保护
+                result_holder = [None]
+                def _exec():
+                    try:
+                        result_holder[0] = task.executor()
+                    except Exception as e:
+                        result_holder[0] = f"error: {e}"
+
+                t = threading.Thread(target=_exec)
+                t.start()
+                t.join(timeout=self.TASK_TIMEOUT)
+
+                if t.is_alive():
+                    task.status = "failed"
+                    task.result = "超时"
+                    logger.warning(f"[CoworkExecutor] 超时: {task.description}")
+                else:
+                    task.status = "done"
+                    task.result = str(result_holder[0] or "")
+                    logger.info(f"[CoworkExecutor] 完成: {task.description}")
+            else:
+                task.status = "done"
+                task.result = "无执行器"
+
+            task.finished_at = time.time()
+            task.progress = 1.0
+
+        except Exception as e:
+            task.status = "failed"
+            task.result = str(e)
+            task.finished_at = time.time()
+            logger.error(f"[CoworkExecutor] 失败: {task.description} — {e}")
+
+        # 用户回来时暂停检查
+        if self._human_detector and self._human_detector.state.is_active:
+            time.sleep(1.0)  # 短暂等待，不要立刻开始下一个
+
 
 # ── 全局单例 ──
 
@@ -161,10 +254,10 @@ def get_bus() -> CoworkBus:
     global _bus
     if _bus is None:
         _bus = CoworkBus()
-        # 自动注入 HumanDetector
         try:
             from .human_detector import get_detector
             _bus.set_detector(get_detector())
         except Exception:
             pass
+        _bus.start_executor()
     return _bus
