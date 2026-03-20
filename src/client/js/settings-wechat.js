@@ -354,4 +354,69 @@ export function initWechatPanel() {
       () => showToast('复制失败，请手动选择文字')
     );
   };
+
+  // ── 激活微信窗口 ──
+  window.wxpActivate = async function() {
+    try {
+      const r = await fetch('/api/wechat/activate', { method: 'POST' });
+      const d = await r.json();
+      showToast(d.message || (d.ok ? '微信已激活' : '激活失败'));
+    } catch(e) {
+      showToast('请求失败: ' + e.message);
+    }
+  };
+
+  // ── 智能统计 ──
+  window.wxpSmartStats = async function() {
+    const el = document.getElementById('wxp-smart-stats');
+    el.style.display = 'block';
+    el.textContent = '加载中...';
+    try {
+      const r = await fetch('/api/wechat/smart-stats');
+      const d = await r.json();
+      if (d.ok !== false) {
+        let txt = '智能回复统计\n';
+        txt += '─────────────\n';
+        txt += `意图分类: ${d.intent_counts || '无数据'}\n`;
+        txt += `情感分布: ${d.sentiment_dist || '无数据'}\n`;
+        txt += `批处理: ${d.batch_stats || '无数据'}\n`;
+        txt += `升级决策: ${d.escalation_count || 0} 次\n`;
+        txt += `平均回复延迟: ${d.avg_reply_ms || '?'}ms\n`;
+        el.textContent = txt;
+      } else {
+        el.textContent = d.error || '获取统计失败';
+      }
+    } catch(e) {
+      el.textContent = '请求失败: ' + e.message;
+    }
+  };
+
+  // ── 测试发送消息 ──
+  window.wxpSendTest = async function() {
+    const contact = document.getElementById('wxp-send-contact').value.trim();
+    const text = document.getElementById('wxp-send-text').value.trim();
+    const el = document.getElementById('wxp-send-result');
+    if (!text) { showToast('请输入消息内容'); return; }
+    el.textContent = '发送中...';
+    el.style.color = '#8a9bb0';
+    try {
+      const r = await fetch('/api/wechat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact, text })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        el.textContent = '✅ ' + (d.message || '已发送');
+        el.style.color = '#4ade80';
+        document.getElementById('wxp-send-text').value = '';
+      } else {
+        el.textContent = '❌ ' + (d.message || d.error || '发送失败');
+        el.style.color = '#f87171';
+      }
+    } catch(e) {
+      el.textContent = '❌ 请求失败: ' + e.message;
+      el.style.color = '#f87171';
+    }
+  };
 }

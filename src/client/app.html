@@ -88,15 +88,16 @@ body{
 /* ─── Chat Page ─── */
 #chat-page{background:var(--bg-primary)}
 
-/* Header */
+/* Header — CSS Grid three-column layout: left | center | right */
 .chat-header{
-  display:flex;align-items:center;justify-content:space-between;
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
   height:var(--header-h);padding:0 16px;padding-top:var(--safe-top);
   background:linear-gradient(180deg,var(--bg-secondary),var(--bg-tertiary));
   border-bottom:1px solid var(--border);
   flex-shrink:0;z-index:10;
 }
-.header-left{display:flex;align-items:center;gap:10px}
+.header-left{display:flex;align-items:center;gap:6px;justify-self:start;min-width:0}
+.header-center{display:flex;align-items:center;gap:8px;justify-self:center;white-space:nowrap}
 /* Profile switcher in header */
 .profile-switcher{display:flex;align-items:center;gap:2px;margin-left:8px;padding-left:8px;border-left:1px solid var(--border)}
 .profile-avatar{
@@ -216,7 +217,7 @@ body{
 }
 .ws-reconnect-bar.visible{transform:translateY(0)}
 .header-title{font-size:16px;font-weight:600}
-.header-right{display:flex;align-items:center;gap:4px;position:relative}
+.header-right{display:flex;align-items:center;gap:4px;justify-self:end;position:relative}
 .icon-btn{
   width:40px;height:40px;display:flex;align-items:center;justify-content:center;
   border:none;background:transparent;color:var(--text-secondary);
@@ -443,7 +444,7 @@ body{
   transform:translateY(0);transition:transform .35s cubic-bezier(.4,0,.2,1);
   display:flex;flex-direction:column;
 }
-#camera-panel.hidden{transform:translateY(100%);pointer-events:none}
+#camera-panel.hidden{transform:translateY(100%);pointer-events:none;opacity:0;visibility:hidden}
 .camera-header{
   display:flex;align-items:center;justify-content:space-between;
   padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;
@@ -1960,7 +1961,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   .input-area{padding:12px 10%}
   .welcome{padding:80px 40px}
   #camera-panel{left:auto;right:16px;bottom:80px;width:380px;height:420px;border-radius:var(--radius-lg);border:1px solid var(--border)}
-  #camera-panel.hidden{transform:translateY(20px)}
+  #camera-panel.hidden{transform:translateY(20px);opacity:0;pointer-events:none;visibility:hidden}
   .camera-pip{width:240px;height:180px}
 }
 
@@ -1976,6 +1977,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   }
   #sessions-panel:not(.open){width:0;opacity:0;border-right:none;padding:0}
   #sessions-panel.open{width:280px;opacity:1}
+  #sessions-panel.open:not(.has-sessions){width:0;opacity:0;border-right:none;padding:0}
   .chat-main-col{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
   .chat-header{position:relative}
   .messages-area{flex:1}
@@ -2229,16 +2231,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 </head>
 <body>
 
-<!-- Floating back button -->
-<a id="backToChat" href="/chat" style="
-  position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;z-index:9999;
-  display:flex;align-items:center;gap:4px;
-  padding:6px 14px 6px 10px;border-radius:20px;
-  background:rgba(10,10,20,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  border:1px solid rgba(255,255,255,.12);
-  color:#e8e8f0;font-size:13px;font-weight:600;text-decoration:none;
-  transition:opacity .3s;
-">← 返回</a>
+<!-- Back button is now integrated into the header -->
 
 <!-- ═══════════════ GLOBAL OVERLAYS ═══════════════ -->
 <div class="offline-banner" id="offline-banner">网络已断开，部分功能不可用</div>
@@ -2274,7 +2267,18 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <input class="setup-input" id="server-url" data-i18n="setup.urlPlaceholder" data-i18n-attr="placeholder" placeholder="服务器地址 (如 http://192.168.1.100:8765)" autocomplete="url">
     <input class="setup-input" id="server-token" data-i18n="setup.tokenPlaceholder" data-i18n-attr="placeholder" placeholder="令牌 (可选)" type="password" autocomplete="off">
     <button class="btn btn-primary" id="connect-btn" data-i18n="setup.connect">连接</button>
-    <button class="btn btn-ghost" id="skip-setup-btn" data-i18n="setup.useCurrentServer">使用当前服务器</button>
+    <button class="btn btn-ghost" id="skip-setup-btn" data-i18n="setup.useCurrentServer"
+      onclick="(async function(){
+        try{
+          var r=await fetch(location.origin+'/api/server-info',{signal:AbortSignal.timeout(5000)});
+          if(!r.ok){alert('连接失败');return;}
+          var info=await r.json();
+          localStorage.setItem('oc_server',location.origin);
+          localStorage.setItem('oc_token',info.token||'');
+          if(window.showChatPage){window.showChatPage(info);}
+          else{document.getElementById('setup-page').classList.add('hidden');document.getElementById('chat-page').classList.remove('hidden');}
+        }catch(e){alert('连接失败: '+e.message);}
+      })()">使用当前服务器</button>
   </div>
 </div>
 
@@ -2284,13 +2288,18 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <!-- Header -->
   <header class="chat-header">
     <div class="header-left">
-      <button class="icon-btn" id="sessions-toggle" title="会话" style="margin-right:4px">
+      <a href="/chat" class="icon-btn" title="返回" style="text-decoration:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </a>
+      <button class="icon-btn" id="sessions-toggle" title="会话">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       </button>
+      <div class="profile-switcher" id="profile-switcher"></div>
+    </div>
+    <div class="header-center">
       <div class="status-dot" id="status-dot"></div>
       <span class="ws-latency-badge" id="ws-latency-badge" title="WebSocket RTT">—</span>
-      <span class="header-title" data-i18n="header.title">十三香小龙虾 增强版</span>
-      <div class="profile-switcher" id="profile-switcher"></div>
+      <span class="header-title" data-i18n="header.title">十三香小龙虾</span>
     </div>
     <div class="header-right">
       <button class="icon-btn" id="desktop-toggle" data-i18n="header.desktop" data-i18n-attr="title" title="远程桌面">
@@ -3240,6 +3249,25 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           </div>
           <div id="wxp-uia-result" style="font-size:11px;color:#e8f0fe;font-family:monospace;white-space:pre;max-height:300px;overflow:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;display:none"></div>
         </div>
+        <!-- 快捷操作 -->
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px">
+          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">快捷操作</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="wxp-btn-primary" onclick="wxpActivate()" style="padding:6px 14px;font-size:12px">🔄 激活微信窗口</button>
+            <button class="wxp-btn-primary" onclick="wxpSmartStats()" style="padding:6px 14px;font-size:12px">📊 智能统计</button>
+          </div>
+          <div id="wxp-smart-stats" style="margin-top:8px;font-size:11px;color:#e8f0fe;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;display:none"></div>
+        </div>
+        <!-- 测试发送 -->
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px">
+          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">测试发送消息</div>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <input type="text" id="wxp-send-contact" placeholder="联系人名称" class="wxp-text-input" style="flex:1;font-size:12px">
+            <input type="text" id="wxp-send-text" placeholder="消息内容" class="wxp-text-input" style="flex:2;font-size:12px">
+            <button class="wxp-btn-primary" onclick="wxpSendTest()" style="padding:6px 14px;font-size:12px">📤 发送</button>
+          </div>
+          <div id="wxp-send-result" style="font-size:11px;color:#8a9bb0;margin-top:4px"></div>
+        </div>
       </div>
     </div>
 
@@ -3404,16 +3432,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <span style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block"></span> REC
 </div>
 
-<div id="calib-wizard" class="hidden" role="dialog" aria-label="无障碍控制校准" style="position:fixed;inset:0;z-index:9999;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
-  <div style="max-width:560px;width:100%;text-align:center">
-    <div id="calib-step-indicator" style="display:flex;gap:6px;justify-content:center;margin-bottom:24px"></div>
-    <div id="calib-content" style="min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center"></div>
-    <div style="margin-top:24px;display:flex;gap:12px;justify-content:center">
-      <button class="btn" id="calib-skip" style="background:var(--bg-surface);color:var(--text-secondary);padding:10px 24px" aria-label="跳过校准">跳过</button>
-      <button class="btn btn-primary" id="calib-next" style="padding:10px 32px" aria-label="下一步">下一步</button>
-    </div>
-  </div>
-</div>
+<!-- Calibration wizard removed: opt-in via settings only -->
 
 <!-- Stop Speaking Button -->
 <button class="stop-speaking hidden" id="stop-speaking-btn">
@@ -3617,27 +3636,125 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 <!-- Hidden file input -->
 <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.zip" hidden>
 
+<!-- Startup Loading Screen -->
+<div id="app-loading" style="position:fixed;inset:0;z-index:99999;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .5s">
+  <div style="font-size:48px">🦞</div>
+  <h2 style="font-size:18px;font-weight:600;color:var(--text-primary)">十三香小龙虾</h2>
+  <div style="width:200px;height:4px;background:var(--bg-tertiary);border-radius:2px;overflow:hidden">
+    <div id="app-loading-bar" style="height:100%;width:10%;background:linear-gradient(90deg,var(--accent),#e94560);border-radius:2px;transition:width .5s"></div>
+  </div>
+  <div id="app-loading-msg" style="font-size:12px;color:var(--text-muted)">正在启动...</div>
+  <div id="app-loading-detail" style="font-size:11px;color:var(--text-muted);opacity:.6;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:300px"></div>
+</div>
+<script>
+(function(){
+  var bar = document.getElementById('app-loading-bar');
+  var msg = document.getElementById('app-loading-msg');
+  var detail = document.getElementById('app-loading-detail');
+  var loading = document.getElementById('app-loading');
+  var ready = false;
+  var progress = 10;
+  var statusIcons = {pending:'⏳',loading:'⏳',ready:'✅',error:'❌'};
+
+  function poll(){
+    if(ready) return;
+    fetch('/api/startup-status').then(function(r){return r.json()}).then(function(d){
+      if(!d) return;
+      msg.textContent = d.message || '加载中...';
+      var comps = d.components || {};
+      var done = 0, total = 0;
+      var html = '';
+      var names = {stt:'语音识别',tts:'语音合成',backend:'AI引擎',workflow:'工作流'};
+      for(var k in comps){
+        total++;
+        if(comps[k]==='ready') done++;
+        html += '<span>'+(statusIcons[comps[k]]||'⏳')+' '+(names[k]||k)+'</span>';
+      }
+      detail.innerHTML = html;
+      progress = Math.min(95, 10 + (done/Math.max(total,1)) * 85);
+      bar.style.width = progress + '%';
+      if(d.ready){
+        ready = true;
+        bar.style.width = '100%';
+        msg.textContent = '就绪';
+      }
+    }).catch(function(){
+      msg.textContent = '等待服务器...';
+    });
+    if(!ready) setTimeout(poll, 1000);
+  }
+  poll();
+
+  window.__appLoadingDone = function(){
+    loading.style.opacity = '0';
+    loading.style.pointerEvents = 'none';
+    setTimeout(function(){ loading.remove(); }, 600);
+  };
+
+  // Safety: if JS modules fail to call __appLoadingDone within 15s,
+  // remove loading screen anyway so user can interact with the page
+  setTimeout(function(){
+    if(loading && loading.parentNode){
+      loading.style.opacity = '0';
+      loading.style.pointerEvents = 'none';
+      setTimeout(function(){ if(loading.parentNode) loading.remove(); }, 600);
+    }
+  }, 15000);
+})();
+</script>
+
 <!-- External libs -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script type="module">
-import { init as initState } from '/js/state.js';
-import { init as initWsManager } from '/js/ws-manager.js';
-import { init as initChat } from '/js/chat.js';
-import { init as initVoice } from '/js/voice.js';
-import { init as initCamera } from '/js/camera.js';
-import { init as initSkills } from '/js/skills.js';
-import { init as initProfile } from '/js/profile.js';
-import { init as initSettings } from '/js/settings.js';
+const _v = '?v=' + Date.now();
+const { init: initState } = await import('/js/state.js' + _v);
+const { init: initWsManager } = await import('/js/ws-manager.js' + _v);
+const { init: initChat } = await import('/js/chat.js' + _v);
+const { init: initVoice } = await import('/js/voice.js' + _v);
+const { init: initCamera } = await import('/js/camera.js' + _v);
+const { init: initSkills } = await import('/js/skills.js' + _v);
+const { init: initProfile } = await import('/js/profile.js' + _v);
+const { init: initSettings } = await import('/js/settings.js' + _v);
 
-initState();
-initSettings();
-initWsManager();
-initChat();
-initVoice();
-initCamera();
-initSkills();
-initProfile();
+const steps = [
+  ['state', initState],
+  ['settings', initSettings],
+  ['ws-manager', initWsManager],
+  ['chat', initChat],
+  ['voice', initVoice],
+  ['camera', initCamera],
+  ['skills', initSkills],
+  ['profile', initProfile],
+];
+let failedAt = null;
+for (const [name, fn] of steps) {
+  try { fn(); } catch (e) {
+    console.error(`[init] ${name} failed:`, e);
+    if (!failedAt) failedAt = `${name}: ${e.message}`;
+  }
+}
+if (failedAt) {
+  console.warn('[init] Some modules failed, but continuing. First failure:', failedAt);
+}
+if (window.__appLoadingDone) window.__appLoadingDone();
+
+// Sessions panel: only visually show when there are actual sessions
+// CSS rule: .open:not(.has-sessions) collapses the panel even if JS adds .open
+(function checkSessions() {
+  const sp = document.getElementById('sessions-panel');
+  if (!sp) return;
+  fetch(window.location.origin + '/api/history/sessions')
+    .then(r => r.json())
+    .then(d => {
+      if (d.sessions && d.sessions.length > 0) {
+        sp.classList.add('has-sessions');
+      } else {
+        sp.classList.remove('has-sessions');
+      }
+    })
+    .catch(() => sp.classList.remove('has-sessions'));
+})();
 </script>
 </body>
 </html>
