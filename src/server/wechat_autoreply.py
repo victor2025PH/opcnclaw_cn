@@ -446,9 +446,13 @@ class WeChatAutoReply:
                 logger.debug(f"[AutoReply] 跳过非白名单联系人：{msg.contact}")
                 return
 
-            # reply_all 模式：为未注册联系人创建临时规则
+            # reply_all 模式：为未注册联系人创建/复用临时规则（保留上下文）
             if not rule and reply_all:
-                rule = ContactRule(name=msg.contact)
+                if not hasattr(self, '_temp_rules'):
+                    self._temp_rules = {}
+                if msg.contact not in self._temp_rules:
+                    self._temp_rules[msg.contact] = ContactRule(name=msg.contact)
+                rule = self._temp_rules[msg.contact]
 
             # ③ 单人开关
             if not rule.enabled:

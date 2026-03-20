@@ -355,6 +355,75 @@ export function initWechatPanel() {
     );
   };
 
+  // ── 升级处理 ──
+  async function wxpRefreshEscalations() {
+    try {
+      const r = await fetch('/api/wechat/escalations');
+      const d = await r.json();
+      const list = document.getElementById('wxp-escalations-list');
+      const badge = document.getElementById('wxp-esc-count');
+      const items = d.escalations || [];
+      if (items.length === 0) {
+        list.innerHTML = '<div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无需要人工处理的消息</div>';
+        badge.style.display = 'none';
+        return;
+      }
+      badge.textContent = items.length;
+      badge.style.display = 'inline';
+      list.innerHTML = items.map(e => `
+        <div style="background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.2);border-radius:10px;padding:10px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:600;color:#e94560">${e.contact || '未知'}</span>
+            <span style="font-size:11px;color:#8a9bb0">${e.reason || '需要人工介入'}</span>
+          </div>
+          <div style="font-size:12px;color:#c8d0e0;margin-bottom:6px;background:rgba(0,0,0,.2);padding:6px 8px;border-radius:6px">
+            <div style="color:#8a9bb0;margin-bottom:4px">收到:</div>
+            ${(e.messages || []).map(m => '<div>' + (m.content || m).toString().substring(0,80) + '</div>').join('')}
+          </div>
+          <div style="font-size:12px;color:#a0b0c8;margin-bottom:8px">
+            <span style="color:#8a9bb0">AI 草稿:</span> ${(e.draft_reply || '无').substring(0,60)}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="wxp-btn-primary" onclick="wxpEscAction('${e.id}','send_draft')" style="padding:4px 12px;font-size:11px">✅ 发送草稿</button>
+            <button class="wxp-btn-secondary" onclick="wxpEscCustom('${e.id}')" style="padding:4px 12px;font-size:11px">✏️ 自定义回复</button>
+            <button class="wxp-btn-secondary" onclick="wxpEscAction('${e.id}','dismiss')" style="padding:4px 12px;font-size:11px;color:#888">忽略</button>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) {}
+  }
+
+  window.wxpEscAction = async function(eid, action, customText) {
+    try {
+      const body = { action };
+      if (customText) body.custom_reply = customText;
+      const r = await fetch('/api/wechat/escalations/' + eid, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      showToast(d.ok ? '已处理' : (d.error || '处理失败'));
+      wxpRefreshEscalations();
+    } catch(e) {
+      showToast('请求失败');
+    }
+  };
+
+  window.wxpEscCustom = function(eid) {
+    const text = prompt('输入自定义回复:');
+    if (text && text.trim()) {
+      wxpEscAction(eid, 'send_custom', text.trim());
+    }
+  };
+
+  // 在面板刷新时也刷新升级处理
+  const _origRefresh = wxpRefresh;
+  wxpRefresh = async function() {
+    await _origRefresh();
+    wxpRefreshEscalations();
+  };
+
   // ── 激活微信窗口 ──
   window.wxpActivate = async function() {
     try {

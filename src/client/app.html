@@ -1969,17 +1969,25 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 .chat-main-col{position:relative}
 /* ─── Tablet landscape: dual-column layout ─── */
 @media(min-width:768px) and (orientation:landscape){
-  #chat-page{display:flex;flex-direction:row}
+  #chat-page{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    grid-template-rows:auto 1fr;
+  }
+  .chat-header{
+    grid-column:1/-1;
+    position:relative;
+  }
   #sessions-panel{
-    position:relative;transform:none;width:280px;flex-shrink:0;
+    grid-row:2;grid-column:1;
+    position:relative;transform:none;width:280px;
     border-right:1px solid var(--border);z-index:auto;
     transition:width .25s,opacity .25s;overflow:hidden;
   }
   #sessions-panel:not(.open){width:0;opacity:0;border-right:none;padding:0}
   #sessions-panel.open{width:280px;opacity:1}
   #sessions-panel.open:not(.has-sessions){width:0;opacity:0;border-right:none;padding:0}
-  .chat-main-col{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
-  .chat-header{position:relative}
+  .chat-main-col{grid-row:2;grid-column:2;display:flex;flex-direction:column;min-width:0;position:relative}
   .messages-area{flex:1}
 }
 @media(max-width:767px),(orientation:portrait){
@@ -3210,6 +3218,14 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <div class="wxp-section-title">🔔 待审核回复</div>
       <div id="wxp-reviews-list">
         <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无待审核</div>
+      </div>
+    </div>
+
+    <!-- 升级处理 -->
+    <div class="wxp-section" id="wxp-escalations-section">
+      <div class="wxp-section-title">🚨 需要人工处理 <span id="wxp-esc-count" style="background:#e94560;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px;display:none">0</span></div>
+      <div id="wxp-escalations-list">
+        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无需要人工处理的消息</div>
       </div>
     </div>
 
