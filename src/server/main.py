@@ -219,6 +219,90 @@ async def write_protection_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+# ── PIN 码保护（敏感操作需要验证）──────────────────────────────────
+_admin_pin: Optional[str] = os.environ.get("OPENCLAW_ADMIN_PIN")
+_pin_sessions: dict = {}  # token → expire_ts
+
+_PIN_PROTECTED_PREFIXES = (
+    "/api/wechat/toggle", "/api/wechat/config", "/api/wechat/send",
+    "/api/cowork/pause", "/api/cowork/resume", "/api/cowork/undo",
+    "/api/restart", "/api/system/restart", "/api/system/clear-cache",
+    "/api/mcp/rpc",
+)
+
+@app.post("/api/auth/pin")
+async def auth_pin(request: Request):
+    """验证 PIN 码，返回临时 token（有效期 24h）"""
+    if not _admin_pin:
+        return {"ok": True, "token": "no-pin-set", "message": "PIN 未设置，无需验证"}
+    body = await request.json()
+    pin = body.get("pin", "")
+    if pin == _admin_pin:
+        import secrets
+        token = secrets.token_hex(16)
+        _pin_sessions[token] = time.time() + 86400
+        return {"ok": True, "token": token}
+    return {"ok": False, "error": "PIN 码错误"}
+
+@app.get("/api/auth/status")
+async def auth_status():
+    """检查是否需要 PIN 验证"""
+    return {"pin_required": bool(_admin_pin), "pin_set": bool(_admin_pin)}
+
+
+@app.get("/api/metrics")
+async def system_metrics():
+    """性能监控指标"""
+    import psutil
+    uptime = time.time() - _startup_progress["started_at"] if _startup_progress["started_at"] else 0
+    metrics = {
+        "uptime_s": round(uptime),
+        "cpu_pct": psutil.cpu_percent(interval=0),
+        "mem_pct": psutil.virtual_memory().percent,
+        "mem_used_mb": psutil.virtual_memory().used // (1024**2),
+    }
+    # 数据库大小
+    try:
+        data_dir = _PROJECT_ROOT / "data"
+        metrics["db_main_mb"] = round((data_dir / "main.db").stat().st_size / (1024**2), 1) if (data_dir / "main.db").exists() else 0
+        metrics["db_wechat_mb"] = round((data_dir / "wechat.db").stat().st_size / (1024**2), 1) if (data_dir / "wechat.db").exists() else 0
+    except Exception:
+        pass
+    # 消息统计
+    try:
+        conn = _db.get_conn("main")
+        metrics["total_messages"] = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+        metrics["total_fts_indexed"] = conn.execute("SELECT COUNT(*) FROM messages_fts").fetchone()[0]
+    except Exception:
+        pass
+    # 微信统计
+    try:
+        from .wechat_autoreply import get_engine
+        engine = get_engine()
+        if engine:
+            metrics["wechat_today_replied"] = getattr(engine, '_config', None) and 0
+    except Exception:
+        pass
+    return metrics
+
+@app.middleware("http")
+async def pin_protection_middleware(request: Request, call_next):
+    """敏感操作需要 PIN 验证"""
+    if _admin_pin:
+        path = request.url.path.rstrip("/")
+        if any(path.startswith(p) for p in _PIN_PROTECTED_PREFIXES):
+            token = request.headers.get("X-Admin-Token", "")
+            if not token:
+                token = request.query_params.get("_token", "")
+            if token not in _pin_sessions or _pin_sessions.get(token, 0) < time.time():
+                return Response(
+                    content=json.dumps({"error": "需要 PIN 验证", "pin_required": True}),
+                    status_code=401,
+                    media_type="application/json",
+                )
+    return await call_next(request)
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Global Instances
 # ═══════════════════════════════════════════════════════════════════
