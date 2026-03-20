@@ -27,11 +27,33 @@ export function initWechatPanel() {
     backBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); closeWechatPanel(); };
   }
 
+  let _lastReplyCount = -1;
+
   async function wxpRefresh() {
     try {
       const r = await fetch('/api/wechat/status');
       const d = await r.json();
       wxpRenderStatus(d);
+
+      // 系统通知：新回复时弹出
+      const total = d.total_replied || 0;
+      if (_lastReplyCount >= 0 && total > _lastReplyCount) {
+        const logs = d.logs || [];
+        const latest = logs[0];
+        if (latest && Notification.permission === 'granted') {
+          new Notification('十三香小龙虾 AI', {
+            body: `已回复 ${latest.contact || '?'}: ${(latest.reply || '').substring(0, 50)}`,
+            icon: '/assets/icon.png',
+            tag: 'wechat-reply',
+          });
+        }
+      }
+      _lastReplyCount = total;
+
+      // 首次请求通知权限
+      if (_lastReplyCount === -1 && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
     } catch(e) {
       console.warn('wxp refresh:', e);
     }

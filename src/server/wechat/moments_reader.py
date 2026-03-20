@@ -276,6 +276,10 @@ class MomentsReader:
         except Exception as e:
             logger.debug(f"滚动失败: {e}")
 
+    # Vision AI 缓存（同一截图 30 秒内不重复调 API）
+    _vision_cache: Dict = {}
+    _VISION_CACHE_TTL = 30.0
+
     def _take_moments_screenshot(self) -> Optional[str]:
         """截取朋友圈区域并转为 base64"""
         try:
@@ -285,7 +289,7 @@ class MomentsReader:
 
             screenshot = pyautogui.screenshot()
             buffer = BytesIO()
-            screenshot.save(buffer, format="PNG")
+            screenshot.save(buffer, format="JPEG", quality=60)  # JPEG 比 PNG 小 3-5x
             b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
             return b64
 
@@ -293,10 +297,34 @@ class MomentsReader:
             logger.warning(f"截图失败: {e}")
             return None
 
+    def _get_vision_cache(self, screenshot_b64: str) -> Optional[List]:
+        """检查 Vision AI 缓存"""
+        import hashlib, time
+        key = hashlib.md5(screenshot_b64[:1000].encode()).hexdigest()
+        entry = self._vision_cache.get(key)
+        if entry and (time.time() - entry["ts"]) < self._VISION_CACHE_TTL:
+            logger.debug("[Vision] 缓存命中")
+            return entry["posts"]
+        return None
+
+    def _set_vision_cache(self, screenshot_b64: str, posts: List):
+        """设置 Vision AI 缓存"""
+        import hashlib, time
+        key = hashlib.md5(screenshot_b64[:1000].encode()).hexdigest()
+        self._vision_cache[key] = {"posts": posts, "ts": time.time()}
+        # 清理过期缓存
+        now = time.time()
+        expired = [k for k, v in self._vision_cache.items() if now - v["ts"] > self._VISION_CACHE_TTL * 3]
+        for k in expired:
+            del self._vision_cache[k]
+
     async def _extract_via_vision(
         self, screenshot_b64: str, max_posts: int
     ) -> List[MomentPost]:
-        """用 Vision AI 从截图中提取朋友圈内容"""
+        """用 Vision AI 从截图中提取朋友圈内容（带缓存）"""
+        cached = self._get_vision_cache(screenshot_b64)
+        if cached is not None:
+            return cached
         prompt = f"""请分析这张微信朋友圈截图，提取所有可见的朋友圈动态。
 
 对每条动态，提取以下信息并以 JSON 数组格式返回（最多{max_posts}条）：
@@ -328,7 +356,9 @@ class MomentsReader:
             else:
                 return []
 
-            return self._parse_vision_result(result)
+            posts = self._parse_vision_result(result)
+            self._set_vision_cache(screenshot_b64, posts)
+            return posts
 
         except Exception as e:
             logger.warning(f"Vision AI 提取失败: {e}")
