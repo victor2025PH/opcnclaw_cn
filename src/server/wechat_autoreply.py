@@ -592,9 +592,14 @@ class WeChatAutoReply:
         # 1. 优先用 v2 adapter（支持微信 4.x UIA 发送）
         try:
             if _adapter is not None:
-                success = _adapter.send_message(contact, reply)
-                if success:
-                    logger.info(f"[AutoReply] ✅ 已回复 {contact}: {reply[:30]}...")
+                # 快速检查微信窗口是否可用，避免 UIA 搜索超时阻塞
+                from .wechat_monitor import _wechat_is_running
+                if _wechat_is_running():
+                    success = _adapter.send_message(contact, reply)
+                    if success:
+                        logger.info(f"[AutoReply] ✅ 已回复 {contact}: {reply[:30]}...")
+                else:
+                    logger.debug("[AutoReply] 微信未运行，跳过发送")
         except Exception as e:
             logger.debug(f"[AutoReply] adapter send: {e}")
 

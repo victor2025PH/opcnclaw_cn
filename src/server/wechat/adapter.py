@@ -394,17 +394,22 @@ class WeChatAdapter:
             try:
                 now = time.time()
 
-                # 保活
+                # 保活：检查微信窗口是否可用
                 if now - last_keepalive > self._KEEPALIVE_INTERVAL:
                     last_keepalive = now
                     self._keepalive()
 
-                # 多会话扫描：检查未读列表 → 切换到有新消息的会话
+                # 如果微信窗口不可用，长时间等待不要阻塞
+                if self._uia_reader and not self._uia_reader._get_wechat_window():
+                    time.sleep(10.0)  # 微信不在 → 10秒后再检查
+                    continue
+
+                # 多会话扫描
                 if now - last_unread_scan > self._UNREAD_SCAN_INTERVAL:
                     last_unread_scan = now
                     self._scan_unread_sessions()
 
-                # 常规扫描：读取当前聊天窗口的消息
+                # 常规扫描
                 interval = self._get_scan_interval()
                 self._scan_cycle()
                 time.sleep(interval)

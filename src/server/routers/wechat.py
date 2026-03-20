@@ -59,12 +59,15 @@ def _get_desktop():
         return None
 
 
+_init_attempted = False
+
 def _ensure_wechat_engine():
-    """懒加载：首次调用时初始化 v2.0 三轨融合系统"""
-    global _wechat_monitor, _wechat_engine, _wechat_adapter
+    """懒加载：首次调用时初始化 v2.0 三轨融合系统（只尝试一次）"""
+    global _wechat_monitor, _wechat_engine, _wechat_adapter, _init_attempted
     if not _wechat_autoreply_available:
         return None, None
-    if _wechat_engine is None:
+    if _wechat_engine is None and not _init_attempted:
+        _init_attempted = True
         try:
             result = init_wechat_v2(
                 ai_backend=_get_backend(),
