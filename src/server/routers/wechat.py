@@ -46,8 +46,17 @@ def _get_backend():
 
 
 def _get_desktop():
-    from ..main import desktop
-    return desktop
+    try:
+        from ..main import desktop
+        if desktop is not None:
+            return desktop
+    except (ImportError, AttributeError):
+        pass
+    try:
+        from .desktop import desktop
+        return desktop
+    except (ImportError, AttributeError):
+        return None
 
 
 def _ensure_wechat_engine():
@@ -421,6 +430,21 @@ async def wechat_uia_debug(max_depth: int = 5):
         return {"ok": True, "node_count": len(tree), "tree": tree}
     except Exception as e:
         logger.error(f"wechat uia-debug error: {e}")
+        return {"ok": False, "error": str(e)}
+
+
+@router.post("/api/wechat/activate")
+async def wechat_activate():
+    """自动查找并激活微信窗口（从最小化/托盘恢复到前台）"""
+    if not _wechat_autoreply_available:
+        return {"ok": False, "error": "微信模块不可用"}
+    try:
+        from ..wechat_monitor import UIAReader
+        result = await asyncio.get_event_loop().run_in_executor(
+            None, UIAReader.activate_wechat_window
+        )
+        return {"ok": result, "message": "微信窗口已激活" if result else "未找到微信窗口"}
+    except Exception as e:
         return {"ok": False, "error": str(e)}
 
 

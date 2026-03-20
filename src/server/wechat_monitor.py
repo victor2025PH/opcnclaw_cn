@@ -131,6 +131,30 @@ class UIAReader:
                 logger.debug(f"UIA find wechat window ({cls}): {e}")
         return None
 
+    @staticmethod
+    def activate_wechat_window() -> bool:
+        """
+        自动查找并激活微信窗口（从最小化/托盘恢复到前台）。
+        返回是否成功。
+        """
+        if not _uia_available:
+            return False
+        import time as _time
+        for cls in WECHAT_CLASSES:
+            try:
+                wnd = auto.WindowControl(ClassName=cls, searchDepth=1)
+                if wnd.Exists(1, 0):
+                    wnd.ShowWindow(9)  # SW_RESTORE
+                    wnd.SetTopmost(True)
+                    _time.sleep(0.3)
+                    wnd.SetTopmost(False)
+                    logger.info(f"[Monitor] 微信窗口已激活 ({cls})")
+                    return True
+            except Exception:
+                continue
+        logger.warning("[Monitor] 未找到微信窗口，无法激活")
+        return False
+
     def get_unread_sessions(self) -> List[Dict]:
         """
         读取左侧会话列表，返回有未读消息的会话。
