@@ -209,12 +209,17 @@ export function initWechatPanel() {
   function wxpRenderLogs(logs) {
     const el = document.getElementById('wxp-logs-list');
     if (!logs.length) { el.innerHTML = '<div style="color:#8a9bb0;text-align:center;padding:8px">暂无记录</div>'; return; }
-    el.innerHTML = logs.reverse().map(l => `
-      <div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px;align-items:flex-start">
-        <span style="color:#8a9bb0;white-space:nowrap">${l.time}</span>
-        <span style="color:#63b3ed">${l.contact}</span>
-        <span style="color:#aaa;flex:1">${l.incoming} → <span style="color:#e8f0fe">${l.reply}</span></span>
-        <span style="color:${l.success?'#48bb78':'#fc8181'}">${l.success?'✓':'✗'}</span>
+    el.innerHTML = logs.slice(0, 10).map(l => `
+      <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:600;color:#63b3ed">${l.contact||'?'}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;color:#666">${l.time||''}</span>
+            <span style="font-size:11px;color:${l.success?'#4ade80':'#f87171'}">${l.success?'✅':'❌'}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8a9bb0;margin-bottom:2px">📥 ${(l.incoming||'').substring(0,60)}</div>
+        <div style="font-size:11px;color:#e8f0fe">🤖 ${(l.reply||'').substring(0,60)}</div>
       </div>`).join('');
   }
 
