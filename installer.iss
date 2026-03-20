@@ -9,10 +9,10 @@
 ; 编译命令（CMD）:
 ;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 ;
-; 生成文件: dist\installer\十三香小龙虾-v3.5.2-Setup.exe
+; 生成文件: dist\installer\十三香小龙虾-v3.6.0-Setup.exe
 
 #define AppName       "十三香小龙虾"
-#define AppVersion    "3.5.2"
+#define AppVersion    "3.6.0"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
 #define AppExeName    "十三香小龙虾.exe"
@@ -32,7 +32,7 @@ DefaultGroupName=十三香小龙虾
 AllowNoIcons=yes
 LicenseFile=installer\assets\license.txt
 ; 输出目录和文件名
-OutputDir=dist\installer
+OutputDir=dist
 ; 带 BuildID 的文件名，避免被网盘/浏览器同名覆盖、拿错包
 OutputBaseFilename=十三香小龙虾-v{#AppVersion}-Setup
 ; 图标
@@ -85,9 +85,9 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 
 [Files]
 ; ── 核心应用文件 ──────────────────────────────────────────────
-; ── Tauri 桌面客户端（编译后自动复制到 dist/installer/）───
+; ── Tauri 桌面客户端（主启动器）───────────────────────────
 Source: "dist\十三香小龙虾.exe"; DestDir: "{app}"; Flags: ignoreversion
-; ── 旧启动器（保留兼容）────────────────────────────────────
+; ── 项目文件 ────────────────────────────────────────────────
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt";           DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt";      DestDir: "{app}"; Flags: ignoreversion
@@ -95,10 +95,7 @@ Source: "requirements-full.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".env.template";         DestDir: "{app}"; DestName: ".env.template"; Flags: ignoreversion
 Source: "安装说明.md";            DestDir: "{app}"; Flags: ignoreversion
 Source: "OpenClaw使用说明书.md";  DestDir: "{app}"; Flags: ignoreversion
-Source: "start.bat";             DestDir: "{app}"; Flags: ignoreversion
-Source: "OpenClaw.vbs";          DestDir: "{app}"; Flags: ignoreversion
 Source: "openclaw_debug.bat";    DestDir: "{app}"; Flags: ignoreversion
-Source: "_create_launcher.vbs";  DestDir: "{app}"; Flags: ignoreversion
 Source: "config.ini";            DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 
 ; ── 源代码目录 ────────────────────────────────────────────────
@@ -158,6 +155,11 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
 Filename: "{app}\十三香小龙虾.exe"; \
   Description: "立即启动 十三香小龙虾"; \
   Flags: nowait postinstall skipifsilent; Check: IsStandardMode
+
+[UninstallRun]
+; 卸载前终止运行中的程序（Tauri + Python 后端）
+Filename: "taskkill"; Parameters: "/F /IM shisanxiang.exe /T"; Flags: runhidden; RunOnceId: "KillTauri"
+Filename: "taskkill"; Parameters: "/F /IM 十三香小龙虾.exe /T"; Flags: runhidden; RunOnceId: "KillTauriCN"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\__pycache__"
@@ -923,11 +925,7 @@ begin
     '    pause' + #13#10 +
     '    exit /b 1' + #13#10 +
     ')' + #13#10 +
-    'if exist "十三香小龙虾.exe" (' + #13#10 +
-    '    start "" "十三香小龙虾.exe"' + #13#10 +
-    ') else (' + #13#10 +
-    '    start "" "python\python.exe" launcher.py' + #13#10 +
-    ')' + #13#10 +
+    'start "" "十三香小龙虾.exe"' + #13#10 +
     'echo  十三香小龙虾已启动！可以关闭此窗口。' + #13#10 +
     'timeout /t 3 /nobreak >nul' + #13#10;
 
@@ -959,16 +957,12 @@ begin
     if USBMode then
       CreateUSBLauncher(AppDir);
 
-    // 极速/U盘模式：安装后自动启动并打开设置页
+    // 极速/U盘模式：安装后自动启动
     if QuickMode or USBMode then
     begin
-      if FileExists(AppDir + '\十三香小龙虾.exe') then
-        Exec(AppDir + '\十三香小龙虾.exe', '', AppDir,
-          SW_SHOWNORMAL, ewNoWait, ResultCode)
-      else
-        Exec('wscript.exe', '"' + AppDir + '\OpenClaw.vbs"', AppDir,
-          SW_SHOWNORMAL, ewNoWait, ResultCode);
-      LogMsg('Auto-launched application');
+      Exec(AppDir + '\十三香小龙虾.exe', '', AppDir,
+        SW_SHOWNORMAL, ewNoWait, ResultCode);
+      LogMsg('Auto-launched Tauri application');
     end;
   end;
 end;
