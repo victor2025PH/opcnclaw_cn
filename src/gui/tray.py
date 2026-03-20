@@ -1,5 +1,5 @@
 """
-系统托盘图标 — OpenClaw 常驻后台
+系统托盘图标 — 十三香小龙虾 常驻后台
 
 优化：使用 PIL 动态生成带状态颜色的托盘图标，
      不依赖外部图标文件。
@@ -23,12 +23,18 @@ except ImportError:
 
 
 def _make_icon(color: str = "#6366f1", size: int = 64) -> "Image.Image":
-    """动态生成托盘图标（紫色龙虾/麦克风图标）"""
+    """加载品牌图标，找不到时回退为动态生成"""
+    for name in ("tray_icon.png", "icon.png"):
+        for base in (Path.cwd(), Path(__file__).resolve().parent.parent.parent):
+            p = base / "assets" / name
+            if p.exists():
+                try:
+                    return Image.open(p).convert("RGBA").resize((size, size), Image.LANCZOS)
+                except Exception:
+                    pass
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    # 圆形背景
     draw.ellipse([2, 2, size - 2, size - 2], fill=color)
-    # 简单麦克风形状（白色）
     cx, cy = size // 2, size // 2
     w, h = size // 8, size // 4
     draw.rounded_rectangle([cx - w, cy - h, cx + w, cy + h // 2],
@@ -41,7 +47,7 @@ def _make_icon(color: str = "#6366f1", size: int = 64) -> "Image.Image":
 
 
 class TrayIcon:
-    """OpenClaw 系统托盘图标"""
+    """十三香小龙虾 系统托盘图标"""
 
     def __init__(
         self,
@@ -61,7 +67,7 @@ class TrayIcon:
     def _build_menu(self) -> "pystray.Menu":
         import pystray
         return pystray.Menu(
-            pystray.MenuItem("🦞 OpenClaw AI 助手", None, enabled=False),
+            pystray.MenuItem("🦞 十三香小龙虾 AI 助手", None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("🌐 打开网页版",
                 lambda _: webbrowser.open(f"https://localhost:{self.https_port}/app")),
@@ -74,7 +80,7 @@ class TrayIcon:
             pystray.MenuItem("📋 查看日志",
                 lambda _: subprocess.Popen(["notepad", str(Path("logs/server.log").absolute())]
                            if Path("logs/server.log").exists() else
-                           ["notepad", str(Path("openclaw.log").absolute())])),
+                           ["notepad", str(Path("十三香小龙虾.log").absolute())])),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("🔄 重启服务", self._restart),
             pystray.MenuItem("❌ 退出", self._quit),
@@ -95,7 +101,7 @@ class TrayIcon:
             self.on_quit()
 
     def _quit(self, _=None):
-        logger.info("用户退出 OpenClaw")
+        logger.info("用户退出 十三香小龙虾")
         if self._icon:
             self._icon.stop()
         if self.on_quit:
@@ -108,7 +114,7 @@ class TrayIcon:
         color = colors.get(level, "#6366f1")
         if self._icon:
             self._icon.icon = _make_icon(color)
-            self._icon.title = f"OpenClaw — {status}"
+            self._icon.title = f"十三香小龙虾 — {status}"
 
     def show_notification(self, title: str, message: str):
         """显示气泡通知"""
@@ -127,9 +133,9 @@ class TrayIcon:
             import pystray
             icon_img = _make_icon("#6366f1")
             self._icon = pystray.Icon(
-                "openclaw",
+                "十三香小龙虾",
                 icon_img,
-                "OpenClaw — 正在启动",
+                "十三香小龙虾 — 正在启动",
                 menu=self._build_menu(),
             )
             threading.Thread(target=self._icon.run, daemon=True).start()

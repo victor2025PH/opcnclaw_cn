@@ -515,8 +515,15 @@ export function init() {
   $id('sess-close')?.addEventListener('click', sessClosePanel);
   $id('sess-new')?.addEventListener('click', newSession);
 
+  // Only auto-open sessions panel on desktop if there are saved sessions
   if (window.matchMedia('(min-width:768px) and (orientation:landscape)').matches) {
-    sessOpenPanel();
+    const saved = localStorage.getItem('oc_server');
+    if (saved) {
+      fetch((saved || window.location.origin) + '/api/history/sessions')
+        .then(r => r.json())
+        .then(d => { if (d.sessions && d.sessions.length > 0) sessOpenPanel(); })
+        .catch(() => {});
+    }
   }
 
   // ── Profile DOM refs ──

@@ -4,8 +4,10 @@ import { S, fn, dom, t, getBaseUrl } from '/js/state.js';
 let _wsReconnectTimer = null;
 let _pendingVoiceStart = false;
 let _wsRetryCount = 0;
+let _disconnectedByUser = false;
 
 function connectVoiceWs() {
+  if (_disconnectedByUser) return;
   if (S.voiceWs && S.voiceWs.readyState <= 1) return;
   if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
 
@@ -53,6 +55,7 @@ function connectVoiceWs() {
     if (S._wsPingInterval) { clearInterval(S._wsPingInterval); S._wsPingInterval = null; }
     const badge = document.getElementById('ws-latency-badge');
     if (badge) { badge.textContent = '—'; badge.className = 'ws-latency-badge'; }
+    if (_disconnectedByUser) return;
     _wsRetryCount++;
     if (_wsRetryCount <= 8) {
       dom.statusDot.className = 'status-dot disconnected';
@@ -256,9 +259,21 @@ function _showUpdateBanner(reg) {
   document.body.appendChild(banner);
 }
 
+function disconnectPermanently() {
+  _disconnectedByUser = true;
+  if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
+  if (S._wsPingInterval) { clearInterval(S._wsPingInterval); S._wsPingInterval = null; }
+  if (S._reconnectCountdown) { clearInterval(S._reconnectCountdown); S._reconnectCountdown = null; }
+  if (S.voiceWs) {
+    try { S.voiceWs.close(); } catch (_) {}
+    S.voiceWs = null;
+  }
+}
+
 export function init() {
   // Register public functions on fn
   fn.connectVoiceWs = connectVoiceWs;
+  fn.disconnectPermanently = disconnectPermanently;
   fn.handleVoiceMessage = handleVoiceMessage;
   fn.queueVoiceAudio = queueVoiceAudio;
 
@@ -276,6 +291,7 @@ export function init() {
 
   // ── Visibility change reconnection ──
   document.addEventListener('visibilitychange', () => {
+    if (_disconnectedByUser) return;
     if (document.visibilityState === 'visible') {
       if (!S.voiceWs || S.voiceWs.readyState > 1) {
         console.log('Page visible again, reconnecting WS...');
@@ -292,7 +308,7 @@ export function init() {
   });
   window.addEventListener('online', () => {
     if (_offlineBanner) _offlineBanner.classList.remove('show');
-    if (!S.voiceWs || S.voiceWs.readyState > 1) {
+    if (!_disconnectedByUser && (!S.voiceWs || S.voiceWs.readyState > 1)) {
       _wsRetryCount = 0;
       connectVoiceWs();
     }

@@ -25,7 +25,7 @@ _current_lang: str = "zh"
 
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     # ── 通用 ──
-    "app_name": {"zh": "OpenClaw 语音助手", "en": "OpenClaw Voice Assistant"},
+    "app_name": {"zh": "十三香小龙虾 语音助手", "en": "十三香小龙虾 Assistant"},
     "loading": {"zh": "加载中...", "en": "Loading..."},
     "save": {"zh": "保存", "en": "Save"},
     "cancel": {"zh": "取消", "en": "Cancel"},

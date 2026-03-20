@@ -2327,20 +2327,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-desktop"
-version = "3.5.2"
-dependencies = [
- "open",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tauri-plugin-shell",
- "ureq",
-]
-
-[[package]]
 name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3399,6 +3385,20 @@ dependencies = [
  "libc",
  "sigchld",
  "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "shisanxiang"
+version = "3.6.0"
+dependencies = [
+ "open",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tauri-plugin-shell",
+ "ureq",
 ]
 
 [[package]]

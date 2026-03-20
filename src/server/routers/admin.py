@@ -525,21 +525,12 @@ async def router_status():
     try:
         from ..main import app
         backend = getattr(app.state, "ai_backend", None)
-        router = getattr(backend, "_router", None) if backend else None
-        if not router:
-            return {"ok": True, "providers": []}
-        providers = []
-        for p in getattr(router, "_providers", []):
-            providers.append({
-                "id": getattr(p, "id", "?"),
-                "name": getattr(p, "name", getattr(p, "id", "?")),
-                "model": getattr(p, "model", ""),
-                "available": getattr(p, "available", True),
-                "requests": getattr(p, "_request_count", 0),
-                "avg_latency": round(getattr(p, "_avg_latency", 0)),
-                "quota_remaining": getattr(p, "_remaining_quota_pct", 100),
-            })
-        return {"ok": True, "providers": providers}
+        ai_router = getattr(backend, "_router", None) if backend else None
+        if not ai_router:
+            return {"ok": True, "providers": [], "note": "Router not loaded, using direct backend"}
+        providers = ai_router.get_status_panel()
+        active = ai_router.get_active_provider()
+        return {"ok": True, "providers": providers, "active_provider": active}
     except Exception as e:
         return {"ok": False, "providers": [], "error": str(e)}
 
@@ -629,3 +620,180 @@ async def ollama_delete_model(name: str):
         return {"ok": False}
     success = await bridge.delete_model(name)
     return {"ok": success}
+
+
+# ── Profile / Multi-member System ─────────────────────────────────────────────
+
+@router.get("/api/profiles")
+async def profiles_list(environment: Optional[str] = None):
+    from ..profiles import list_profiles
+    return {"ok": True, "profiles": list_profiles(environment)}
+
+
+@router.get("/api/profiles/active")
+async def profiles_active():
+    from ..profiles import get_active_profile
+    p = get_active_profile()
+    return {"ok": True, "profile": p}
+
+
+@router.get("/api/profiles/stats")
+async def profiles_stats():
+    """Return message count and last active time for each profile."""
+    from ..profiles import list_profiles, get_session_id
+    from .. import memory
+    profiles = list_profiles()
+    stats = {}
+    for p in profiles:
+        session = get_session_id(p["id"])
+        try:
+            conn = memory._get_conn()
+            row = conn.execute(
+                "SELECT COUNT(*) as cnt, MAX(ts) as last_ts FROM messages WHERE session = ?",
+                (session,)
+            ).fetchone()
+            stats[p["id"]] = {
+                "message_count": row[0] if row else 0,
+                "last_active": row[1] if row and row[1] else None,
+            }
+        except Exception:
+            stats[p["id"]] = {"message_count": 0, "last_active": None}
+    return {"ok": True, "stats": stats}
+
+
+@router.get("/api/profiles/{profile_id}/export")
+async def profiles_export(profile_id: str, fmt: str = "json"):
+    """Export a profile's conversation history as JSON or TXT."""
+    from ..profiles import get_profile, get_session_id
+    from .. import memory
+    import time as _time
+
+    p = get_profile(profile_id)
+    if not p:
+        return {"ok": False, "error": "Profile not found"}
+
+    session = get_session_id(profile_id)
+    msgs = memory.get_history_raw(session, limit=10000)
+
+    if fmt == "txt":
+        lines = [f"# {p['name']} 的对话记录", f"# 导出时间: {_time.strftime('%Y-%m-%d %H:%M:%S')}", ""]
+        for m in msgs:
+            ts = m.get("timestamp", "")
+            role = "用户" if m["role"] == "user" else "AI"
+            lines.append(f"[{ts}] {role}: {m['content']}")
+        content = "\n".join(lines)
+        media = "text/plain"
+        ext = "txt"
+    else:
+        content = json.dumps({
+            "profile": p,
+            "session": session,
+            "exported_at": _time.strftime("%Y-%m-%d %H:%M:%S"),
+            "message_count": len(msgs),
+            "messages": msgs,
+        }, ensure_ascii=False, indent=2)
+        media = "application/json"
+        ext = "json"
+
+    from urllib.parse import quote
+    safe_name = p["name"].replace(" ", "_")
+    encoded = quote(f"{safe_name}_chat.{ext}")
+    return Response(
+        content=content,
+        media_type=media,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}"},
+    )
+
+
+@router.get("/api/profiles/presets")
+async def profiles_presets(environment: Optional[str] = None):
+    from ..profiles import get_presets
+    return {"ok": True, "presets": get_presets(environment)}
+
+
+@router.post("/api/profiles")
+async def profiles_create(request: Request):
+    from ..profiles import create_profile, create_from_preset
+    data = await request.json()
+
+    preset_name = data.get("preset")
+    env = data.get("environment", "family")
+    if preset_name:
+        p = create_from_preset(preset_name, env)
+        if p:
+            return {"ok": True, "profile": p}
+        return {"ok": False, "error": "Preset not found"}
+
+    p = create_profile(
+        name=data.get("name", "新成员"),
+        avatar=data.get("avatar", "👤"),
+        environment=env,
+        system_prompt=data.get("system_prompt", ""),
+        voice_id=data.get("voice_id", "zh-CN-XiaoxiaoNeural"),
+        clone_voice_path=data.get("clone_voice_path", ""),
+        wake_word=data.get("wake_word", ""),
+        age_group=data.get("age_group", "adult"),
+        preferences=data.get("preferences"),
+    )
+    return {"ok": True, "profile": p}
+
+
+@router.put("/api/profiles/{profile_id}")
+async def profiles_update(profile_id: str, request: Request):
+    from ..profiles import update_profile
+    data = await request.json()
+    p = update_profile(profile_id, **data)
+    if p:
+        return {"ok": True, "profile": p}
+    return {"ok": False, "error": "Profile not found"}
+
+
+@router.delete("/api/profiles/{profile_id}")
+async def profiles_delete(profile_id: str):
+    from ..profiles import delete_profile
+    ok = delete_profile(profile_id)
+    return {"ok": ok}
+
+
+@router.post("/api/profiles/reorder")
+async def profiles_reorder(request: Request):
+    """Update sort_order for all profiles."""
+    from ..profiles import update_profile
+    data = await request.json()
+    order = data.get("order", [])
+    for i, pid in enumerate(order):
+        update_profile(pid, sort_order=i)
+    return {"ok": True}
+
+
+@router.post("/api/profiles/{profile_id}/activate")
+async def profiles_activate(profile_id: str):
+    """Activate a profile and reconfigure the AI backend accordingly."""
+    from ..profiles import activate_profile, get_session_id
+    p = activate_profile(profile_id)
+    if not p:
+        return {"ok": False, "error": "Profile not found"}
+
+    try:
+        from ..main import backend, tts
+        if backend:
+            session = get_session_id(profile_id)
+            backend.session_id = session
+            if p.get("system_prompt"):
+                backend.system_prompt = p["system_prompt"]
+            backend._history_cache = None
+            logger.info(f"Backend switched to session={session}")
+
+        if tts:
+            voice = p.get("voice_id")
+            if voice:
+                tts._edge_voice = voice
+            clone_path = p.get("clone_voice_path")
+            if clone_path:
+                tts.set_clone_voice(clone_path)
+            else:
+                tts._clone_audio_path = None
+    except Exception as e:
+        logger.warning(f"Profile activation side-effects failed: {e}")
+
+    return {"ok": True, "profile": p, "session_id": get_session_id(profile_id)}

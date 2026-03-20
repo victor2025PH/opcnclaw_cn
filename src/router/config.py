@@ -7,7 +7,18 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
-CONFIG_PATH = Path("config.ini")
+def _find_config_path() -> Path:
+    """Resolve config.ini: check cwd first, then script's ancestor dirs."""
+    cwd_path = Path("config.ini")
+    if cwd_path.exists():
+        return cwd_path
+    root = Path(__file__).resolve().parent.parent.parent
+    root_path = root / "config.ini"
+    if root_path.exists():
+        return root_path
+    return cwd_path
+
+CONFIG_PATH = _find_config_path()
 PROVIDERS_JSON = Path(__file__).parent / "providers.json"
 
 
@@ -56,6 +67,7 @@ def get_default_config() -> configparser.ConfigParser:
         "http_port": "8766",
         "https_port": "8765",
         "first_run": "true",
+        "shortcuts_enabled": "settings,quit",
     }
     cfg["ui"] = {
         "theme": "dark",
@@ -243,3 +255,9 @@ class RouterConfig:
     @property
     def ui_language(self) -> str:
         return self._cfg.get("ui", "language", fallback="zh")
+
+    # ── 快捷键 ─────────────────────────────────────
+    @property
+    def shortcuts_enabled(self) -> List[str]:
+        raw = self._cfg.get("system", "shortcuts_enabled", fallback="settings,quit")
+        return [s.strip() for s in raw.split(",") if s.strip()]

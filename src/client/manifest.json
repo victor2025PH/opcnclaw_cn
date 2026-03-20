@@ -1,8 +1,8 @@
 {
-  "name": "OpenClaw 语音助手",
-  "short_name": "OpenClaw",
+  "name": "十三香小龙虾",
+  "short_name": "十三香小龙虾",
   "description": "本地部署的全双工 AI 语音助手",
-  "start_url": "/app",
+  "start_url": "/chat",
   "display": "standalone",
   "background_color": "#0f0f10",
   "theme_color": "#6366f1",

@@ -1,5 +1,5 @@
 """
-Internationalization (i18n) for OpenClaw settings UI.
+Internationalization (i18n) for 十三香小龙虾 settings UI.
 
 Usage:
     from src.gui.i18n import t, set_locale, get_locale

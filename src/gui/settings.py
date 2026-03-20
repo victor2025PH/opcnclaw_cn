@@ -1,5 +1,5 @@
 """
-OpenClaw 设置界面 — CustomTkinter 现代 UI
+十三香小龙虾 设置界面 — CustomTkinter 现代 UI
 
 分四个标签页：
 1. AI 平台 — 引导式配置 + 额度总览
@@ -63,7 +63,7 @@ class SettingsWindow:
         ctk.set_default_color_theme("blue")
 
         self._window = ctk.CTk()
-        self._window.title("OpenClaw 设置")
+        self._window.title("十三香小龙虾 设置")
         self._window.geometry("820x620")
         self._window.resizable(False, False)
 
@@ -72,7 +72,7 @@ class SettingsWindow:
         nav.pack(side="left", fill="y")
         nav.pack_propagate(False)
 
-        ctk.CTkLabel(nav, text="🦞 OpenClaw", font=("", 16, "bold"),
+        ctk.CTkLabel(nav, text="🦞 十三香小龙虾", font=("", 16, "bold"),
                      text_color="#a78bfa").pack(pady=(20, 4))
         ctk.CTkLabel(nav, text="设置中心", font=("", 11),
                      text_color="gray").pack(pady=(0, 20))
@@ -313,7 +313,7 @@ class SettingsWindow:
         ctk.CTkLabel(frame, text="💬 企业IM 桥接",
                      font=("", 18, "bold")).pack(anchor="w", pady=(12, 4))
         ctk.CTkLabel(frame,
-                     text="OpenClaw AI 回复时，同步推送到企业群。只需填写 Webhook URL，5分钟完成配置",
+                     text="十三香小龙虾 AI 回复时，同步推送到企业群。只需填写 Webhook URL，5分钟完成配置",
                      font=("", 12), text_color="gray",
                      wraplength=560, justify="left").pack(anchor="w", pady=(0, 8))
 
@@ -466,7 +466,7 @@ class SettingsWindow:
         sys_frame = self._section(frame, "启动选项")
 
         self._autostart_var = ctk.BooleanVar(value=self.cfg.autostart)
-        ctk.CTkCheckBox(sys_frame, text="开机时自动启动 OpenClaw",
+        ctk.CTkCheckBox(sys_frame, text="开机时自动启动 十三香小龙虾",
                         variable=self._autostart_var).pack(anchor="w", pady=6)
 
         self._tray_var = ctk.BooleanVar(value=self.cfg.minimize_to_tray)
@@ -565,7 +565,7 @@ class SettingsWindow:
             try:
                 import asyncio, edge_tts, tempfile, subprocess
                 async def _synth():
-                    comm = edge_tts.Communicate("你好，我是 OpenClaw AI 语音助手，很高兴为你服务。", voice=voice_id)
+                    comm = edge_tts.Communicate("你好，我是 十三香小龙虾 AI 语音助手，很高兴为你服务。", voice=voice_id)
                     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
                         tmpfile = f.name
                     await comm.save(tmpfile)
@@ -665,8 +665,8 @@ def _set_autostart(enable: bool):
     try:
         import winreg
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        app_name = "OpenClawAI"
-        exe_path = str(Path(sys.executable).parent / "openclaw.exe")
+        app_name = "ShiSanXiangAI"
+        exe_path = str(Path(sys.executable).parent / "十三香小龙虾.exe")
         if not Path(exe_path).exists():
             exe_path = f'"{sys.executable}" "{Path(__file__).parent.parent.parent / "launcher.py"}"'
 

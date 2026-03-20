@@ -1,0 +1,12 @@
+{
+  "category": "04_finance",
+  "name": "💰 理财金融",
+  "description": "房贷、个税、汇率、理财计算",
+  "preinstalled": true,
+  "skills": [
+    {"id":"mortgage_equal","name_zh":"等额本息房贷","name_en":"mortgage_equal","category":"04_finance","subcategory":"房贷","description":"等额本息方式计算每月房贷还款额","trigger_words":["房贷","月供","贷款","等额本息","买房","按揭","还款","首付"],"examples":["贷款100万30年月供多少","房贷80万3.5%利率"],"handler":"finance.calc_mortgage","params":[{"name":"amount","type":"number","desc":"贷款金额（万元）","required":true},{"name":"rate","type":"number","desc":"年利率%","default":3.5},{"name":"years","type":"number","desc":"贷款年限","default":30}],"preinstalled":true,"safe":true,"needs_network":false},
+    {"id":"tax_income","name_zh":"个人所得税","name_en":"tax_income","category":"04_finance","subcategory":"税收","description":"根据月薪计算应缴个人所得税和实际到手工资","trigger_words":["个税","所得税","扣税","税后","到手工资","税前","五险一金","月薪","工资"],"examples":["月薪2万要扣多少税","税前15000到手多少"],"handler":"finance.calc_tax","params":[{"name":"salary","type":"number","desc":"税前月薪（元）","required":true},{"name":"city_level","type":"string","desc":"城市等级影响社保基数","default":"一线"}],"preinstalled":true,"safe":true,"needs_network":false},
+    {"id":"compound_interest","name_zh":"复利计算","name_en":"compound_interest","category":"04_finance","subcategory":"理财","description":"计算复利收益，体会钱生钱的力量","trigger_words":["复利","理财","收益","年化","投资","多少年翻倍","72法则","利滚利"],"examples":["10万年化5%投20年收益多少","多少年翻倍"],"handler":"finance.calc_compound","params":[{"name":"principal","type":"number","desc":"本金（元）","required":true},{"name":"rate","type":"number","desc":"年化收益率%","default":5},{"name":"years","type":"number","desc":"年数","default":10}],"preinstalled":true,"safe":true,"needs_network":false},
+    {"id":"exchange_rate","name_zh":"汇率换算","name_en":"exchange_rate","category":"04_finance","subcategory":"汇率","description":"人民币与主要货币汇率换算（实时/离线参考）","trigger_words":["汇率","美元换人民币","欧元换人民币","等于多少人民币","等于多少美元","人民币换","外币兑换","外汇换算","美元兑人民币","欧元兑人民币","多少人民币","多少美元","多少日元"],"examples":["100美元等于多少人民币","1000元人民币换多少日元"],"handler":"finance.exchange","params":[{"name":"amount","type":"number","required":true},{"name":"from_currency","type":"string","default":"USD"},{"name":"to_currency","type":"string","default":"CNY"}],"preinstalled":true,"safe":true,"needs_network":true}
+  ]
+}

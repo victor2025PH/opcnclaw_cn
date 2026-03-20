@@ -7,6 +7,8 @@ import base64
 import json
 import os
 import re
+import time
+import uuid as _uuid
 from pathlib import Path
 from typing import Optional
 
@@ -28,6 +30,53 @@ try:
     desktop = DesktopStreamer()
 except Exception as e:
     logger.warning(f"Desktop streamer unavailable: {e}")
+
+
+@router.get("/api/desktop/screenshot")
+async def desktop_screenshot():
+    """Capture a single screenshot and return as JSON {data, w, h}."""
+    if not desktop:
+        return Response(
+            json.dumps({"error": "Desktop streaming unavailable"}),
+            status_code=503, media_type="application/json",
+        )
+    loop = asyncio.get_running_loop()
+    data, w, h = await loop.run_in_executor(None, desktop.capture_frame)
+    return {
+        "data": data, "w": w, "h": h,
+        "sw": desktop.screen_size[0], "sh": desktop.screen_size[1],
+    }
+
+
+@router.post("/api/desktop/click")
+async def desktop_click(request: Request):
+    """Click at normalized (x, y) coordinates. Body: {x, y, button?}."""
+    if not desktop:
+        return {"ok": False, "error": "Desktop unavailable"}
+    body = await request.json()
+    x, y = body.get("x", 0.5), body.get("y", 0.5)
+    btn = body.get("button", "left")
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, desktop.mouse_click, x, y, btn)
+    return {"ok": True}
+
+
+@router.post("/api/desktop/type")
+async def desktop_type(request: Request):
+    """Type text on the remote desktop. Body: {text}."""
+    if not desktop:
+        return {"ok": False, "error": "Desktop unavailable"}
+    body = await request.json()
+    text = body.get("text", "")
+    if not text:
+        return {"ok": False, "error": "No text"}
+    loop = asyncio.get_running_loop()
+    has_cjk = any("\u4e00" <= c <= "\u9fff" for c in text)
+    if has_cjk:
+        await loop.run_in_executor(None, desktop.type_chinese, text)
+    else:
+        await loop.run_in_executor(None, desktop.type_text, text)
+    return {"ok": True}
 
 
 # ── 文件上传到本地电脑 ──────────────────────────────────────
@@ -370,65 +419,448 @@ async def send_wechat_message_api(request: Request):
     )
 
 
+# ── Z3: Multi-client session management ──
+_desktop_clients: dict = {}
+_control_owner: str | None = None
+
+
+def _build_client_list() -> list:
+    return [
+        {"id": cid, "name": c["name"], "role": c["role"],
+         "since": round(c["connected_at"])}
+        for cid, c in _desktop_clients.items()
+    ]
+
+
+async def _broadcast_clients(exclude: str | None = None):
+    payload = json.dumps({
+        "type": "clients", "list": _build_client_list(),
+        "control": _control_owner,
+    })
+    for cid, c in list(_desktop_clients.items()):
+        if cid == exclude:
+            continue
+        try:
+            await c["ws"].send_text(payload)
+        except Exception:
+            pass
+
+
+_READ_ONLY_TYPES = frozenset({
+    "ping", "set_fps", "set_quality", "set_name", "get_clients",
+    "request_control", "release_control",
+    "get_sysinfo", "get_windows", "get_clipboard",
+    "list_files", "get_processes",
+    "ocr_point", "ocr_screen", "get_monitors",
+    "collab_annotate", "collab_cursor",
+})
+
+
 @router.websocket("/ws/desktop")
 async def desktop_ws(websocket: WebSocket):
-    """Stream desktop frames and receive mouse/keyboard commands."""
+    """Stream desktop frames with multi-client support and control ownership."""
+    global _control_owner
+
     if not desktop:
         await websocket.close(code=4010, reason="Desktop streaming unavailable")
         return
 
     await websocket.accept()
-    logger.info("Desktop client connected")
+
+    client_id = _uuid.uuid4().hex[:8]
+    client_name = f"User-{client_id[:4]}"
+    role = "controller" if _control_owner is None else "viewer"
+    if role == "controller":
+        _control_owner = client_id
+
+    _desktop_clients[client_id] = {
+        "ws": websocket, "name": client_name,
+        "role": role, "connected_at": time.time(),
+    }
+    logger.info(
+        f"Desktop client {client_id} ({role}) connected, "
+        f"total: {len(_desktop_clients)}"
+    )
+
+    await websocket.send_json({
+        "type": "session_info",
+        "client_id": client_id,
+        "role": role,
+        "clients": _build_client_list(),
+    })
+    await _broadcast_clients(exclude=client_id)
 
     streaming = True
-    fps = desktop.fps
+    local_fps = desktop.fps
+
+    use_binary = True
 
     async def send_frames():
+        nonlocal local_fps, use_binary
         loop = asyncio.get_running_loop()
-        frame_count = 0
+        first = True
+        prev_np = None
+        kf_counter = 0
+
         while streaming:
             try:
-                data, w, h = await loop.run_in_executor(
-                    None, desktop.capture_frame
-                )
-                await websocket.send_json({
-                    "type": "frame",
-                    "data": data,
-                    "w": w,
-                    "h": h,
-                    "sw": desktop.screen_size[0],
-                    "sh": desktop.screen_size[1],
-                })
-                frame_count += 1
-                if frame_count == 1:
-                    logger.info(f"Desktop: first frame sent ({len(data)//1024}KB {w}x{h})")
-                await asyncio.sleep(1.0 / fps)
+                force_key = kf_counter >= 50
+
+                if use_binary:
+                    jpg, header, prev_np = await loop.run_in_executor(
+                        None, desktop.capture_frame_binary, prev_np, force_key,
+                    )
+                    if header.get("m") == "s":
+                        kf_counter += 1
+                        await asyncio.sleep(1.0 / local_fps)
+                        continue
+
+                    if header.get("m") == "k":
+                        kf_counter = 0
+                    else:
+                        kf_counter += 1
+
+                    header_bytes = json.dumps(header).encode("utf-8")
+                    hlen = len(header_bytes)
+                    payload = hlen.to_bytes(2, "big") + header_bytes + jpg
+
+                    send_t = time.monotonic()
+                    await asyncio.wait_for(
+                        websocket.send_bytes(payload),
+                        timeout=2.0,
+                    )
+                    send_ms = (time.monotonic() - send_t) * 1000
+
+                    if first:
+                        first = False
+                        kb = len(jpg) // 1024
+                        logger.info(
+                            f"Desktop: first binary frame ({kb}KB)"
+                        )
+                else:
+                    result, prev_np = await loop.run_in_executor(
+                        None, desktop.capture_frame_delta, prev_np, force_key,
+                    )
+                    if result.get("mode") == "skip":
+                        kf_counter += 1
+                        await asyncio.sleep(1.0 / local_fps)
+                        continue
+                    if result.get("mode") == "key":
+                        kf_counter = 0
+                    else:
+                        kf_counter += 1
+
+                    send_t = time.monotonic()
+                    await asyncio.wait_for(
+                        websocket.send_json(result),
+                        timeout=2.0,
+                    )
+                    send_ms = (time.monotonic() - send_t) * 1000
+
+                    if first:
+                        first = False
+                        kb = len(result.get("data", "")) // 1024
+                        logger.info(f"Desktop: first frame ({kb}KB)")
+
+                if send_ms > 300:
+                    local_fps = max(2, local_fps - 1)
+                elif send_ms < 80 and local_fps < desktop.fps:
+                    local_fps = min(desktop.fps, local_fps + 0.5)
+
+                await asyncio.sleep(1.0 / local_fps)
+            except asyncio.TimeoutError:
+                local_fps = max(1, local_fps - 2)
+                prev_np = None
+                await asyncio.sleep(1.0)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Desktop frame error: {e}")
+                prev_np = None
                 await asyncio.sleep(0.5)
 
     frame_task = asyncio.create_task(send_frames())
 
     try:
+        loop = asyncio.get_running_loop()
         while True:
             raw = await websocket.receive_text()
             msg = json.loads(raw)
-            if msg.get("type") == "set_fps":
-                fps = max(1, min(30, int(msg.get("fps", 10))))
-                desktop.fps = fps
-            else:
-                await asyncio.get_event_loop().run_in_executor(
-                    None, desktop.handle_command, msg
+            t = msg.get("type", "")
+
+            if t == "ping":
+                await websocket.send_json({"type": "pong", "t": msg.get("t", 0)})
+                continue
+
+            if t == "set_fps":
+                local_fps = max(1, min(30, int(msg.get("fps", 10))))
+                desktop.fps = local_fps
+            elif t == "set_quality":
+                desktop.quality = max(15, min(95, int(msg.get("quality", 45))))
+            elif t == "set_name":
+                new_name = str(msg.get("name", ""))[:20]
+                if new_name and client_id in _desktop_clients:
+                    _desktop_clients[client_id]["name"] = new_name
+                    await _broadcast_clients()
+            elif t == "get_clients":
+                await websocket.send_json({
+                    "type": "clients",
+                    "list": _build_client_list(),
+                    "control": _control_owner,
+                })
+            elif t == "request_control":
+                if _control_owner == client_id:
+                    await websocket.send_json({
+                        "type": "control_result", "ok": True,
+                        "msg": "already_controller",
+                    })
+                else:
+                    old = _control_owner
+                    _control_owner = client_id
+                    _desktop_clients[client_id]["role"] = "controller"
+                    if old and old in _desktop_clients:
+                        _desktop_clients[old]["role"] = "viewer"
+                        try:
+                            await _desktop_clients[old]["ws"].send_json({
+                                "type": "control_transferred",
+                                "to": client_name,
+                            })
+                        except Exception:
+                            pass
+                    await websocket.send_json({
+                        "type": "control_result", "ok": True,
+                        "msg": "granted",
+                    })
+                    await _broadcast_clients()
+            elif t == "release_control":
+                if _control_owner == client_id:
+                    _desktop_clients[client_id]["role"] = "viewer"
+                    _control_owner = None
+                    for cid, c in _desktop_clients.items():
+                        if cid != client_id:
+                            _control_owner = cid
+                            c["role"] = "controller"
+                            try:
+                                await c["ws"].send_json({
+                                    "type": "control_granted",
+                                })
+                            except Exception:
+                                pass
+                            break
+                    await _broadcast_clients()
+
+            elif t == "get_sysinfo":
+                info = await loop.run_in_executor(
+                    None, desktop.get_system_info
                 )
+                await websocket.send_json({"type": "sysinfo", **info})
+            elif t == "get_windows":
+                wins = await loop.run_in_executor(
+                    None, desktop.get_window_list
+                )
+                await websocket.send_json({"type": "windows", "list": wins})
+            elif t == "get_clipboard":
+                txt = await loop.run_in_executor(
+                    None, desktop.get_clipboard_text
+                )
+                await websocket.send_json({"type": "clipboard", "text": txt})
+            elif t == "list_files":
+                real_path, entries = await loop.run_in_executor(
+                    None, desktop.list_files, msg.get("path", "~")
+                )
+                await websocket.send_json({
+                    "type": "files", "path": real_path,
+                    "entries": entries,
+                })
+            elif t == "get_processes":
+                procs = await loop.run_in_executor(
+                    None, desktop.get_processes
+                )
+                await websocket.send_json({
+                    "type": "processes", "list": procs,
+                })
+            elif t == "ocr_screen":
+                items = await loop.run_in_executor(
+                    None, desktop.ocr_screen
+                )
+                full_text = " ".join(
+                    it[1] for it in items if len(it) > 1
+                ) if items else ""
+                await websocket.send_json({
+                    "type": "ocr_result", "text": full_text,
+                })
+            elif t == "ocr_point":
+                items = await loop.run_in_executor(
+                    None, desktop.ocr_at_point,
+                    float(msg.get("x", 0.5)),
+                    float(msg.get("y", 0.5)),
+                    float(msg.get("r", 0.08)),
+                )
+                await websocket.send_json({
+                    "type": "ocr_result", "items": items,
+                    "x": msg.get("x"), "y": msg.get("y"),
+                })
+            elif t == "get_monitors":
+                mons = await loop.run_in_executor(
+                    None, desktop.get_monitors
+                )
+                await websocket.send_json({
+                    "type": "monitors", "list": mons,
+                })
+            elif t == "smart_click":
+                target = msg.get("text", "")
+                if target:
+                    found = await loop.run_in_executor(
+                        None, desktop.find_text, target
+                    )
+                    if found:
+                        await loop.run_in_executor(
+                            None, desktop.mouse_click,
+                            found["x"], found["y"], "left",
+                        )
+                        await websocket.send_json({
+                            "type": "smart_click_result",
+                            "ok": True, "text": target,
+                            "x": found["x"], "y": found["y"],
+                        })
+                    else:
+                        await websocket.send_json({
+                            "type": "smart_click_result",
+                            "ok": False, "text": target,
+                            "msg": "未找到",
+                        })
+            elif t == "smart_dblclick":
+                target = msg.get("text", "")
+                if target:
+                    found = await loop.run_in_executor(
+                        None, desktop.find_text, target
+                    )
+                    if found:
+                        await loop.run_in_executor(
+                            None, desktop.mouse_double_click,
+                            found["x"], found["y"],
+                        )
+                        await websocket.send_json({
+                            "type": "smart_click_result",
+                            "ok": True, "text": target,
+                            "x": found["x"], "y": found["y"],
+                        })
+                    else:
+                        await websocket.send_json({
+                            "type": "smart_click_result",
+                            "ok": False, "text": target,
+                        })
+            elif t == "smart_type":
+                target = msg.get("target", "")
+                text = msg.get("text", "")
+                if target and text:
+                    found = await loop.run_in_executor(
+                        None, desktop.find_text, target
+                    )
+                    if found:
+                        await loop.run_in_executor(
+                            None, desktop.mouse_click,
+                            found["x"], found["y"], "left",
+                        )
+                        import time as _time
+                        _time.sleep(0.3)
+                        await loop.run_in_executor(
+                            None, desktop.type_text, text
+                        )
+                        await websocket.send_json({
+                            "type": "smart_click_result",
+                            "ok": True, "text": target,
+                        })
+                    else:
+                        await websocket.send_json({
+                            "type": "smart_click_result",
+                            "ok": False, "text": target,
+                        })
+            elif t == "collab_annotate" or t == "collab_cursor":
+                relay = json.dumps(msg)
+                for cid, c in list(_desktop_clients.items()):
+                    if cid != client_id:
+                        try:
+                            await c["ws"].send_text(relay)
+                        except Exception:
+                            pass
+
+            elif t not in _READ_ONLY_TYPES:
+                if client_id != _control_owner:
+                    await websocket.send_json({
+                        "type": "error",
+                        "msg": "no_control",
+                    })
+                    continue
+
+                if t == "set_clipboard":
+                    await loop.run_in_executor(
+                        None, desktop.set_clipboard_text,
+                        msg.get("text", ""),
+                    )
+                    await websocket.send_json({"type": "clipboard_ok"})
+                elif t == "focus_window":
+                    await loop.run_in_executor(
+                        None, desktop.focus_window,
+                        msg.get("title", ""),
+                    )
+                elif t == "open_file":
+                    await loop.run_in_executor(
+                        None, desktop.open_file,
+                        msg.get("path", ""),
+                    )
+                elif t == "kill_process":
+                    ok = await loop.run_in_executor(
+                        None, desktop.kill_process,
+                        int(msg.get("pid", 0)),
+                    )
+                    await websocket.send_json({
+                        "type": "kill_result", "ok": ok,
+                        "pid": msg.get("pid", 0),
+                    })
+                elif t == "set_monitor":
+                    ok = await loop.run_in_executor(
+                        None, desktop.set_monitor,
+                        int(msg.get("index", 1)),
+                    )
+                    await websocket.send_json({
+                        "type": "monitor_set", "ok": ok,
+                        "index": msg.get("index"),
+                    })
+                else:
+                    if t == "mouse_move" or (msg.get("x") is not None and msg.get("y") is not None):
+                        desktop._cursor_nx = float(msg.get("x", 0.5))
+                        desktop._cursor_ny = float(msg.get("y", 0.5))
+                    await loop.run_in_executor(
+                        None, desktop.handle_command, msg
+                    )
+
     except WebSocketDisconnect:
-        logger.info("Desktop client disconnected")
+        logger.info(f"Desktop client {client_id} disconnected")
     except Exception as e:
-        logger.error(f"Desktop WS error: {e}")
+        logger.error(f"Desktop WS error ({client_id}): {e}")
     finally:
         streaming = False
         frame_task.cancel()
+        _desktop_clients.pop(client_id, None)
+        if _control_owner == client_id:
+            _control_owner = None
+            for cid, c in _desktop_clients.items():
+                _control_owner = cid
+                c["role"] = "controller"
+                try:
+                    await c["ws"].send_json({"type": "control_granted"})
+                except Exception:
+                    pass
+                break
+        try:
+            await _broadcast_clients()
+        except Exception:
+            pass
+        logger.info(
+            f"Desktop client {client_id} cleaned up, "
+            f"remaining: {len(_desktop_clients)}"
+        )
 
 
 # ── Vision Control (structured UI element access) ──

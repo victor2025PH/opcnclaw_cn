@@ -1,0 +1,786 @@
+{
+  "version": "2.0",
+  "total": 22,
+  "categories": {
+    "01_daily_tools": {
+      "count": 12,
+      "skills": [
+        {
+          "id": "time_now",
+          "name": "当前时间",
+          "desc": "获取当前日期时间星期",
+          "triggers": [
+            "几点",
+            "现在几点",
+            "今天几号"
+          ]
+        },
+        {
+          "id": "countdown",
+          "name": "日期倒计时",
+          "desc": "计算距离某个日期还有多少天",
+          "triggers": [
+            "还有多少天",
+            "倒计时",
+            "距离"
+          ]
+        },
+        {
+          "id": "lunar_date",
+          "name": "农历日期",
+          "desc": "查询今天农历日期和节气",
+          "triggers": [
+            "农历",
+            "阴历",
+            "节气"
+          ]
+        },
+        {
+          "id": "calc_basic",
+          "name": "数学计算",
+          "desc": "数学表达式计算，支持各种函数",
+          "triggers": [
+            "计算",
+            "算一下",
+            "多少"
+          ]
+        },
+        {
+          "id": "unit_length",
+          "name": "长度单位换算",
+          "desc": "各种长度单位互相换算",
+          "triggers": [
+            "英寸",
+            "厘米",
+            "公里"
+          ]
+        },
+        {
+          "id": "unit_weight",
+          "name": "重量单位换算",
+          "desc": "重量单位换算：斤/克/千克/磅/盎司",
+          "triggers": [
+            "斤",
+            "公斤",
+            "千克"
+          ]
+        },
+        {
+          "id": "unit_temp",
+          "name": "温度换算",
+          "desc": "摄氏度/华氏度/开尔文互相换算",
+          "triggers": [
+            "华氏",
+            "摄氏",
+            "开尔文"
+          ]
+        },
+        {
+          "id": "random_choice",
+          "name": "随机选择",
+          "desc": "帮我做决定，随机选一个",
+          "triggers": [
+            "随机选",
+            "帮我选",
+            "选一个"
+          ]
+        },
+        {
+          "id": "password_gen",
+          "name": "密码生成",
+          "desc": "生成随机强密码",
+          "triggers": [
+            "生成密码",
+            "随机密码",
+            "创建密码"
+          ]
+        },
+        {
+          "id": "big_num",
+          "name": "大写金额",
+          "desc": "数字转大写中文金额（人民币）",
+          "triggers": [
+            "大写",
+            "人民币大写",
+            "金额大写"
+          ]
+        },
+        {
+          "id": "id_parse",
+          "name": "身份证解析",
+          "desc": "解析身份证号中的地区、生日、性别信息",
+          "triggers": [
+            "身份证",
+            "身份证号",
+            "ID号"
+          ]
+        },
+        {
+          "id": "simple2trad",
+          "name": "简繁转换",
+          "desc": "简体字与繁体字互相转换",
+          "triggers": [
+            "繁体",
+            "繁體",
+            "简体转繁体"
+          ]
+        }
+      ]
+    },
+    "02_weather_travel": {
+      "count": 2,
+      "skills": [
+        {
+          "id": "weather_now",
+          "name": "实时天气",
+          "desc": "查询指定城市当前天气和近期预报",
+          "triggers": [
+            "天气",
+            "气温",
+            "下雨"
+          ]
+        },
+        {
+          "id": "oil_price",
+          "name": "今日油价",
+          "desc": "查询全国各省份今日油价",
+          "triggers": [
+            "油价",
+            "92号",
+            "95号"
+          ]
+        }
+      ]
+    },
+    "04_finance": {
+      "count": 4,
+      "skills": [
+        {
+          "id": "mortgage_equal",
+          "name": "等额本息房贷",
+          "desc": "等额本息方式计算每月房贷还款额",
+          "triggers": [
+            "房贷",
+            "月供",
+            "贷款"
+          ]
+        },
+        {
+          "id": "tax_income",
+          "name": "个人所得税",
+          "desc": "根据月薪计算应缴个人所得税和实际到手工资",
+          "triggers": [
+            "个税",
+            "所得税",
+            "扣税"
+          ]
+        },
+        {
+          "id": "compound_interest",
+          "name": "复利计算",
+          "desc": "计算复利收益，体会钱生钱的力量",
+          "triggers": [
+            "复利",
+            "理财",
+            "收益"
+          ]
+        },
+        {
+          "id": "exchange_rate",
+          "name": "汇率换算",
+          "desc": "人民币与主要货币汇率换算（实时/离线参考）",
+          "triggers": [
+            "汇率",
+            "美元换人民币",
+            "欧元换人民币"
+          ]
+        }
+      ]
+    },
+    "17_creative": {
+      "count": 4,
+      "skills": [
+        {
+          "id": "blessing_birthday",
+          "name": "生日祝福语",
+          "desc": "生成温暖的生日祝福语",
+          "triggers": [
+            "生日祝福",
+            "生日快乐",
+            "生日"
+          ]
+        },
+        {
+          "id": "blessing_newyear",
+          "name": "新年祝福",
+          "desc": "生成新年/春节祝福短信",
+          "triggers": [
+            "新年祝福",
+            "春节祝福",
+            "新年快乐"
+          ]
+        },
+        {
+          "id": "naming",
+          "name": "取名字",
+          "desc": "给宝宝、网名、品牌取好名字",
+          "triggers": [
+            "取名",
+            "起名",
+            "取个名"
+          ]
+        },
+        {
+          "id": "moments_copy",
+          "name": "朋友圈文案",
+          "desc": "生成朋友圈发圈文案",
+          "triggers": [
+            "朋友圈",
+            "文案",
+            "发圈"
+          ]
+        }
+      ]
+    }
+  },
+  "keyword_map": {
+    "几点": [
+      "time_now"
+    ],
+    "现在几点": [
+      "time_now"
+    ],
+    "今天几号": [
+      "time_now"
+    ],
+    "今天周几": [
+      "time_now"
+    ],
+    "今天星期": [
+      "time_now"
+    ],
+    "当前时间": [
+      "time_now"
+    ],
+    "现在时间": [
+      "time_now"
+    ],
+    "日期": [
+      "time_now"
+    ],
+    "今天": [
+      "time_now"
+    ],
+    "今年": [
+      "time_now"
+    ],
+    "还有多少天": [
+      "countdown"
+    ],
+    "倒计时": [
+      "countdown"
+    ],
+    "距离": [
+      "countdown"
+    ],
+    "还有几天": [
+      "countdown"
+    ],
+    "剩多少天": [
+      "countdown"
+    ],
+    "农历": [
+      "lunar_date"
+    ],
+    "阴历": [
+      "lunar_date"
+    ],
+    "节气": [
+      "lunar_date"
+    ],
+    "黄历": [
+      "lunar_date"
+    ],
+    "今天宜忌": [
+      "lunar_date"
+    ],
+    "计算": [
+      "calc_basic"
+    ],
+    "算一下": [
+      "calc_basic"
+    ],
+    "多少": [
+      "calc_basic"
+    ],
+    "等于": [
+      "calc_basic"
+    ],
+    "帮我算": [
+      "calc_basic"
+    ],
+    "算算": [
+      "calc_basic"
+    ],
+    "加": [
+      "calc_basic"
+    ],
+    "减": [
+      "calc_basic"
+    ],
+    "乘": [
+      "calc_basic"
+    ],
+    "除": [
+      "calc_basic"
+    ],
+    "开方": [
+      "calc_basic"
+    ],
+    "次方": [
+      "calc_basic"
+    ],
+    "百分之": [
+      "calc_basic"
+    ],
+    "等于多少": [
+      "calc_basic"
+    ],
+    "英寸": [
+      "unit_length"
+    ],
+    "厘米": [
+      "unit_length"
+    ],
+    "公里": [
+      "unit_length"
+    ],
+    "英里": [
+      "unit_length"
+    ],
+    "毫米": [
+      "unit_length"
+    ],
+    "米": [
+      "unit_length"
+    ],
+    "换算": [
+      "unit_length"
+    ],
+    "多少厘米": [
+      "unit_length"
+    ],
+    "多少米": [
+      "unit_length"
+    ],
+    "斤": [
+      "unit_weight"
+    ],
+    "公斤": [
+      "unit_weight"
+    ],
+    "千克": [
+      "unit_weight"
+    ],
+    "磅": [
+      "unit_weight"
+    ],
+    "盎司": [
+      "unit_weight"
+    ],
+    "克": [
+      "unit_weight"
+    ],
+    "多少斤": [
+      "unit_weight"
+    ],
+    "重量换算": [
+      "unit_weight"
+    ],
+    "华氏": [
+      "unit_temp"
+    ],
+    "摄氏": [
+      "unit_temp"
+    ],
+    "开尔文": [
+      "unit_temp"
+    ],
+    "温度换算": [
+      "unit_temp"
+    ],
+    "°F": [
+      "unit_temp"
+    ],
+    "°C": [
+      "unit_temp"
+    ],
+    "多少度": [
+      "unit_temp"
+    ],
+    "随机选": [
+      "random_choice"
+    ],
+    "帮我选": [
+      "random_choice"
+    ],
+    "选一个": [
+      "random_choice"
+    ],
+    "选哪个": [
+      "random_choice"
+    ],
+    "抛硬币": [
+      "random_choice"
+    ],
+    "掷骰子": [
+      "random_choice"
+    ],
+    "今天吃什么": [
+      "random_choice"
+    ],
+    "吃什么好": [
+      "random_choice"
+    ],
+    "随机": [
+      "random_choice"
+    ],
+    "生成密码": [
+      "password_gen"
+    ],
+    "随机密码": [
+      "password_gen"
+    ],
+    "创建密码": [
+      "password_gen"
+    ],
+    "强密码": [
+      "password_gen",
+      "password_gen"
+    ],
+    "帮我生成密码": [
+      "password_gen"
+    ],
+    "密码生成": [
+      "password_gen"
+    ],
+    "一个密码": [
+      "password_gen"
+    ],
+    "大写": [
+      "big_num"
+    ],
+    "人民币大写": [
+      "big_num"
+    ],
+    "金额大写": [
+      "big_num"
+    ],
+    "转大写": [
+      "big_num"
+    ],
+    "壹贰叁": [
+      "big_num"
+    ],
+    "身份证": [
+      "id_parse"
+    ],
+    "身份证号": [
+      "id_parse"
+    ],
+    "ID号": [
+      "id_parse"
+    ],
+    "居民身份证": [
+      "id_parse"
+    ],
+    "繁体": [
+      "simple2trad"
+    ],
+    "繁體": [
+      "simple2trad"
+    ],
+    "简体转繁体": [
+      "simple2trad"
+    ],
+    "繁体转简体": [
+      "simple2trad"
+    ],
+    "转繁体": [
+      "simple2trad"
+    ],
+    "转简体": [
+      "simple2trad"
+    ],
+    "天气": [
+      "weather_now"
+    ],
+    "气温": [
+      "weather_now"
+    ],
+    "下雨": [
+      "weather_now"
+    ],
+    "下雪": [
+      "weather_now"
+    ],
+    "晴天": [
+      "weather_now"
+    ],
+    "温度": [
+      "weather_now"
+    ],
+    "今天天气": [
+      "weather_now"
+    ],
+    "明天天气": [
+      "weather_now"
+    ],
+    "这周天气": [
+      "weather_now"
+    ],
+    "热不热": [
+      "weather_now"
+    ],
+    "冷不冷": [
+      "weather_now"
+    ],
+    "带伞": [
+      "weather_now"
+    ],
+    "穿什么衣服": [
+      "weather_now"
+    ],
+    "油价": [
+      "oil_price"
+    ],
+    "92号": [
+      "oil_price"
+    ],
+    "95号": [
+      "oil_price"
+    ],
+    "98号": [
+      "oil_price"
+    ],
+    "柴油": [
+      "oil_price"
+    ],
+    "汽油": [
+      "oil_price"
+    ],
+    "加油": [
+      "oil_price"
+    ],
+    "今天油价": [
+      "oil_price"
+    ],
+    "多少钱一升": [
+      "oil_price"
+    ],
+    "房贷": [
+      "mortgage_equal"
+    ],
+    "月供": [
+      "mortgage_equal"
+    ],
+    "贷款": [
+      "mortgage_equal"
+    ],
+    "等额本息": [
+      "mortgage_equal"
+    ],
+    "买房": [
+      "mortgage_equal"
+    ],
+    "按揭": [
+      "mortgage_equal"
+    ],
+    "还款": [
+      "mortgage_equal"
+    ],
+    "首付": [
+      "mortgage_equal"
+    ],
+    "个税": [
+      "tax_income"
+    ],
+    "所得税": [
+      "tax_income"
+    ],
+    "扣税": [
+      "tax_income"
+    ],
+    "税后": [
+      "tax_income"
+    ],
+    "到手工资": [
+      "tax_income"
+    ],
+    "税前": [
+      "tax_income"
+    ],
+    "五险一金": [
+      "tax_income"
+    ],
+    "月薪": [
+      "tax_income"
+    ],
+    "工资": [
+      "tax_income"
+    ],
+    "复利": [
+      "compound_interest"
+    ],
+    "理财": [
+      "compound_interest"
+    ],
+    "收益": [
+      "compound_interest"
+    ],
+    "年化": [
+      "compound_interest"
+    ],
+    "投资": [
+      "compound_interest"
+    ],
+    "多少年翻倍": [
+      "compound_interest"
+    ],
+    "72法则": [
+      "compound_interest"
+    ],
+    "利滚利": [
+      "compound_interest"
+    ],
+    "汇率": [
+      "exchange_rate"
+    ],
+    "美元换人民币": [
+      "exchange_rate"
+    ],
+    "欧元换人民币": [
+      "exchange_rate"
+    ],
+    "等于多少人民币": [
+      "exchange_rate"
+    ],
+    "等于多少美元": [
+      "exchange_rate"
+    ],
+    "人民币换": [
+      "exchange_rate"
+    ],
+    "外币兑换": [
+      "exchange_rate"
+    ],
+    "外汇换算": [
+      "exchange_rate"
+    ],
+    "美元兑人民币": [
+      "exchange_rate"
+    ],
+    "欧元兑人民币": [
+      "exchange_rate"
+    ],
+    "多少人民币": [
+      "exchange_rate"
+    ],
+    "多少美元": [
+      "exchange_rate"
+    ],
+    "多少日元": [
+      "exchange_rate"
+    ],
+    "生日祝福": [
+      "blessing_birthday"
+    ],
+    "生日快乐": [
+      "blessing_birthday"
+    ],
+    "生日": [
+      "blessing_birthday"
+    ],
+    "寿星": [
+      "blessing_birthday"
+    ],
+    "生日文案": [
+      "blessing_birthday"
+    ],
+    "给TA送祝福": [
+      "blessing_birthday"
+    ],
+    "新年祝福": [
+      "blessing_newyear"
+    ],
+    "春节祝福": [
+      "blessing_newyear"
+    ],
+    "新年快乐": [
+      "blessing_newyear"
+    ],
+    "过年": [
+      "blessing_newyear"
+    ],
+    "拜年": [
+      "blessing_newyear"
+    ],
+    "新春": [
+      "blessing_newyear"
+    ],
+    "祝福语": [
+      "blessing_newyear"
+    ],
+    "祝福短信": [
+      "blessing_newyear"
+    ],
+    "取名": [
+      "naming"
+    ],
+    "起名": [
+      "naming"
+    ],
+    "取个名": [
+      "naming"
+    ],
+    "帮我命名": [
+      "naming"
+    ],
+    "网名": [
+      "naming"
+    ],
+    "昵称": [
+      "naming"
+    ],
+    "宝宝取名": [
+      "naming"
+    ],
+    "品牌名": [
+      "naming"
+    ],
+    "店名": [
+      "naming"
+    ],
+    "朋友圈": [
+      "moments_copy"
+    ],
+    "文案": [
+      "moments_copy"
+    ],
+    "发圈": [
+      "moments_copy"
+    ],
+    "晒": [
+      "moments_copy"
+    ],
+    "配文": [
+      "moments_copy"
+    ],
+    "怎么发": [
+      "moments_copy"
+    ],
+    "小红书": [
+      "moments_copy"
+    ]
+  }
+}

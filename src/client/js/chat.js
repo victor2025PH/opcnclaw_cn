@@ -1117,10 +1117,10 @@ export function init() {
     localStorage.removeItem('oc_token');
     S.serverUrl = '';
     S.token = '';
-    if (S.voiceWs) { S.voiceWs.close(); S.voiceWs = null; }
-    fn.closeCamera?.();
+    fn.disconnectPermanently?.();
+    try { fn.closeCamera?.(); } catch (_) {}
     dom.settingsModal.classList.add('hidden');
-    showSetup();
+    window.location.href = '/setup?force';
   });
 
   // Language toggle
@@ -1247,29 +1247,38 @@ export function init() {
   // ── Main init logic ──
   (async () => {
     if (window.location.protocol === 'http:') {
+      const isLocal = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
       const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent);
       if (isMobile) {
         window.location.href = '/chat';
         return;
       }
-      const banner = document.createElement('div');
-      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;padding:12px 20px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center';
-      banner.innerHTML = '⚠️ 当前为 HTTP 模式，语音功能受限。'
-        + '<a href="/chat" style="color:#fbbf24;font-weight:600;text-decoration:underline">文字聊天版</a>'
-        + '<span style="color:#cbd5e1">|</span>'
-        + '<a href="/setup" style="color:#fbbf24;font-weight:600;text-decoration:underline">安装证书启用完整版</a>'
-        + '<button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:4px;padding:2px 10px;cursor:pointer;margin-left:8px">✕</button>';
-      document.body.prepend(banner);
+      if (!isLocal) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;padding:12px 20px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center';
+        banner.innerHTML = '⚠️ 当前为 HTTP 模式，语音功能受限。'
+          + '<a href="/chat" style="color:#fbbf24;font-weight:600;text-decoration:underline">文字聊天版</a>'
+          + '<span style="color:#cbd5e1">|</span>'
+          + '<a href="/setup" style="color:#fbbf24;font-weight:600;text-decoration:underline">安装证书启用完整版</a>'
+          + '<button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:4px;padding:2px 10px;cursor:pointer;margin-left:8px">✕</button>';
+        document.body.prepend(banner);
+      }
     }
 
-    const info = await testConnection(window.location.origin);
-    if (info) {
-      S.serverUrl = window.location.origin;
-      S.token = info.token || '';
-      localStorage.setItem('oc_server', S.serverUrl);
-      localStorage.setItem('oc_token', S.token);
-      showChat(info);
-      return;
+    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.origin);
+    const maxRetries = isLocalhost ? 3 : 1;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+      const info = await testConnection(window.location.origin);
+      if (info) {
+        S.serverUrl = window.location.origin;
+        S.token = info.token || '';
+        localStorage.setItem('oc_server', S.serverUrl);
+        localStorage.setItem('oc_token', S.token);
+        showChat(info);
+        return;
+      }
     }
 
     const saved = localStorage.getItem('oc_server');

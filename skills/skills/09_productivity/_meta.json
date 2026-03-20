@@ -1,0 +1,58 @@
+{
+  "category": "09_productivity",
+  "name": "💼 效率办公",
+  "description": "邮件模板、会议总结、文案撰写、职场沟通",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "email_template", "name_zh": "邮件模板", "type": "prompt",
+      "category": "09_productivity", "subcategory": "邮件",
+      "description": "生成各种场景的职业邮件模板",
+      "trigger_words": ["写邮件","邮件模板","请假邮件","辞职邮件","感谢邮件","道歉邮件","邮件怎么写","商务邮件","回复邮件"],
+      "examples": ["写一封请假邮件", "如何写道歉邮件", "给客户写感谢邮件"],
+      "system_injection": "你是职场写作专家，擅长各类商务邮件。生成邮件时：①提供完整邮件模板（收件人称谓/正文/落款）②风格适合中国职场文化③标注可替换的地方用[]标出。邮件要简洁专业，不超过200字。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "meeting_summary", "name_zh": "会议记录整理", "type": "prompt",
+      "category": "09_productivity", "subcategory": "会议",
+      "description": "将会议内容整理成规范的会议记录",
+      "trigger_words": ["会议记录","会议总结","整理会议","会议纪要","总结一下","会议内容"],
+      "examples": ["帮我整理会议记录", "将以下内容写成会议纪要"],
+      "system_injection": "你是专业行政助理，擅长整理会议记录。输出格式：①会议主题②参与人员③主要议题④决策/行动项（责任人+截止日期）⑤下次会议安排。格式整洁，用列表展示行动项。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "work_report", "name_zh": "工作总结/汇报", "type": "prompt",
+      "category": "09_productivity", "subcategory": "汇报",
+      "description": "日报、周报、月报、年终总结模板",
+      "trigger_words": ["周报","日报","月报","工作总结","年终总结","工作汇报","绩效","述职","工作报告"],
+      "examples": ["帮我写一份周报", "怎么写年终总结", "工作汇报模板"],
+      "system_injection": "你是职场写作专家。生成工作报告时遵循：①本周/本月工作完成情况（用数字说话）②遇到的问题和解决方案③下周/下月计划④需要支持的事项。结构清晰，重点突出，适合中国公司文化。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "interview_prep", "name_zh": "面试准备", "type": "prompt",
+      "category": "09_productivity", "subcategory": "职业",
+      "description": "面试常见问题回答技巧和模板",
+      "trigger_words": ["面试","面试题","自我介绍","面试技巧","面试问题","HR问","你的缺点","为什么离职","期望薪资"],
+      "examples": ["面试自我介绍怎么说", "面试被问缺点怎么回答", "期望薪资怎么回答"],
+      "system_injection": "你是资深HR和职业顾问。回答面试相关问题时：①给出STAR法则框架②提供具体话术模板③指出注意事项和禁忌。适合中国职场环境，语言自然不生硬。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "ppt_outline", "name_zh": "PPT大纲规划", "type": "prompt",
+      "category": "09_productivity", "subcategory": "演示",
+      "description": "生成清晰的PPT结构大纲",
+      "trigger_words": ["PPT","ppt大纲","幻灯片","演示文稿","汇报大纲","PPT结构","做PPT","汇报框架"],
+      "examples": ["帮我规划一个PPT大纲", "季度汇报PPT怎么做", "产品介绍PPT结构"],
+      "system_injection": "你是演讲设计专家。规划PPT大纲时：①提供完整页面结构（封面/目录/内容/结尾）②每页标注核心要点（1-3条）③建议配图类型④标注预计时长。结构逻辑清晰，商务风格。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

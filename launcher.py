@@ -1,11 +1,11 @@
 """
-OpenClaw v3.0 统一启动器
+十三香小龙虾 统一启动器
 
 功能：
-1. 初始化配置（首次运行向导）
+1. 启动自检（缺包/缺文件 → 明确提示）
 2. 启动 FastAPI 服务（子线程）
 3. 启动系统托盘图标 + 上下文感知引擎
-4. 管理生命周期（优雅退出）
+4. 轮询等待服务就绪 → 自动打开浏览器
 5. S2S 模式自动检测 + 情感引擎初始化
 
 用法：
@@ -40,12 +40,31 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
+PORTABLE_MODE = (ROOT / "portable.flag").exists()
+
 from loguru import logger
 
 # ──────────────────────────────────────────────────────
 # 日志配置
+# 便携模式：所有数据严格在 ROOT 内，不写 APPDATA
+# 普通模式：优先 ROOT/logs，只读目录时回退到 APPDATA
 # ──────────────────────────────────────────────────────
-Path("logs").mkdir(exist_ok=True)
+def _log_dir():
+    base = ROOT / "logs"
+    try:
+        base.mkdir(exist_ok=True)
+        (base / ".write_test").write_text("")
+        (base / ".write_test").unlink()
+        return str(base)
+    except (OSError, PermissionError):
+        if PORTABLE_MODE:
+            base.mkdir(parents=True, exist_ok=True)
+            return str(base)
+        fallback = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "ShisanXiang" / "logs"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return str(fallback)
+
+_LOG_DIR = _log_dir()
 _LOG_LEVEL = os.environ.get("OPENCLAW_LOG_LEVEL", "DEBUG").upper()
 _LOG_ROTATION = os.environ.get("OPENCLAW_LOG_ROTATION", "5 MB")
 _LOG_RETENTION = os.environ.get("OPENCLAW_LOG_RETENTION", "14 days")
@@ -54,25 +73,70 @@ logger.remove()
 if sys.stdout:
     logger.add(sys.stdout, level="INFO",
                format="<green>{time:HH:mm:ss}</green> | <level>{level:8}</level> | {message}")
-logger.add("logs/openclaw.log", level=_LOG_LEVEL,
+logger.add(os.path.join(_LOG_DIR, "十三香小龙虾.log"), level=_LOG_LEVEL,
            rotation=_LOG_ROTATION, retention=_LOG_RETENTION,
            compression="zip", encoding="utf-8", enqueue=True)
-logger.add("logs/error.log", level="ERROR",
+logger.add(os.path.join(_LOG_DIR, "error.log"), level="ERROR",
            rotation="2 MB", retention="30 days",
            compression="zip", encoding="utf-8", enqueue=True)
 
 
+def _read_version():
+    vf = Path("version.txt")
+    return vf.read_text(encoding="utf-8").strip() if vf.exists() else "3.2.0"
+
+
 def _print_banner():
-    # 兼容 GBK 控制台（Windows CMD 默认编码）
+    ver = _read_version()
     try:
-        print("""
-╔═══════════════════════════════════════╗
-║   OpenClaw AI 语音助手  v3.0          ║
-║   全双工 · 多平台 · 技能增强          ║
-╚═══════════════════════════════════════╝
+        print(f"""
++---------------------------------------+
+|  十三香小龙虾  v{ver:<23s}|
+|  全双工 · 多平台 · 技能增强           |
++---------------------------------------+
 """)
     except UnicodeEncodeError:
-        print("OpenClaw AI v3.0 - Starting...")
+        print(f"十三香小龙虾 v{ver} - Starting...")
+
+
+def _self_check():
+    """Startup diagnostics — catch missing packages before they crash the server."""
+    issues = []
+
+    import importlib
+    required = {
+        "fastapi": "pip install fastapi",
+        "uvicorn": "pip install uvicorn",
+        "openai": "pip install openai",
+        "httpx": "pip install httpx",
+        "dotenv": "pip install python-dotenv",
+    }
+    for mod, fix in required.items():
+        pkg = "python-dotenv" if mod == "dotenv" else mod
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            issues.append(f"  缺少 {pkg} → 修复: {fix}")
+
+    env_path = ROOT / ".env"
+    if not env_path.exists():
+        tpl = ROOT / ".env.template"
+        if tpl.exists():
+            import shutil
+            shutil.copy(str(tpl), str(env_path))
+            logger.info("已从 .env.template 自动创建 .env 文件")
+        else:
+            issues.append("  缺少 .env 文件 → 请从 .env.template 复制一份")
+
+    if issues:
+        logger.error("启动自检发现问题:\n" + "\n".join(issues))
+        print("\n!!! 启动自检发现以下问题 !!!")
+        for i in issues:
+            print(i)
+        print("\n请修复后重新启动。\n")
+        return False
+    logger.info("启动自检通过")
+    return True
 
 
 # ──────────────────────────────────────────────────────
@@ -92,7 +156,7 @@ def _start_hotkeys(cfg, on_settings, on_quit):
     }
     _CALLBACKS = {"settings": on_settings, "quit": on_quit}
 
-    enabled = set(cfg.shortcuts_enabled)
+    enabled = set(getattr(cfg, 'shortcuts_enabled', ['settings', 'quit']))
 
     def _loop():
         user32 = ctypes.windll.user32
@@ -173,6 +237,9 @@ def _start_server(cfg, tray=None) -> threading.Thread:
             from uvicorn import Config, Server
             import multiprocessing as mp
 
+            _no_stdout = sys.stdout is None
+            _uvi_log = None if _no_stdout else "warning"
+
             async def _run_both():
                 servers = []
                 # HTTPS
@@ -180,14 +247,14 @@ def _start_server(cfg, tray=None) -> threading.Thread:
                     https_config = Config(
                         app, host="0.0.0.0", port=https_port,
                         ssl_certfile=str(ssl_cert), ssl_keyfile=str(ssl_key),
-                        loop="asyncio", log_level="warning",
+                        loop="asyncio", log_level=_uvi_log, log_config=None if _no_stdout else uvicorn.config.LOGGING_CONFIG,
                     )
                     servers.append(Server(https_config))
 
                 # HTTP
                 http_config = Config(
                     app, host="0.0.0.0", port=http_port,
-                    loop="asyncio", log_level="warning",
+                    loop="asyncio", log_level=_uvi_log, log_config=None if _no_stdout else uvicorn.config.LOGGING_CONFIG,
                 )
                 servers.append(Server(http_config))
 
@@ -199,9 +266,9 @@ def _start_server(cfg, tray=None) -> threading.Thread:
             logger.error(f"服务器启动失败: {e}")
             if tray:
                 tray.update_status(f"服务启动失败: {e}", "error")
-                tray.show_notification("OpenClaw 启动失败", str(e))
+                tray.show_notification("十三香小龙虾 启动失败", str(e))
 
-    t = threading.Thread(target=_run, daemon=True, name="openclaw-server")
+    t = threading.Thread(target=_run, daemon=True, name="十三香小龙虾-server")
     t.start()
     return t
 
@@ -247,12 +314,12 @@ def _first_run_wizard(cfg):
         import webbrowser
 
         root = tk.Tk()
-        root.title("欢迎使用 OpenClaw！")
+        root.title("欢迎使用十三香小龙虾！")
         root.geometry("540x420")
         root.resizable(False, False)
         root.configure(bg="#1a1a2e")
 
-        tk.Label(root, text="🦞 欢迎使用 OpenClaw", font=("", 20, "bold"),
+        tk.Label(root, text="🦞 欢迎使用十三香小龙虾", font=("", 20, "bold"),
                  bg="#1a1a2e", fg="#a78bfa").pack(pady=20)
         tk.Label(root, text="全双工 AI 语音助手 | 本地部署 | 隐私安全",
                  font=("", 12), bg="#1a1a2e", fg="#9ca3af").pack()
@@ -317,11 +384,16 @@ def _first_run_wizard(cfg):
 def main():
     _print_banner()
 
-    parser = argparse.ArgumentParser(description="OpenClaw 启动器")
+    parser = argparse.ArgumentParser(description="十三香小龙虾启动器")
     parser.add_argument("--nogui", action="store_true", help="无GUI模式")
     parser.add_argument("--setup", action="store_true", help="强制设置向导")
     parser.add_argument("--port", type=int, default=None, help="覆盖 HTTP 端口")
     args = parser.parse_args()
+
+    # 启动自检：缺包/缺文件在这里拦截，而不是启动后崩溃
+    if not _self_check():
+        input("按回车键退出...")
+        sys.exit(1)
 
     # 环境检查（启动时自动修复常见问题）
     try:
@@ -390,7 +462,7 @@ def main():
         logger.debug(f"Context engine not started: {e}")
 
     # S2S 模式检测
-    if router.s2s_available:
+    if getattr(router, 's2s_available', False):
         logger.info(f"⚡ S2S 端到端语音模式可用: {router.s2s.backend_name}")
     else:
         logger.info("📡 使用 STT → LLM → TTS 管道模式")
@@ -399,34 +471,46 @@ def main():
     logger.info("🚀 正在启动服务器...")
     _start_server(cfg, tray)
 
-    # 等待服务器就绪
-    time.sleep(2.5)
+    # 轮询等待服务器 HTTP 端口就绪（模型在后台异步加载，ping 通常 3 秒内就绪）
+    import urllib.request
+    server_ok = False
+    for _ in range(60):
+        time.sleep(0.5)
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{cfg.http_port}/api/ping", timeout=2)
+            server_ok = True
+            break
+        except Exception:
+            pass
+
+    if not server_ok:
+        logger.warning("服务器 HTTP 端口未响应，但进程仍在运行")
 
     if tray:
         if active:
             tray.update_status(f"运行中 | {active}", "ok")
-            tray.show_notification("OpenClaw 已启动",
+            tray.show_notification("十三香小龙虾 已启动",
                                     f"AI: {active}\n访问: http://localhost:{cfg.http_port}/app")
         else:
             tray.update_status("未配置 AI Key", "warning")
-            tray.show_notification("OpenClaw 需要配置",
+            tray.show_notification("十三香小龙虾 需要配置",
                                     "请点击托盘图标 → 打开设置 → 填写 AI Key")
 
-    # 首次运行向导
+    # 始终打开浏览器（页面有自己的加载屏，可以等待模型就绪）
     if not args.nogui:
-        if cfg.first_run or args.setup:
-            threading.Thread(target=lambda: _first_run_wizard(cfg), daemon=True).start()
+        setup_done = os.environ.get("OPENCLAW_SETUP_DONE", "").lower() == "true"
+        if cfg.first_run or args.setup or not setup_done:
+            webbrowser.open(f"http://localhost:{cfg.http_port}/setup")
         else:
-            # 自动打开浏览器
             webbrowser.open(f"http://localhost:{cfg.http_port}/qr")
 
     # 保持主线程运行
-    logger.info(f"✅ OpenClaw 就绪！网页版: http://localhost:{cfg.http_port}/app")
+    logger.info(f"✅ 十三香小龙虾就绪！控制台: http://localhost:{cfg.http_port}/qr")
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        logger.info("👋 OpenClaw 正在退出...")
+        logger.info("👋 十三香小龙虾正在退出...")
         sys.exit(0)
 
 

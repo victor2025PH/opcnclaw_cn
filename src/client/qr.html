@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OpenClaw AI — 扫码聊天</title>
+<title>十三香小龙虾 AI — 扫码聊天</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -117,18 +117,29 @@ body{display:flex;align-items:center;justify-content:center}
 
 <div class="container">
 
-  <!-- QR Code Card -->
-  <div class="qr-card">
-    <div class="qr-title">扫码即刻对话</div>
-    <div class="qr-box" id="qr-wrap">
-      <img id="qrImg" src="" alt="QR Code" style="width:220px;height:220px;border-radius:8px;display:block">
-      <div class="qr-corner tl"></div>
-      <div class="qr-corner tr"></div>
-      <div class="qr-corner bl"></div>
-      <div class="qr-corner br"></div>
+  <!-- QR Code Cards -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+
+    <!-- Single QR: scan to use -->
+    <div class="qr-card">
+      <div class="qr-title">📱 扫码使用 十三香小龙虾</div>
+      <div class="qr-box" id="qr-wrap">
+        <img id="qrImg" src="" alt="QR Code" style="width:220px;height:220px;border-radius:8px;display:block">
+        <div class="qr-corner tl"></div>
+        <div class="qr-corner tr"></div>
+        <div class="qr-corner bl"></div>
+        <div class="qr-corner br"></div>
+      </div>
+      <div class="qr-url" id="qrUrl">正在获取地址...</div>
+      <div class="scan-hint"><span class="icon">💬</span>扫码即用，文字 + 语音一站搞定</div>
     </div>
-    <div class="qr-url" id="qrUrl">正在获取地址...</div>
-    <div class="scan-hint"><span class="icon">📱</span>无需安装任何 App</div>
+
+    <!-- Desktop shortcut -->
+    <div style="display:flex;gap:10px;justify-content:center">
+      <a href="/app" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:var(--accent);color:#fff;text-decoration:none;font-size:13px;font-weight:600">🖥️ 本机使用</a>
+      <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:rgba(255,255,255,.06);color:var(--text);text-decoration:none;font-size:13px;border:1px solid var(--border)">⚙️ 管理面板</a>
+    </div>
+
     <div class="refresh">
       <span id="refreshHint">30 秒后刷新</span>
       <div class="refresh-bar"><div class="refresh-fill" id="rfill"></div></div>
@@ -140,7 +151,7 @@ body{display:flex;align-items:center;justify-content:center}
     <div class="brand">
       <div class="brand-logo">🤖</div>
       <div>
-        <div class="brand-name">OpenClaw AI</div>
+        <div class="brand-name">十三香小龙虾 AI</div>
         <div class="brand-sub">本地 AI 语音助手</div>
       </div>
     </div>
@@ -187,8 +198,7 @@ body{display:flex;align-items:center;justify-content:center}
     </div>
 
     <div style="font-size:12px;color:var(--muted);padding:10px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)">
-      💡 想要<strong style="color:var(--text)">摄像头 + 语音唤醒</strong>等完整功能，
-      请访问 <span style="color:var(--accent2);font-family:monospace" id="fullUrl">https://IP:8765/setup</span> 安装证书
+      💡 扫码后在底部<strong style="color:var(--text)">"语音设置"</strong>标签页可一键开启语音、摄像头、唤醒词等完整功能
     </div>
   </div>
 
@@ -223,9 +233,7 @@ async function loadInfo() {
     chatUrl = `http://${mainIp}:${port}/chat`;
 
     document.getElementById('qrUrl').textContent = chatUrl;
-    document.getElementById('fullUrl').textContent = `https://${mainIp}:${info.port}/setup`;
 
-    // Render IPs — WiFi LAN IP first
     const sortedIps = [...ips].sort((a, b) => {
       const score = ip => /^192\.168\./.test(ip) ? 0 : /^10\./.test(ip) ? 1 : 2;
       return score(a) - score(b);
@@ -233,30 +241,26 @@ async function loadInfo() {
     const ipsEl = document.getElementById('ips');
     ipsEl.innerHTML = sortedIps.map((ip, i) =>
       `<div class="ip-item">
-        <span class="ip-label">${i === 0 ? '📱 扫码聊天' : 'HTTP'}</span>
+        <span class="ip-label">${i === 0 ? '📱 手机访问' : 'IP'}</span>
         <span class="ip-val">http://${ip}:${port}/chat</span>
-      </div>
-      <div class="ip-item">
-        <span class="ip-label">${i === 0 ? '🔐 完整版' : 'HTTPS'}</span>
-        <span class="ip-val">https://${ip}:${info.port}/app</span>
       </div>`
     ).join('');
 
-    renderQR(chatUrl);
+    renderQR(chatUrl, 'qrImg');
   } catch (e) {
     document.getElementById('qrUrl').textContent = '获取地址失败，请刷新页面';
     console.error(e);
   }
 }
 
-function renderQR(url) {
-  // Use server-side QR generation — no CDN dependency
-  const img = document.getElementById('qrImg');
-  const src = `/api/qr?url=${encodeURIComponent(url)}&size=220`;
+function renderQR(url, imgId) {
+  const img = document.getElementById(imgId || 'qrImg');
+  if (!img) return;
+  const size = img.width || 220;
+  const src = `/api/qr?url=${encodeURIComponent(url)}&size=${size}`;
   img.src = src;
   img.onerror = () => {
-    // Ultimate fallback: external service
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}`;
   };
 }
 

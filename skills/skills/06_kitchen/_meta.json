@@ -1,0 +1,68 @@
+{
+  "category": "06_kitchen",
+  "name": "🍳 厨房助手",
+  "description": "菜谱查询、食材替换、烹饪技巧、食材保存",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "recipe_lookup", "name_zh": "菜谱查询", "type": "prompt",
+      "category": "06_kitchen", "subcategory": "菜谱",
+      "description": "查询中式家常菜的做法步骤",
+      "trigger_words": ["怎么做","菜谱","做法","食谱","怎么炒","怎么炖","怎么蒸","做好吃","好吃的","家常","如何烹饪"],
+      "examples": ["红烧肉怎么做", "西红柿炒鸡蛋的做法", "鱼香肉丝怎么做"],
+      "system_injection": "你是专业厨师，精通中式家常菜。介绍菜谱时：①列出主要食材和用量②分步骤说明（3-5步，每步1句话）③给出关键技巧1-2条。用口语化表达，适合语音播报，重点突出，简洁明了。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "ingredient_sub", "name_zh": "食材替换", "type": "prompt",
+      "category": "06_kitchen", "subcategory": "技巧",
+      "description": "当缺少某种食材时推荐替代品",
+      "trigger_words": ["替代","代替","没有","缺少食材","用什么代替","换什么","食材替换"],
+      "examples": ["没有料酒用什么代替", "没有黄油怎么办", "淀粉可以用面粉代替吗"],
+      "system_injection": "你是经验丰富的厨师，熟知食材替换方法。当用户询问某食材的替代品时：①列出1-3种可替代食材②说明替换比例③告知口感差异。简洁实用，以实用性为主。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "food_storage", "name_zh": "食材保存方法", "type": "prompt",
+      "category": "06_kitchen", "subcategory": "保存",
+      "description": "各种食材的正确保存方式和保质期",
+      "trigger_words": ["保存","怎么存","放冰箱","保质期","变质","储存","剩菜","剩饭","保鲜"],
+      "examples": ["西瓜切开后怎么保存", "鸡蛋怎么放不容易坏", "剩菜能放几天"],
+      "system_injection": "你是食品安全专家。提供食材保存建议时说明：①保存方式（冷藏/冷冻/常温）②保存时长③注意事项④变质判断方法。言简意赅，1-2句话为主。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "cooking_tip", "name_zh": "烹饪小技巧", "type": "prompt",
+      "category": "06_kitchen", "subcategory": "技巧",
+      "description": "烹饪技巧、火候控制、调味秘诀",
+      "trigger_words": ["技巧","窍门","秘诀","为什么","怎么炒","火候","调味","去腥","嫩肉","让肉嫩","炒菜技巧"],
+      "examples": ["炒肉怎么让肉嫩", "为什么我炒的菜不香", "鱼怎么去腥"],
+      "system_injection": "你是资深厨师，掌握大量烹饪技巧。分享技巧时要具体可操作，解释背后的原理（简短），并给出1个立竿见影的建议。语气轻松，像朋友分享一样。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "kitchen_convert", "name_zh": "厨房单位换算", "type": "code",
+      "category": "06_kitchen", "subcategory": "换算",
+      "description": "厨房常用计量单位换算：勺/杯/克",
+      "trigger_words": ["一勺","一杯","多少克","tablespoon","teaspoon","cup","ml换算","厨房单位","多少毫升"],
+      "examples": ["一汤匙等于多少克", "一杯面粉多少克", "5ml等于几滴"],
+      "handler": "kitchen_tools.kitchen_convert",
+      "params": [{"name": "value", "type": "number", "default": 1}, {"name": "from_unit", "type": "string", "default": "汤匙"}],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "fridge_recipe", "name_zh": "冰箱剩料做什么", "type": "prompt",
+      "category": "06_kitchen", "subcategory": "创意",
+      "description": "根据冰箱现有食材推荐可做的菜",
+      "trigger_words": ["冰箱有","剩下","用完","冰箱里","现有食材","用什么做","用这些做什么"],
+      "examples": ["冰箱里有鸡蛋西红柿和土豆能做什么", "用洋葱和猪肉做什么菜"],
+      "system_injection": "你是创意厨师，擅长利用现有食材创作美食。当用户告知食材时：①推荐2-3道可做的菜②选择最简单的给出做法要点。重视食材利用率，减少浪费。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

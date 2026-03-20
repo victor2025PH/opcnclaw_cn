@@ -49,12 +49,34 @@ from typing import Dict, List, Optional, Tuple
 import httpx
 from loguru import logger
 
-APP_VERSION = "2.0.0"
 APP_ROOT = Path(__file__).parent.parent.parent
 
-# 可以在 config.ini 中配置
-DEFAULT_REPO = "openclaw/voice"  # GitHub 仓库
-UPDATE_CHECK_INTERVAL = 86400    # 每天检查一次（秒）
+
+def _read_version() -> str:
+    vf = APP_ROOT / "version.txt"
+    if vf.exists():
+        return vf.read_text(encoding="utf-8").strip()
+    return "3.2.0"
+
+
+APP_VERSION = _read_version()
+
+def _load_update_config():
+    """Read [update] from config.ini, return (repo, channel, auto_check, interval)."""
+    import configparser
+    cfg = configparser.ConfigParser()
+    cfg.read(str(APP_ROOT / "config.ini"), encoding="utf-8")
+    return (
+        cfg.get("update", "github_repo", fallback="Purple-Horizons/openclaw-voice"),
+        cfg.get("update", "channel", fallback="stable"),
+        cfg.getboolean("update", "auto_check", fallback=True),
+        cfg.getint("update", "check_interval", fallback=86400),
+    )
+
+
+_cfg_repo, _cfg_channel, _cfg_auto_check, _cfg_interval = _load_update_config()
+DEFAULT_REPO = _cfg_repo
+UPDATE_CHECK_INTERVAL = _cfg_interval
 BACKUP_DIR = APP_ROOT / "backup"
 UPDATE_CACHE_DIR = APP_ROOT / "data" / "update_cache"
 

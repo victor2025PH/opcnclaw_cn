@@ -10,10 +10,10 @@ use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
 
 const BACKEND_PORT: u16 = 8766;
-const BACKEND_URL: &str = "http://localhost:8766";
-const APP_URL: &str = "http://localhost:8766/app";
-const HEALTH_URL: &str = "http://localhost:8766/api/health";
-const HEALTH_TIMEOUT: Duration = Duration::from_secs(60);
+const BACKEND_URL: &str = "http://127.0.0.1:8766";
+const APP_URL: &str = "http://127.0.0.1:8766/app";
+const HEALTH_URL: &str = "http://127.0.0.1:8766/api/ping";
+const HEALTH_TIMEOUT: Duration = Duration::from_secs(120);
 const HEALTH_POLL: Duration = Duration::from_millis(500);
 
 // ── Python 后端管理 ─────────────────────────────────────────
@@ -47,11 +47,19 @@ impl PythonBackend {
         eprintln!("[Tauri] Python: {}", python);
         eprintln!("[Tauri] Project: {}", work_dir.display());
 
-        let child = Command::new(&python)
-            .args(["-m", "src.server.main"])
+        #[cfg(windows)]
+        use std::os::windows::process::CommandExt;
+
+        let mut cmd = Command::new(&python);
+        cmd.args(["-m", "src.server.main"])
             .env("PYTHONPATH", ".")
-            .current_dir(&work_dir)
-            .spawn()
+            .env("OPENCLAW_DESKTOP", "1")
+            .current_dir(&work_dir);
+
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+        let child = cmd.spawn()
             .map_err(|e| format!("启动失败 ({}): {}", python, e))?;
 
         *guard = Some(child);
@@ -64,11 +72,16 @@ impl PythonBackend {
                 #[cfg(windows)]
                 {
                     let _ = Command::new("taskkill")
-                        .args(["/PID", &child.id().to_string(), "/T"])
+                        .args(["/PID", &child.id().to_string(), "/T", "/F"])
                         .output();
                 }
                 let _ = child.kill();
-                let _ = child.wait();
+                // Wait with timeout to avoid deadlock on exit
+                let pid = child.id();
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
+                eprintln!("[Tauri] Sent kill to PID {}", pid);
             }
         }
     }
@@ -90,9 +103,23 @@ impl Drop for PythonBackend {
 }
 
 fn find_python() -> Option<String> {
-    // 1. 同目录内嵌 Python（开发或便携模式）
+    let subs = &["python/python.exe", "embedded/python/python.exe"];
+
+    // 1. EXE 所在目录（安装后最可靠的查找路径）
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            for sub in subs {
+                let p = dir.join(sub);
+                if p.exists() {
+                    return Some(p.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    // 2. 当前工作目录（开发或便携模式）
     if let Ok(cwd) = std::env::current_dir() {
-        for sub in &["python/python.exe", "embedded/python/python.exe"] {
+        for sub in subs {
             let p = cwd.join(sub);
             if p.exists() {
                 return Some(p.to_string_lossy().to_string());
@@ -100,7 +127,7 @@ fn find_python() -> Option<String> {
         }
     }
 
-    // 2. Inno Setup 安装目录（Cursor 的安装包）
+    // 3. Inno Setup 默认安装目录
     if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
         let inno_python = std::path::PathBuf::from(&appdata)
             .join("ShisanXiang")
@@ -111,14 +138,14 @@ fn find_python() -> Option<String> {
         }
     }
 
-    // 3. 环境变量指定
+    // 4. 环境变量指定
     if let Ok(p) = std::env::var("OPENCLAW_PYTHON") {
         if !p.is_empty() {
             return Some(p);
         }
     }
 
-    // 4. 系统 Python（验证版本 >= 3.10）
+    // 5. 系统 Python（验证版本 >= 3.10）
     for name in &["python", "python3"] {
         if let Ok(output) = Command::new(name).arg("--version").output() {
             if output.status.success() {
@@ -136,30 +163,28 @@ fn find_python() -> Option<String> {
 fn find_project_dir() -> Option<std::path::PathBuf> {
     let marker = "src/server/main.py";
 
-    // 逐个检查候选路径
     let mut candidates: Vec<std::path::PathBuf> = Vec::new();
 
-    // 1. 环境变量指定
-    if let Ok(p) = std::env::var("OPENCLAW_HOME") {
-        candidates.push(std::path::PathBuf::from(p));
-    }
-
-    // 2. 当前目录
-    if let Ok(cwd) = std::env::current_dir() {
-        candidates.push(cwd.clone());
-        // 当前目录的父级（从 src-tauri 运行时）
-        if let Some(parent) = cwd.parent() {
-            candidates.push(parent.to_path_buf());
-        }
-    }
-
-    // 3. EXE 所在目录及其父级
+    // 1. EXE 所在目录（安装后最可靠）及其父级
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             candidates.push(dir.to_path_buf());
             if let Some(parent) = dir.parent() {
                 candidates.push(parent.to_path_buf());
             }
+        }
+    }
+
+    // 2. 环境变量指定
+    if let Ok(p) = std::env::var("OPENCLAW_HOME") {
+        candidates.push(std::path::PathBuf::from(p));
+    }
+
+    // 3. 当前目录
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.clone());
+        if let Some(parent) = cwd.parent() {
+            candidates.push(parent.to_path_buf());
         }
     }
 
@@ -311,7 +336,16 @@ pub fn run() {
                         SHOULD_QUIT.store(true, Ordering::SeqCst);
                         let state = app.state::<PythonBackend>();
                         state.stop();
-                        app.exit(0);
+                        let handle = app.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(Duration::from_millis(300));
+                            handle.exit(0);
+                        });
+                        // Fallback: force exit if app.exit doesn't work within 3s
+                        let _ = std::thread::spawn(|| {
+                            std::thread::sleep(Duration::from_secs(3));
+                            std::process::exit(0);
+                        });
                     }
                     _ => {}
                 })
@@ -333,30 +367,29 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // ── 启动画面（内联HTML，不依赖文件系统）──
+            // ── 启动画面（splash 窗口）──
             let splash_html = r#"data:text/html,<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>*{margin:0;padding:0}body{background:%230b0b16;color:%23e8e8f0;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;user-select:none}.logo{font-size:48px;margin-bottom:16px}h1{font-size:20px;font-weight:600;margin-bottom:24px;color:%23c8c8d8}.loader{width:120px;height:4px;background:%231a1a2e;border-radius:2px;overflow:hidden;margin-bottom:12px}.bar{width:40%25;height:100%25;background:linear-gradient(90deg,%237c6aef,%23e94560);border-radius:2px;animation:s 1.2s ease-in-out infinite}@keyframes s{0%25{transform:translateX(-100%25)}100%25{transform:translateX(350%25)}}.hint{font-size:12px;color:%23666}</style></head>
-<body><div class="logo">🦞</div><h1>十三香小龙虾 AI</h1><div class="loader"><div class="bar"></div></div><div class="hint">正在启动 AI 引擎...</div></body></html>"#;
+<style>*{margin:0;padding:0}body{background:%230b0b16;color:%23e8e8f0;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;user-select:none}.logo{font-size:48px;margin-bottom:16px}h1{font-size:20px;font-weight:600;margin-bottom:16px;color:%23c8c8d8}.pbar{width:200px;height:4px;background:%231a1a2e;border-radius:2px;overflow:hidden;margin-bottom:12px}.pfill{height:100%25;width:5%25;background:linear-gradient(90deg,%237c6aef,%23e94560);border-radius:2px;transition:width .5s}.hint{font-size:12px;color:%23888;margin-bottom:8px}.detail{font-size:11px;color:%23555;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}</style></head>
+<body><div class="logo">🦞</div><h1>十三香小龙虾 AI</h1><div class="pbar"><div class="pfill" id="bar"></div></div><div class="hint" id="msg">正在启动...</div><div class="detail" id="det"></div>
+<script>var icons={pending:'⏳',loading:'⏳',ready:'✅',error:'❌'},names={stt:'语音识别',tts:'语音合成',backend:'AI引擎',workflow:'工作流'};function poll(){fetch('http://127.0.0.1:8766/api/startup-status').then(function(r){return r.json()}).then(function(d){document.getElementById('msg').textContent=d.message||'加载中...';var c=d.components||{},done=0,n=0,h='';for(var k in c){n++;if(c[k]==='ready')done++;h+='<span>'+(icons[c[k]]||'⏳')+' '+(names[k]||k)+'</span>'}document.getElementById('det').innerHTML=h;document.getElementById('bar').style.width=Math.min(95,5+done/Math.max(n,1)*90)+'%25'}).catch(function(){});setTimeout(poll,1200)}poll()</script></body></html>"#;
 
-            let _splash = WebviewWindowBuilder::new(
-                app,
-                "splash",
-                WebviewUrl::External(splash_html.parse().unwrap()),
-            )
-            .title("十三香小龙虾 AI")
-            .inner_size(400.0, 300.0)
-            .center()
-            .decorations(false)
-            .resizable(false)
-            .build()?;
+            if !python_missing && !project_missing {
+                let _ = WebviewWindowBuilder::new(
+                    app,
+                    "splash",
+                    WebviewUrl::External(splash_html.parse().unwrap()),
+                )
+                .title("十三香小龙虾 AI")
+                .inner_size(400.0, 300.0)
+                .center()
+                .decorations(false)
+                .resizable(false)
+                .build()?;
+            }
 
-            // ── 后台等待后端就绪 ──────────────────────
+            // ── 后台等待后端就绪，然后关闭 splash 打开 main ──
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
-                if let Some(w) = app_handle.get_webview_window("splash") {
-                    let _ = w.close();
-                }
-
                 if python_missing || project_missing {
                     let msg = if python_missing {
                         "未找到 Python 3.10%2B，请安装 Python 后重启"
@@ -368,41 +401,35 @@ pub fn run() {
                         msg
                     );
                     let _ = WebviewWindowBuilder::new(
-                        &app_handle,
-                        "main",
+                        &app_handle, "main",
                         WebviewUrl::External(error_html.parse().unwrap()),
-                    )
-                    .title("十三香小龙虾 AI")
-                    .inner_size(500.0, 400.0)
-                    .center()
-                    .build();
+                    ).title("十三香小龙虾 AI").inner_size(500.0, 400.0).center().build();
                     return;
                 }
 
                 let ready = wait_for_backend();
-                if ready {
-                    let _ = WebviewWindowBuilder::new(
-                        &app_handle,
-                        "main",
-                        WebviewUrl::External(APP_URL.parse().unwrap()),
-                    )
-                    .title("十三香小龙虾 AI")
-                    .inner_size(1280.0, 800.0)
-                    .min_inner_size(800.0, 600.0)
-                    .center()
-                    .build();
-                } else {
-                    let timeout_html = "data:text/html,<!DOCTYPE html><html><head><meta charset=utf-8><style>*{margin:0}body{background:%230b0b16;color:%23e8e8f0;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:40px;text-align:center}.icon{font-size:48px;margin-bottom:16px}h1{font-size:20px;margin-bottom:12px}p{color:%23888;font-size:14px;line-height:1.6}code{color:%237c6aef;background:%231a1a2e;padding:2px 6px;border-radius:4px}</style></head><body><div class=icon>⏱️</div><h1>AI 引擎启动超时</h1><p>Python 后端未能在 60 秒内就绪。<br>请尝试手动运行：<br><code>python -m src.server.main</code></p></body></html>";
-                    let _ = WebviewWindowBuilder::new(
-                        &app_handle,
-                        "main",
-                        WebviewUrl::External(timeout_html.parse().unwrap()),
-                    )
-                    .title("十三香小龙虾 AI - 启动超时")
-                    .inner_size(500.0, 400.0)
-                    .center()
-                    .build();
+
+                if let Some(w) = app_handle.get_webview_window("splash") {
+                    let _ = w.close();
                 }
+
+                let target_url = if ready {
+                    APP_URL.to_string()
+                } else {
+                    eprintln!("[Tauri] Backend not ready after timeout, showing error page");
+                    format!("{}/error", BACKEND_URL)
+                };
+                let title = if ready { "十三香小龙虾 AI" } else { "十三香小龙虾 AI - 启动超时" };
+
+                let _ = WebviewWindowBuilder::new(
+                    &app_handle, "main",
+                    WebviewUrl::External(target_url.parse().unwrap()),
+                )
+                .title(title)
+                .inner_size(1280.0, 800.0)
+                .min_inner_size(800.0, 600.0)
+                .center()
+                .build();
             });
 
             Ok(())
@@ -422,14 +449,12 @@ pub fn run() {
                     let _ = w.hide();
                 }
             }
-            // 防止 splash 关闭时退出整个应用（但用户主动退出时放行）
             RunEvent::ExitRequested { ref api, .. } => {
                 if !SHOULD_QUIT.load(Ordering::SeqCst) {
                     api.prevent_exit();
-                } else {
-                    let state = app_handle.state::<PythonBackend>();
-                    state.stop();
                 }
+                // Backend cleanup already handled in the quit menu handler;
+                // Drop impl also calls stop() as a safety net.
             }
             _ => {}
         });

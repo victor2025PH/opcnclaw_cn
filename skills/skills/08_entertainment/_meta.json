@@ -1,0 +1,68 @@
+{
+  "category": "08_entertainment",
+  "name": "🎮 娱乐休闲",
+  "description": "笑话、谜语、成语故事、脑筋急转弯、星座运势",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "tell_joke", "name_zh": "讲笑话", "type": "code",
+      "category": "08_entertainment", "subcategory": "搞笑",
+      "description": "讲一个好笑的中文笑话",
+      "trigger_words": ["笑话","搞笑","逗我笑","好笑","幽默","讲个故事","说个笑话","逗乐"],
+      "examples": ["讲个笑话", "说个搞笑的"],
+      "handler": "entertainment.tell_joke",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "riddle", "name_zh": "猜谜语", "type": "code",
+      "category": "08_entertainment", "subcategory": "益智",
+      "description": "出一道有趣的谜语",
+      "trigger_words": ["谜语","猜猜看","猜个谜","脑筋急转弯","猜谜","出题","脑筋"],
+      "examples": ["给我出个谜语", "脑筋急转弯", "猜猜看"],
+      "handler": "entertainment.tell_riddle",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "idiom_story", "name_zh": "成语故事", "type": "prompt",
+      "category": "08_entertainment", "subcategory": "文化",
+      "description": "讲解成语的来历和故事",
+      "trigger_words": ["成语","成语故事","典故","来历","由来","守株待兔","画蛇添足","滥竽充数","卧薪尝胆"],
+      "examples": ["守株待兔的故事", "卧薪尝胆是什么意思", "告诉我一个成语故事"],
+      "system_injection": "你是文化讲解员，精通中国成语和典故。讲述成语故事时：①用3-4句话讲故事②解释成语现代含义③给出1个使用例句。故事要生动有趣，适合各年龄段。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "constellation", "name_zh": "星座运势", "type": "prompt",
+      "category": "08_entertainment", "subcategory": "星座",
+      "description": "12星座性格特点和今日运势（娱乐向）",
+      "trigger_words": ["星座","运势","白羊座","金牛座","双子座","巨蟹座","狮子座","处女座","天秤座","天蝎座","射手座","摩羯座","水瓶座","双鱼座"],
+      "examples": ["白羊座今天运势", "双鱼座是什么性格", "我是射手座适合做什么工作"],
+      "system_injection": "你是星座运势专家，了解12星座特点。请先说明这是娱乐参考，不具科学依据，然后再给出有趣的星座分析。内容要积极向上，让人愉快，不要预测厄运或负面内容。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "tongue_twister", "name_zh": "绕口令", "type": "code",
+      "category": "08_entertainment", "subcategory": "游戏",
+      "description": "背诵经典绕口令",
+      "trigger_words": ["绕口令","rap","练习口语","练口才","说绕口令"],
+      "examples": ["来个绕口令", "背一段绕口令"],
+      "handler": "entertainment.tongue_twister",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "word_game", "name_zh": "文字游戏", "type": "prompt",
+      "category": "08_entertainment", "subcategory": "游戏",
+      "description": "对对联、接龙、猜字游戏",
+      "trigger_words": ["对对联","接龙","文字游戏","对联","词语接龙","出上联","下联"],
+      "examples": ["我们玩词语接龙", "给我出个上联", "对对联"],
+      "system_injection": "你是文字游戏高手，精通对联、接龙等中国传统文字游戏。游戏时要充满趣味性，适时称赞用户，对游戏结果给出简短点评。保持轻松活泼的氛围。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

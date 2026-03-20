@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Voice / STT / TTS / WebSocket routes"""
 from __future__ import annotations
-import asyncio, base64, json, os, re, time
+import asyncio, base64, io, json, os, re, time
 from typing import Optional
 
 import httpx
@@ -55,7 +55,7 @@ async def tts_api(request: Request):
     async def audio_stream():
         async for chunk in tts.synthesize_stream(text):
             b64 = base64.b64encode(chunk).decode()
-            yield f"data: {json.dumps({'audio': b64, 'format': tts.audio_format})}\n\n"
+            yield f"data: {json.dumps({'audio': b64, 'format': tts.audio_format, 'sample_rate': tts.sample_rate})}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -63,6 +63,187 @@ async def tts_api(request: Request):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ===== Voice Clone APIs =====
+
+@router.get("/api/voice-clone/list")
+async def voice_clone_list():
+    """List all saved cloned voices."""
+    from ..tts import TextToSpeech, CLONE_DIR
+    voices = TextToSpeech.list_cloned_voices()
+    stt, tts, backend, vad, settings, app = _get_globals()
+    active = tts._clone_audio_path if tts else None
+    return {"ok": True, "voices": voices, "active_path": active}
+
+
+@router.post("/api/voice-clone/create")
+async def voice_clone_create(request: Request):
+    """Upload audio, convert to WAV, save as clone voice."""
+    import soundfile as sf
+    from ..tts import TextToSpeech, CLONE_DIR
+
+    form = await request.form()
+    audio_file = form.get("audio")
+    name = form.get("name", "my_voice")
+
+    if not audio_file:
+        return {"ok": False, "error": "No audio file uploaded"}
+
+    raw_bytes = await audio_file.read()
+
+    try:
+        audio_buf = io.BytesIO(raw_bytes)
+        try:
+            data, sr = sf.read(audio_buf)
+        except Exception:
+            # soundfile can't read webm — convert via PyAV (no external ffmpeg needed)
+            try:
+                import av
+                audio_buf.seek(0)
+                container = av.open(audio_buf)
+                resampler = av.AudioResampler(format='s16', layout='mono', rate=16000)
+                frames = []
+                for frame in container.decode(audio=0):
+                    for rf in resampler.resample(frame):
+                        frames.append(rf.to_ndarray().flatten())
+                container.close()
+                data = np.concatenate(frames).astype(np.float32) / 32768.0
+                sr = 16000
+            except ImportError:
+                import subprocess, tempfile
+                with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp_in:
+                    tmp_in.write(raw_bytes)
+                    tmp_in_path = tmp_in.name
+                tmp_out_path = tmp_in_path.replace(".webm", ".wav")
+                try:
+                    subprocess.run(
+                        ["ffmpeg", "-y", "-i", tmp_in_path, "-ar", "16000", "-ac", "1", tmp_out_path],
+                        capture_output=True, timeout=30, check=True,
+                    )
+                    data, sr = sf.read(tmp_out_path)
+                finally:
+                    for p in (tmp_in_path, tmp_out_path):
+                        try:
+                            os.unlink(p)
+                        except OSError:
+                            pass
+
+        if len(data.shape) > 1:
+            data = data.mean(axis=1)
+
+        if sr != 16000:
+            from scipy.signal import resample
+            num_samples = int(len(data) * 16000 / sr)
+            data = resample(data, num_samples)
+            sr = 16000
+
+        duration = len(data) / sr
+        if duration < 3:
+            return {"ok": False, "error": f"Audio too short ({duration:.1f}s), need at least 3s"}
+
+        safe_name = re.sub(r'[^\w\u4e00-\u9fff-]', '_', name)
+        wav_path = CLONE_DIR / f"{safe_name}.wav"
+        sf.write(str(wav_path), data, sr, subtype='PCM_16')
+        logger.info(f"Voice clone saved: {wav_path} ({duration:.1f}s, {sr}Hz)")
+
+        stt, tts_inst, backend, vad, settings, app = _get_globals()
+        if tts_inst:
+            tts_inst.set_clone_voice(str(wav_path))
+            logger.info(f"Voice clone activated: {wav_path}")
+
+        return {
+            "ok": True, "name": safe_name,
+            "path": str(wav_path), "duration": round(duration, 1),
+        }
+    except Exception as e:
+        logger.error(f"Voice clone creation failed: {e}")
+        return {"ok": False, "error": str(e)[:200]}
+
+
+@router.delete("/api/voice-clone/{name}")
+async def voice_clone_delete(name: str):
+    """Delete a cloned voice by name."""
+    from ..tts import CLONE_DIR
+    deleted = False
+    for ext in ("wav", "mp3"):
+        path = CLONE_DIR / f"{name}.{ext}"
+        if path.exists():
+            path.unlink()
+            deleted = True
+            logger.info(f"Voice clone deleted: {path}")
+
+    if deleted:
+        stt, tts, backend, vad, settings, app = _get_globals()
+        if tts and tts._clone_audio_path and name in str(tts._clone_audio_path):
+            tts._clone_audio_path = None
+
+    return {"ok": deleted}
+
+
+@router.post("/api/voice-clone/activate")
+async def voice_clone_activate(request: Request):
+    """Switch TTS to use a specific cloned voice (or deactivate)."""
+    body = await request.json()
+    voice_name = body.get("name", "")
+    stt, tts, backend, vad, settings, app = _get_globals()
+
+    if not tts:
+        return {"ok": False, "error": "TTS not initialized"}
+
+    if not voice_name:
+        tts._clone_audio_path = None
+        return {"ok": True, "active": None}
+
+    from ..tts import CLONE_DIR
+    for ext in ("wav", "mp3"):
+        path = CLONE_DIR / f"{voice_name}.{ext}"
+        if path.exists():
+            tts.set_clone_voice(str(path))
+            return {"ok": True, "active": str(path)}
+
+    return {"ok": False, "error": f"Voice '{voice_name}' not found"}
+
+
+@router.post("/api/tts/preview")
+async def tts_preview(request: Request):
+    """Generate a short TTS preview for voice selection."""
+    stt, tts, backend, vad, settings, app = _get_globals()
+    body = await request.json()
+    text = body.get("text", "你好，很高兴为你服务。我是你的 AI 语音助手。")
+    voice = body.get("voice", "")
+    if len(text) < 6:
+        text = text + "，这是语音试听效果。"
+
+    if not tts:
+        return Response(content="TTS not available", status_code=503)
+
+    original_voice = tts._edge_voice
+    if voice and not voice.startswith("clone:"):
+        tts._edge_voice = voice
+
+    try:
+        audio_data = b""
+        for attempt in range(2):
+            async for chunk in tts.synthesize_stream(text):
+                audio_data += chunk
+            if audio_data:
+                break
+            await asyncio.sleep(0.5)
+
+        if voice:
+            tts._edge_voice = original_voice
+
+        if not audio_data:
+            return Response(content="TTS returned empty audio", status_code=502)
+
+        fmt = tts.audio_format
+        media = "audio/mpeg" if fmt == "mp3" else "audio/wav"
+        return Response(content=audio_data, media_type=media)
+    except Exception as e:
+        if voice:
+            tts._edge_voice = original_voice
+        return Response(content=str(e), status_code=500)
 
 
 # ===== POST /api/voice =====
@@ -102,6 +283,28 @@ async def voice_http(request: Request):
 
         if not transcript.strip():
             yield f"data: {json.dumps({'type': 'done', 'empty': True})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        # 1.5. Local command check — bypass LLM if matched
+        local_mode = os.environ.get("OPENCLAW_MODE", "full") == "local"
+        try:
+            from src.server.local_voice_commands import get_engine
+            cmd_match = get_engine().match(transcript)
+            if cmd_match and (local_mode or cmd_match.confidence >= 0.9):
+                yield f"data: {json.dumps({'type': 'local_command', 'action': cmd_match.action, 'params': cmd_match.params, 'phrase': cmd_match.matched_phrase, 'confidence': cmd_match.confidence})}\n\n"
+                yield f"data: {json.dumps({'type': 'text', 'text': f'已执行: {cmd_match.matched_phrase}'})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+        except Exception as e:
+            logger.debug(f"Local command match error: {e}")
+
+        if local_mode:
+            # Avoid ASCII quotes inside a Python string literal (can break on edits/encodings)
+            local_tip = "当前为本地模式，无法连接AI。你可以使用语音命令控制电脑，如“打开微信”、“截图”、“复制”等。"
+            yield f"data: {json.dumps({'type': 'text', 'text': local_tip}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
             yield "data: [DONE]\n\n"
             return
 
@@ -198,43 +401,89 @@ async def voice_http(request: Request):
 # ===== POST /api/chat =====
 
 @router.post("/api/chat")
-async def chat_completions_proxy(request: Request):
-    """Proxy chat completions to OpenClaw Gateway with SSE streaming."""
+async def chat_api(request: Request):
+    """Text chat with streaming SSE. Uses built-in AI router; falls back to
+    Gateway proxy if backend unavailable and OPENCLAW_GATEWAY_URL is set."""
+    stt, tts, backend, vad, settings, app = _get_globals()
     body = await request.json()
 
-    gateway_url = os.getenv("OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789")
+    gateway_url = os.getenv("OPENCLAW_GATEWAY_URL", "")
     gateway_token = os.getenv("OPENCLAW_GATEWAY_TOKEN", "")
 
-    if "stream" not in body:
-        body["stream"] = True
+    if backend:
+        messages = body.get("messages", [])
+        user_msg = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                user_msg = m.get("content", "")
+                break
+        if not user_msg:
+            return Response(
+                json.dumps({"error": "No user message provided"}),
+                status_code=400, media_type="application/json",
+            )
 
-    async def event_stream():
-        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
+        async def built_in_stream():
             try:
-                async with client.stream(
-                    "POST",
-                    f"{gateway_url}/v1/chat/completions",
-                    json=body,
-                    headers={
-                        "Authorization": f"Bearer {gateway_token}",
-                        "Content-Type": "application/json",
-                    },
-                ) as resp:
-                    async for line in resp.aiter_lines():
-                        if line.strip():
-                            yield f"{line}\n\n"
+                async for chunk in backend.chat_stream(user_msg):
+                    if not chunk:
+                        continue
+                    if chunk.startswith("__SKILL__"):
+                        try:
+                            meta = json.loads(chunk[9:])
+                            yield f"data: {json.dumps({'skill': meta}, ensure_ascii=False)}\n\n"
+                        except Exception:
+                            pass
+                        continue
+                    payload = {
+                        "choices": [{"delta": {"content": chunk}, "index": 0}],
+                        "object": "chat.completion.chunk",
+                    }
+                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                yield "data: [DONE]\n\n"
             except Exception as e:
-                logger.error(f"Chat proxy error: {e}")
+                logger.error(f"Chat stream error: {e}")
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                yield "data: [DONE]\n\n"
 
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+        return StreamingResponse(
+            built_in_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    if gateway_url:
+        if "stream" not in body:
+            body["stream"] = True
+
+        async def gateway_stream():
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
+                try:
+                    async with client.stream(
+                        "POST",
+                        f"{gateway_url}/v1/chat/completions",
+                        json=body,
+                        headers={
+                            "Authorization": f"Bearer {gateway_token}",
+                            "Content-Type": "application/json",
+                        },
+                    ) as resp:
+                        async for line in resp.aiter_lines():
+                            if line.strip():
+                                yield f"{line}\n\n"
+                except Exception as e:
+                    logger.error(f"Chat proxy error: {e}")
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return StreamingResponse(
+            gateway_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    return Response(
+        json.dumps({"error": "AI backend not initialized. Configure an API key in /setup or set OPENCLAW_GATEWAY_URL"}),
+        status_code=503, media_type="application/json",
     )
 
 
@@ -274,10 +523,10 @@ async def vision_chat(req: VisionRequest):
 # ===== GET /api/history, DELETE /api/history, GET /api/history/sessions =====
 
 @router.get("/api/history")
-async def get_history(session: str = "default", limit: int = 50):
-    """Return conversation history for a session."""
+async def get_history(session: str = "default", limit: int = 50, offset: int = 0):
+    """Return conversation history for a session. offset=0 means most recent."""
     try:
-        msgs = mem_store.get_history_raw(session, limit=limit)
+        msgs = mem_store.get_history_raw(session, limit=limit, offset=offset)
         return {"session": session, "messages": msgs, "count": len(msgs)}
     except Exception as e:
         logger.error(f"History fetch error: {e}")
@@ -296,6 +545,16 @@ async def clear_history(session: str = "default"):
     except Exception as e:
         logger.error(f"History clear error: {e}")
         return {"ok": False, "error": str(e)}
+
+@router.get("/api/history/sync")
+async def history_sync(session: str = "default", after: int = 0):
+    """Polling endpoint for multi-device sync. Returns messages with id > after."""
+    try:
+        msgs = mem_store.get_messages_since(session, after_id=after, limit=50)
+        latest = mem_store.get_latest_id(session)
+        return {"messages": msgs, "latest_id": latest}
+    except Exception as e:
+        return {"messages": [], "latest_id": after, "error": str(e)}
 
 @router.get("/api/history/sessions")
 async def list_history_sessions():
@@ -483,6 +742,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 is_listening = False
                 
                 if audio_buffer:
+                    stt, tts, backend, vad, settings, app = _get_globals()
+                    if not stt:
+                        await websocket.send_json({"type": "error", "message": "语音识别模型正在加载，请稍后再试"})
+                        audio_buffer = []
+                        continue
+
                     # Combine audio chunks
                     audio_data = np.concatenate(audio_buffer)
                     
@@ -530,6 +795,42 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                     
                     if transcript.strip():
+                        # Local command check — bypass LLM if matched
+                        _local_handled = False
+                        _local_mode = os.environ.get("OPENCLAW_MODE", "full") == "local"
+                        try:
+                            from src.server.local_voice_commands import get_engine
+                            _cmd = get_engine().match(transcript)
+                            if _cmd and (_local_mode or _cmd.confidence >= 0.9):
+                                await websocket.send_json({
+                                    "type": "local_command",
+                                    "action": _cmd.action,
+                                    "params": _cmd.params,
+                                    "phrase": _cmd.matched_phrase,
+                                    "confidence": _cmd.confidence,
+                                })
+                                await websocket.send_json({
+                                    "type": "response_complete",
+                                    "text": f"已执行: {_cmd.matched_phrase}",
+                                })
+                                _local_handled = True
+                        except Exception as _e:
+                            logger.debug(f"Local command error: {_e}")
+
+                        if not _local_handled and _local_mode:
+                            local_tip = "当前为本地模式，无法连接AI。你可以使用语音命令如“打开微信”、“截图”、“复制”等。"
+                            await websocket.send_json({
+                                "type": "response_chunk",
+                                "text": local_tip,
+                            })
+                            await websocket.send_json({"type": "response_complete", "text": ""})
+                            _local_handled = True
+
+                        if _local_handled:
+                            audio_buffer = []
+                            pending_image = None
+                            continue
+
                         # Stream AI response with progressive TTS
                         has_image = bool(pending_image)
                         logger.debug(f"Streaming AI response (vision={has_image}, emotion={_emotion.state.dominant})...")
@@ -675,6 +976,11 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.debug(f"Monitor: '{transcript}' wake={has_wake}")
                     except Exception as e:
                         logger.warning(f"Monitor STT error: {e}")
+
+            elif msg["type"] == "profile_sync":
+                pid = msg.get("profile_id", "")
+                logger.info(f"WS profile sync: {pid} (session={backend.session_id})")
+                await websocket.send_json({"type": "profile_synced", "session_id": backend.session_id})
 
             elif msg["type"] == "ping":
                 await websocket.send_json({"type": "pong"})

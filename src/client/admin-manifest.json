@@ -1,7 +1,7 @@
 {
-  "name": "OpenClaw Admin",
+  "name": "十三香小龙虾 管理后台",
   "short_name": "OC Admin",
-  "description": "OpenClaw AI 语音助手管理面板",
+  "description": "十三香小龙虾 AI 语音助手管理面板",
   "start_url": "/admin",
   "display": "standalone",
   "background_color": "#0f1117",

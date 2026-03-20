@@ -48,3 +48,4 @@ desktop.ini
 *.tmp
 glm_error.txt
 uv.lock
+node_modules

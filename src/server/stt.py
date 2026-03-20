@@ -48,28 +48,34 @@ class SpeechToText:
         self._prefer_cloud = prefer_cloud
         self._backend = "mock"
         self._model = None
+        self._zhipu_key: Optional[str] = None
         self._dashscope_key: Optional[str] = None
         self._openai_key: Optional[str] = None
         self._load_model()
 
     def _load_model(self):
-        if self._prefer_cloud:
-            if self._try_dashscope():
-                return
-            if self._try_openai_api():
-                return
-
-        if self._try_sensevoice_local():
+        if self._try_zhipu_stt():
             return
-        if self._try_faster_whisper():
+        if self._try_dashscope():
+            return
+        if self._try_openai_api():
             return
 
-        logger.warning("No STT backend — using mock mode")
+        logger.warning("No cloud STT configured — set ZHIPU_API_KEY, DASHSCOPE_API_KEY or OPENAI_API_KEY. Using mock mode.")
         self._backend = "mock"
 
     # ------------------------------------------------------------------
     #  Cloud backends
     # ------------------------------------------------------------------
+
+    def _try_zhipu_stt(self) -> bool:
+        key = os.environ.get("ZHIPU_API_KEY") or os.environ.get("ZHIPU_STT_API_KEY")
+        if not key:
+            return False
+        self._zhipu_key = key
+        self._backend = "zhipu"
+        logger.info("Zhipu GLM-ASR-2512 API ready (cloud, free)")
+        return True
 
     def _try_dashscope(self) -> bool:
         key = os.environ.get("DASHSCOPE_API_KEY")
@@ -151,11 +157,13 @@ class SpeechToText:
 
     @property
     def is_cloud(self) -> bool:
-        return self._backend in ("dashscope", "openai-api")
+        return self._backend in ("zhipu", "dashscope", "openai-api")
 
     async def transcribe(self, audio: np.ndarray) -> STTResult:
         t0 = time.perf_counter()
-        if self._backend == "dashscope":
+        if self._backend == "zhipu":
+            result = await self._transcribe_zhipu(audio)
+        elif self._backend == "dashscope":
             result = await self._transcribe_dashscope(audio)
         elif self._backend == "openai-api":
             result = await self._transcribe_openai_api(audio)
@@ -176,6 +184,29 @@ class SpeechToText:
             result = await self.transcribe(audio)
             if result.text:
                 yield result
+
+    # ------------------------------------------------------------------
+    #  Zhipu GLM-ASR-2512 cloud (free)
+    # ------------------------------------------------------------------
+
+    async def _transcribe_zhipu(self, audio: np.ndarray) -> STTResult:
+        import httpx
+        try:
+            wav_bytes = self._audio_to_wav(audio)
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    "https://open.bigmodel.cn/api/paas/v4/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {self._zhipu_key}"},
+                    files={"file": ("audio.wav", wav_bytes, "audio/wav")},
+                    data={"model": "glm-asr-2512"},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return STTResult(text=data.get("text", "").strip())
+                logger.warning(f"Zhipu STT HTTP {resp.status_code}")
+        except Exception as e:
+            logger.error(f"Zhipu STT error: {e}")
+        return STTResult(text="")
 
     # ------------------------------------------------------------------
     #  DashScope SenseVoice cloud

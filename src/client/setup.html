@@ -1,267 +1,736 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0a0a14">
-<title>OpenClaw AI - Setup</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>十三香小龙虾 - 初始设置</title>
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0a0a14;--bg2:#12121f;--bg3:#1a1a2e;
-  --accent:#7c6aef;--accent2:#9484f7;
-  --text:#eeeef5;--text2:#9090a8;--text3:#5a5a72;
-  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
-  --success:#4ade80;--error:#f87171;--warning:#fbbf24;
-  --r:12px;
+  --bg:#0a0a14;--bg2:#12122a;--bg3:#1a1a3e;
+  --fg:#e2e8f0;--fg2:#94a3b8;--fg3:#64748b;
+  --accent:#6366f1;--accent2:#818cf8;--accent-glow:rgba(99,102,241,.25);
+  --success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+  --cyan:#22d3ee;--radius:12px;
 }
-html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'SF Pro','PingFang SC',sans-serif}
-body{display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px;padding-top:calc(24px + env(safe-area-inset-top,0px))}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.wizard{width:100%;max-width:640px;margin:20px;position:relative}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{font-size:28px;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.logo p{color:var(--fg2);font-size:14px}
 
-.logo{font-size:48px;margin-bottom:4px}
-h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--accent),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:2px}
-.sub{color:var(--text2);font-size:14px;margin-bottom:28px;text-align:center}
+/* Progress bar */
+.progress{display:flex;gap:8px;margin-bottom:32px}
+.progress .dot{flex:1;height:4px;border-radius:2px;background:var(--bg3);transition:background .3s}
+.progress .dot.active{background:var(--accent)}
+.progress .dot.done{background:var(--success)}
 
-.card{width:100%;max-width:440px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:16px}
-.card h2{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;flex-shrink:0}
+/* Step container */
+.step{display:none;animation:fadeIn .3s ease}
+.step.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.step-title{font-size:22px;font-weight:700;margin-bottom:6px}
+.step-desc{color:var(--fg2);font-size:14px;margin-bottom:24px}
 
-.qr-wrap{display:flex;justify-content:center;margin:16px 0}
-.qr-box{background:#fff;border-radius:8px;padding:12px;display:inline-flex}
-.qr-box canvas{display:block}
+/* Platform cards */
+.platforms{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.platforms{grid-template-columns:1fr}}
+.platform-card{background:var(--bg2);border:2px solid transparent;border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .2s;position:relative}
+.platform-card:hover{border-color:var(--accent);background:var(--bg3)}
+.platform-card.selected{border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
+.platform-card .badge{position:absolute;top:8px;right:8px;font-size:11px;padding:2px 8px;border-radius:8px;font-weight:600}
+.badge-free{background:rgba(34,197,94,.15);color:var(--success)}
+.badge-bonus{background:rgba(99,102,241,.15);color:var(--accent2)}
+.badge-quota{background:rgba(245,158,11,.15);color:var(--warn)}
+.pc-name{font-size:16px;font-weight:600;margin-bottom:4px}
+.pc-desc{font-size:12px;color:var(--fg2);line-height:1.4}
+.pc-free{font-size:11px;color:var(--success);margin-top:6px}
 
-.desc{color:var(--text2);font-size:13px;line-height:1.7;margin-bottom:12px}
-.desc strong{color:var(--text);font-weight:600}
-.steps{list-style:none;margin:0;padding:0}
-.steps li{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.6;color:var(--text2)}
-.steps li:last-child{border-bottom:none}
-.step-num{width:22px;height:22px;border-radius:50%;background:var(--bg3);color:var(--accent);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step-text{flex:1}
-.step-text code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-family:inherit;color:var(--text);font-size:12px}
+/* API Key input */
+.key-section{background:var(--bg2);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+.key-section .selected-info{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px}
+.selected-info .si-icon{font-size:24px}
+.selected-info .si-name{font-weight:600;font-size:16px}
+.selected-info .si-tag{font-size:11px;color:var(--success);display:block}
+.key-input-wrap{position:relative;margin-bottom:12px}
+.key-input{width:100%;padding:14px 16px;padding-right:80px;background:var(--bg);border:1px solid #334155;border-radius:8px;color:var(--fg);font-size:14px;font-family:monospace;outline:none;transition:border-color .2s}
+.key-input:focus{border-color:var(--accent)}
+.key-input::placeholder{color:var(--fg3)}
+.key-verify-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600}
+.key-verify-btn:hover{background:var(--accent2)}
+.key-verify-btn:disabled{opacity:.5;cursor:not-allowed}
+.key-status{display:flex;align-items:center;gap:6px;font-size:13px;min-height:20px;margin-bottom:12px}
+.key-status.ok{color:var(--success)}
+.key-status.fail{color:var(--danger)}
+.key-status.checking{color:var(--warn)}
 
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:none;border-radius:var(--r);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:.2s;text-decoration:none}
+/* Registration guide */
+.reg-guide{background:var(--bg3);border-radius:8px;padding:16px;margin-top:16px}
+.reg-guide h4{font-size:14px;margin-bottom:12px;color:var(--cyan)}
+.reg-step{display:flex;gap:10px;margin-bottom:10px;font-size:13px;color:var(--fg2)}
+.reg-step .num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.reg-step a{color:var(--cyan);text-decoration:none}
+.reg-step a:hover{text-decoration:underline}
+.reg-tip{font-size:11px;color:var(--fg3);margin-top:2px}
+
+/* Voice selection */
+.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+@media(max-width:480px){.voice-grid{grid-template-columns:1fr}}
+.voice-card{background:var(--bg2);border:2px solid transparent;border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px}
+.voice-card:hover{border-color:var(--accent)}
+.voice-card.selected{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.voice-card .vc-icon{font-size:24px}
+.voice-card .vc-name{font-weight:600;font-size:14px}
+.voice-card .vc-desc{font-size:11px;color:var(--fg2)}
+.voice-preview-btn{background:none;border:1px solid var(--fg3);color:var(--fg2);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;margin-left:auto;flex-shrink:0}
+.voice-preview-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Voice clone section */
+.clone-section{background:var(--bg2);border-radius:var(--radius);padding:20px;margin-top:16px;border:1px dashed var(--fg3)}
+.clone-section h4{font-size:15px;margin-bottom:8px}
+.clone-section p{font-size:13px;color:var(--fg2);margin-bottom:12px}
+.clone-btn{padding:10px 20px;background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600}
+.clone-btn:hover{opacity:.9}
+.clone-tip{font-size:11px;color:var(--fg3);margin-top:8px}
+
+/* Environment selection */
+.env-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:480px){.env-cards{grid-template-columns:1fr}}
+.env-card{background:var(--bg2);border:2px solid transparent;border-radius:var(--radius);padding:24px;cursor:pointer;transition:all .2s;text-align:center}
+.env-card:hover{border-color:var(--accent);background:var(--bg3)}
+.env-card.selected{border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
+.env-card .ec-icon{font-size:48px;margin-bottom:12px}
+.env-card .ec-name{font-size:18px;font-weight:700;margin-bottom:6px}
+.env-card .ec-desc{font-size:13px;color:var(--fg2);line-height:1.5}
+.env-features{margin-top:12px;text-align:left;font-size:12px;color:var(--fg2)}
+.env-features li{margin-bottom:4px;list-style:none}
+.env-features li::before{content:"✓ ";color:var(--success)}
+
+/* Buttons */
+.btn-row{display:flex;gap:12px;justify-content:flex-end;margin-top:24px}
+.btn{padding:12px 28px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-primary:hover{background:var(--accent2)}
-.btn-primary:active{transform:scale(.98)}
-.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2);margin-top:8px}
-.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
-.btn-success{background:var(--success);color:#000}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--fg2);border:1px solid var(--fg3)}
+.btn-ghost:hover{border-color:var(--fg2);color:var(--fg)}
+.btn-success{background:var(--success);color:#fff;font-size:17px;padding:14px 36px}
+.btn-success:hover{opacity:.9}
 
-.status-bar{width:100%;max-width:440px;padding:12px 16px;border-radius:var(--r);font-size:13px;font-weight:500;text-align:center;margin-bottom:16px;display:none}
-.status-bar.checking{display:block;background:rgba(251,191,36,.1);color:var(--warning);border:1px solid rgba(251,191,36,.2)}
-.status-bar.ok{display:block;background:rgba(74,222,128,.1);color:var(--success);border:1px solid rgba(74,222,128,.2)}
-.status-bar.fail{display:block;background:rgba(248,113,113,.1);color:var(--error);border:1px solid rgba(248,113,113,.2)}
+/* Final step */
+.final{text-align:center;padding:20px 0}
+.final .check{font-size:64px;margin-bottom:16px;animation:popIn .5s cubic-bezier(.17,.67,.3,1.33)}
+@keyframes popIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+.final h2{font-size:26px;margin-bottom:8px;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.final p{color:var(--fg2);font-size:14px;margin-bottom:24px}
+.final-summary{background:var(--bg2);border-radius:var(--radius);padding:20px;text-align:left;margin-bottom:24px}
+.final-summary .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bg3);font-size:14px}
+.final-summary .row:last-child{border-bottom:none}
+.final-summary .label{color:var(--fg2)}
+.final-summary .value{color:var(--fg);font-weight:600}
 
-.desktop-qr{display:none}
-.lang-toggle{position:fixed;top:12px;right:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:4px 10px;color:var(--text2);font-size:12px;cursor:pointer;z-index:10}
-.lang-toggle:hover{border-color:var(--accent);color:var(--accent)}
-
-.note{color:var(--text3);font-size:12px;text-align:center;margin-top:12px;line-height:1.6}
-
-@media(min-width:768px){
-  body{padding:48px 24px 64px}
-  .card{padding:28px}
-  .desktop-qr{display:block}
-}
+/* Toast */
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:8px;font-size:14px;z-index:999;animation:slideIn .3s ease;display:none}
+.toast.show{display:block}
+.toast.success{background:var(--success);color:#fff}
+.toast.error{background:var(--danger);color:#fff}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.setup-loading{text-align:center;padding:24px;color:var(--fg2)}
+.setup-error{background:var(--bg2);border:1px solid var(--danger);border-radius:var(--radius);padding:20px;margin-bottom:16px;color:var(--fg)}
+.setup-error p{margin-bottom:12px}
+/* ─── Final page: dual cards ─── */
+.final-actions{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}
+@media(max-width:520px){.final-actions{grid-template-columns:1fr}}
+.final-card{background:var(--bg2);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;transition:border-color .2s}
+.final-card:hover{border-color:var(--accent)}
+.final-card .fc-icon{font-size:40px}
+.final-card .fc-title{font-size:16px;font-weight:700;color:var(--fg)}
+.final-card .fc-desc{font-size:12px;color:var(--fg2);line-height:1.5}
+.final-card .fc-qr{background:#fff;padding:10px;border-radius:10px;display:inline-block}
+.final-card .fc-qr img{display:block;border-radius:4px}
+.final-card .fc-url{display:inline-block;background:var(--bg3);padding:6px 12px;border-radius:6px;font-size:11px;color:var(--cyan);font-family:monospace;border:1px solid rgba(255,255,255,.06);word-break:break-all;max-width:100%}
+.final-card .btn{margin-top:auto}
 </style>
 </head>
 <body>
+<div class="wizard">
+  <div class="logo">
+    <h1>十三香小龙虾</h1>
+    <p>快速设置，马上开始使用</p>
+  </div>
 
-<button class="lang-toggle" id="lang-btn" onclick="toggleLang()">EN</button>
+  <div class="progress" id="progress">
+    <div class="dot active" data-step="0"></div>
+    <div class="dot" data-step="1"></div>
+    <div class="dot" data-step="2"></div>
+    <div class="dot" data-step="3"></div>
+  </div>
 
-<div class="logo">🦞</div>
-<h1>OpenClaw AI</h1>
-<p class="sub" id="t-sub">iPhone / iPad 设置向导</p>
+  <!-- Step 0: Choose AI Platform -->
+  <div class="step active" id="step-0">
+    <div class="step-title">选择 AI 平台</div>
+    <div class="step-desc">推荐使用免费平台，注册即可使用，无需付费</div>
+    <div class="platforms" id="platform-list">
+      <div class="setup-loading" id="platform-loading">正在加载平台列表…</div>
+    </div>
+    <div id="platform-error" class="setup-error" style="display:none">
+      <p>无法加载平台列表，请确认本机服务已启动（如已打开「十三香小龙虾」），然后点击下方按钮重试。</p>
+      <button class="btn btn-primary" onclick="init()">重新加载</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-next-0" disabled onclick="goStep(1)">下一步 →</button>
+    </div>
+  </div>
 
-<div id="status" class="status-bar"></div>
+  <!-- Step 1: API Key -->
+  <div class="step" id="step-1">
+    <div class="step-title">填写 API Key</div>
+    <div class="step-desc">按照下方步骤获取免费密钥</div>
+    <div class="key-section">
+      <div class="selected-info" id="selected-info"></div>
+      <div class="key-input-wrap">
+        <input class="key-input" id="api-key-input" placeholder="" autocomplete="off" spellcheck="false" oninput="updateSaveKeyBtn()">
+        <button class="key-verify-btn" id="verify-btn" onclick="verifyKey()">验证（可选）</button>
+      </div>
+      <div class="key-status" id="key-status"></div>
+      <div class="reg-guide" id="reg-guide"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(0)">← 上一步</button>
+      <button class="btn btn-ghost" onclick="goStep(2)">跳过，以后再填</button>
+      <button class="btn btn-primary" id="btn-next-1" disabled onclick="saveKeyAndNext()">保存并继续 →</button>
+    </div>
+  </div>
 
-<!-- ── Desktop: Show QR ── -->
-<div class="card desktop-qr" id="qr-card">
-  <h2><span class="badge">0</span> <span id="t-qr-title">用 iPhone 扫描二维码</span></h2>
-  <p class="desc" id="t-qr-desc">打开 iPhone 摄像头，扫描下方二维码开始设置。</p>
-  <div class="qr-wrap"><div class="qr-box" id="qr-target"></div></div>
-  <p class="desc" style="text-align:center;margin-bottom:0" id="qr-url"></p>
+  <!-- Step 2: Voice + Clone -->
+  <div class="step" id="step-2">
+    <div class="step-title">选择语音</div>
+    <div class="step-desc">选择 AI 回复时使用的声音</div>
+    <div class="voice-grid" id="voice-list"></div>
+    <div class="clone-section">
+      <h4>🎤 语音克隆 — 用你自己或家人的声音</h4>
+      <p>录制一段 10-30 秒的朗读音频，AI 就能用这个声音跟你对话。适合为老人、孩子定制专属助手。</p>
+      <button class="clone-btn" onclick="openCloneDialog()">开始录制克隆声音</button>
+      <div class="clone-tip">* 语音克隆功能需要网络连接，音频仅用于声音合成，不会上传到第三方</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(1)">← 上一步</button>
+      <button class="btn btn-primary" onclick="saveVoiceAndNext()">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Environment + Finish -->
+  <div class="step" id="step-3">
+    <div class="step-title">选择使用场景</div>
+    <div class="step-desc">不同场景有不同的默认设置，之后随时可以切换</div>
+    <div class="env-cards">
+      <div class="env-card" data-env="family" onclick="selectEnv(this)">
+        <div class="ec-icon">🏠</div>
+        <div class="ec-name">家庭模式</div>
+        <div class="ec-desc">适合全家使用</div>
+        <ul class="env-features">
+          <li>语音唤醒 + 自然对话</li>
+          <li>天气、新闻、百科问答</li>
+          <li>儿童故事、学习辅导</li>
+          <li>智能家居控制</li>
+          <li>微信消息自动回复</li>
+        </ul>
+      </div>
+      <div class="env-card" data-env="work" onclick="selectEnv(this)">
+        <div class="ec-icon">💼</div>
+        <div class="ec-name">工作模式</div>
+        <div class="ec-desc">高效办公助手</div>
+        <ul class="env-features">
+          <li>文档写作、翻译润色</li>
+          <li>代码辅助、技术问答</li>
+          <li>会议纪要、邮件撰写</li>
+          <li>数据分析、报告生成</li>
+          <li>远程桌面操控</li>
+        </ul>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(2)">← 上一步</button>
+      <button class="btn btn-success" onclick="finishSetup()">完成设置，开始使用</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Done -->
+  <div class="step" id="step-4">
+    <div class="final">
+      <div class="check">✅</div>
+      <h2>设置完成！</h2>
+      <p>十三香小龙虾 已准备就绪</p>
+      <div class="final-summary" id="final-summary"></div>
+
+      <div class="final-actions">
+        <div class="final-card">
+          <div class="fc-icon">🖥️</div>
+          <div class="fc-title">电脑端使用</div>
+          <div class="fc-desc">在当前电脑浏览器中打开完整版界面</div>
+          <button class="btn btn-success" onclick="location.href='/app'" style="font-size:15px;padding:12px 28px">打开 十三香小龙虾</button>
+        </div>
+        <div class="final-card" id="mobile-card">
+          <div class="fc-icon">📱</div>
+          <div class="fc-title">手机扫码使用</div>
+          <div class="fc-desc">与电脑同一 WiFi，扫码在手机上使用<br><span style="font-size:11px;color:var(--fg3)">文字聊天和语音设置一站搞定</span></div>
+          <div class="fc-qr" id="final-qr"></div>
+          <div class="fc-url" id="final-url">正在获取地址…</div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;text-align:center">
+        <button class="btn btn-ghost" onclick="goStep(0)" style="font-size:13px;padding:8px 16px">← 返回重新设置</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- ── Step 1: Download Certificate ── -->
-<div class="card">
-  <h2><span class="badge">1</span> <span id="t-s1-title">下载安全证书</span></h2>
-  <p class="desc" id="t-s1-desc">iPhone 需要信任此证书才能安全地使用语音、摄像头和手势功能。</p>
-  <a class="btn btn-primary" href="/ca.mobileconfig" id="download-btn">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span id="t-s1-btn">下载证书配置文件</span>
-  </a>
-  <a class="btn btn-outline" href="/ca.crt" id="t-s1-alt">下载 .crt 文件 (备选)</a>
+<div class="toast" id="toast"></div>
+
+<!-- Voice clone dialog (modal) -->
+<div id="clone-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:var(--radius);padding:28px;max-width:480px;width:90%">
+    <h3 style="margin-bottom:12px">🎤 录制你的声音</h3>
+    <p style="font-size:13px;color:var(--fg2);margin-bottom:16px">请朗读以下文字，保持正常语速，录制 10-30 秒：</p>
+    <div style="background:var(--bg3);padding:14px;border-radius:8px;font-size:14px;line-height:1.8;margin-bottom:16px">
+      今天天气真不错，阳光明媚，微风拂面。我打算去公园散步，顺便买一些水果回来。你觉得西瓜和草莓哪个更好吃？
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+      <button class="btn btn-primary" id="clone-record-btn" onclick="toggleCloneRecord()" style="padding:10px 20px">⏺ 开始录音</button>
+      <span id="clone-timer" style="color:var(--fg2);font-size:14px">00:00</span>
+      <audio id="clone-preview" controls style="display:none;flex:1;height:32px"></audio>
+    </div>
+    <div id="clone-status" style="font-size:13px;color:var(--fg2);margin-bottom:12px"></div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeCloneDialog()">取消</button>
+      <button class="btn btn-primary" id="clone-save-btn" disabled onclick="saveCloneVoice()">保存声音</button>
+    </div>
+  </div>
 </div>
 
-<!-- ── Step 2: Install ── -->
-<div class="card">
-  <h2><span class="badge">2</span> <span id="t-s2-title">安装证书</span></h2>
-  <p class="desc" id="t-s2-desc">下载后，在 iPhone 上按以下步骤操作：</p>
-  <ul class="steps">
-    <li>
-      <span class="step-num">a</span>
-      <span class="step-text" id="t-s2a">会出现通知：<strong>"已下载描述文件"</strong>。点击它，或打开 <code>设置</code> App。</span>
-    </li>
-    <li>
-      <span class="step-num">b</span>
-      <span class="step-text" id="t-s2b">前往 <code>设置</code> → <code>通用</code> → <code>VPN与设备管理</code>（或 <code>描述文件与设备管理</code>）</span>
-    </li>
-    <li>
-      <span class="step-num">c</span>
-      <span class="step-text" id="t-s2c">点击 <strong>"OpenClaw AI - Secure Connection"</strong> → 点击 <strong>安装</strong> → 输入密码 → 再次点击 <strong>安装</strong>。</span>
-    </li>
-  </ul>
-</div>
+<script>
+const API = '';
+let currentStep = 0;
+let selectedPlatform = null;
+let selectedVoice = 'zh-CN-XiaoxiaoNeural';
+let selectedEnv = 'family';
+let keyVerified = false;
+let providers = [];
 
-<!-- ── Step 3: Trust CA ── -->
-<div class="card">
-  <h2><span class="badge">3</span> <span id="t-s3-title">启用完全信任</span></h2>
-  <p class="desc" id="t-s3-desc">此步骤让 iPhone 完全信任该证书以建立 HTTPS 连接：</p>
-  <ul class="steps">
-    <li>
-      <span class="step-num">a</span>
-      <span class="step-text" id="t-s3a">前往 <code>设置</code> → <code>通用</code> → <code>关于本机</code> → 下滑到 <code>证书信任设置</code></span>
-    </li>
-    <li>
-      <span class="step-num">b</span>
-      <span class="step-text" id="t-s3b">找到 <strong>"OpenClaw Local CA"</strong> 并打开开关</span>
-    </li>
-    <li>
-      <span class="step-num">c</span>
-      <span class="step-text" id="t-s3c">在弹出的警告对话框中点击 <strong>继续</strong>。</span>
-    </li>
-  </ul>
-</div>
+let cloneRecorder = null;
+let cloneChunks = [];
+let cloneBlob = null;
+let cloneTimerInterval = null;
+let cloneSeconds = 0;
 
-<!-- ── Step 4: Open App ── -->
-<div class="card">
-  <h2><span class="badge">4</span> <span id="t-s4-title">启动应用</span></h2>
-  <p class="desc" id="t-s4-desc">设置完成！点击下方按钮，开始使用语音、摄像头和手势功能。</p>
-  <button class="btn btn-success" id="open-app-btn" onclick="checkAndOpen()">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    <span id="t-s4-btn">打开 OpenClaw AI</span>
-  </button>
-  <button class="btn btn-outline" id="test-btn" onclick="testCert()"><span id="t-s4-test">测试证书连接</span></button>
-</div>
+let existingProvider = null;
 
-<p class="note" id="t-note">证书仅在本地网络有效。<br>此设置只需进行一次。</p>
+async function init() {
+  var loadingEl = document.getElementById('platform-loading');
+  var errorEl = document.getElementById('platform-error');
+  var listEl = document.getElementById('platform-list');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (errorEl) errorEl.style.display = 'none';
 
-<script type="module">
-const L = {
-  zh: {
-    sub:'iPhone / iPad 设置向导', qrTitle:'用 iPhone 扫描二维码',
-    qrDesc:'打开 iPhone 摄像头，扫描下方二维码开始设置。',
-    s1Title:'下载安全证书', s1Desc:'iPhone 需要信任此证书才能安全地使用语音、摄像头和手势功能。',
-    s1Btn:'下载证书配置文件', s1Alt:'下载 .crt 文件 (备选)',
-    s2Title:'安装证书', s2Desc:'下载后，在 iPhone 上按以下步骤操作：',
-    s2a:'会出现通知：<strong>"已下载描述文件"</strong>。点击它，或打开 <code>设置</code> App。',
-    s2b:'前往 <code>设置</code> → <code>通用</code> → <code>VPN与设备管理</code>（或 <code>描述文件与设备管理</code>）',
-    s2c:'点击 <strong>"OpenClaw AI - Secure Connection"</strong> → 点击 <strong>安装</strong> → 输入密码 → 再次点击 <strong>安装</strong>。',
-    s3Title:'启用完全信任', s3Desc:'此步骤让 iPhone 完全信任该证书以建立 HTTPS 连接：',
-    s3a:'前往 <code>设置</code> → <code>通用</code> → <code>关于本机</code> → 下滑到 <code>证书信任设置</code>',
-    s3b:'找到 <strong>"OpenClaw Local CA"</strong> 并打开开关',
-    s3c:'在弹出的警告对话框中点击 <strong>继续</strong>。',
-    s4Title:'启动应用', s4Desc:'设置完成！点击下方按钮，开始使用语音、摄像头和手势功能。',
-    s4Btn:'打开 OpenClaw AI', s4Test:'测试证书连接',
-    note:'证书仅在本地网络有效。<br>此设置只需进行一次。',
-    testing:'正在测试 HTTPS 连接...', testOk:'证书已信任！现在可以打开应用了。',
-    testFail:'证书尚未信任。请先完成上方步骤 1-3，然后重试。',
-    langBtn:'EN',
-  },
-  en: {
-    sub:'iPhone / iPad Setup Guide', qrTitle:'Scan QR Code from iPhone',
-    qrDesc:'Open your iPhone camera and scan the QR code below to begin setup.',
-    s1Title:'Download Security Certificate', s1Desc:'Your iPhone needs a trusted certificate to access voice, camera, and gesture features securely over your local network.',
-    s1Btn:'Download Certificate Profile', s1Alt:'Download .crt file (alternative)',
-    s2Title:'Install Certificate', s2Desc:'After downloading, follow these steps on your iPhone:',
-    s2a:'A notification will appear: <strong>"Profile Downloaded"</strong>. Tap it, or go to <code>Settings</code> app.',
-    s2b:'Go to <code>Settings</code> → <code>General</code> → <code>VPN & Device Management</code> (or <code>Profile & Device Management</code>)',
-    s2c:'Tap <strong>"OpenClaw AI - Secure Connection"</strong> → tap <strong>Install</strong> → enter your passcode → tap <strong>Install</strong> again.',
-    s3Title:'Enable Full Trust', s3Desc:'This step allows your iPhone to fully trust the certificate for HTTPS connections:',
-    s3a:'Go to <code>Settings</code> → <code>General</code> → <code>About</code> → scroll down to <code>Certificate Trust Settings</code>',
-    s3b:'Find <strong>"OpenClaw Local CA"</strong> and toggle the switch <strong>ON</strong>',
-    s3c:'Tap <strong>Continue</strong> in the warning dialog.',
-    s4Title:'Launch App', s4Desc:'All set! Tap the button below to open OpenClaw AI with full voice, camera, and gesture support.',
-    s4Btn:'Open OpenClaw AI', s4Test:'Test Certificate Connection',
-    note:'Certificate is only valid on your local network.<br>You only need to do this setup once.',
-    testing:'Testing HTTPS connection...', testOk:'Certificate is trusted! You can open the app now.',
-    testFail:'Certificate not yet trusted. Please complete steps 1-3 above, then try again.',
-    langBtn:'中文',
-  }
-};
-
-let lang = localStorage.getItem('oc_lang') || 'zh';
-const ids = ['t-sub','t-qr-title','t-qr-desc','t-s1-title','t-s1-desc','t-s1-btn','t-s1-alt',
-  't-s2-title','t-s2-desc','t-s2a','t-s2b','t-s2c','t-s3-title','t-s3-desc','t-s3a','t-s3b','t-s3c',
-  't-s4-title','t-s4-desc','t-s4-btn','t-s4-test','t-note'];
-const keys = ['sub','qrTitle','qrDesc','s1Title','s1Desc','s1Btn','s1Alt',
-  's2Title','s2Desc','s2a','s2b','s2c','s3Title','s3Desc','s3a','s3b','s3c',
-  's4Title','s4Desc','s4Btn','s4Test','note'];
-
-function apply() {
-  for (let i = 0; i < ids.length; i++) {
-    const el = document.getElementById(ids[i]);
-    if (el) el.innerHTML = L[lang][keys[i]];
-  }
-  document.getElementById('lang-btn').textContent = L[lang].langBtn;
-}
-
-window.toggleLang = function() {
-  lang = lang === 'zh' ? 'en' : 'zh';
-  localStorage.setItem('oc_lang', lang);
-  apply();
-};
-
-apply();
-
-const statusEl = document.getElementById('status');
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const isMobile = /Mobi|Android/i.test(navigator.userAgent) || isIOS;
-
-if (!isMobile) {
-  document.getElementById('qr-card').style.display = 'block';
-  loadQR();
-}
-
-async function loadQR() {
+  // Check if setup already completed with a working provider
   try {
-    const QRCode = (await import('https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm')).default;
-    const url = window.location.origin + '/setup';
-    document.getElementById('qr-url').textContent = url;
-    const canvas = await QRCode.toCanvas(url, { width: 200, margin: 2, color: { dark: '#000', light: '#fff' } });
-    document.getElementById('qr-target').appendChild(canvas);
-  } catch(e) {
-    document.getElementById('qr-target').innerHTML = '<span style="color:#666;font-size:13px">QR unavailable</span>';
-  }
-}
-
-window.testCert = async function() {
-  statusEl.className = 'status-bar checking';
-  statusEl.textContent = L[lang].testing;
-  try {
-    const r = await fetch('/api/server-info', { signal: AbortSignal.timeout(5000) });
-    if (r.ok) {
-      statusEl.className = 'status-bar ok';
-      statusEl.textContent = L[lang].testOk;
-    } else {
-      throw new Error('Not OK');
+    var sr = await fetch(API + '/api/setup/status');
+    var st = await sr.json();
+    if (st.has_provider && st.setup_done && !location.search.includes('force')) {
+      // Already configured — jump straight to "done" page
+      existingProvider = st.provider_name;
+      if (loadingEl) loadingEl.style.display = 'none';
+      showAlreadyConfigured(st.provider_name);
+      return;
     }
-  } catch {
-    statusEl.className = 'status-bar fail';
-    statusEl.textContent = L[lang].testFail;
+  } catch (_) {}
+
+  try {
+    const r = await fetch(API + '/api/providers');
+    const data = await r.json();
+    providers = data.providers || [];
+    if (data.active_provider) {
+      existingProvider = data.active_provider;
+    }
+  } catch (e) {
+    providers = [];
   }
-};
-
-window.checkAndOpen = function() {
-  window.location.href = '/app';
-};
-
-if (isIOS) {
-  setTimeout(() => window.testCert(), 500);
+  if (loadingEl) loadingEl.style.display = 'none';
+  if (providers.length === 0) {
+    if (errorEl) errorEl.style.display = 'block';
+    if (listEl) listEl.innerHTML = '';
+  } else {
+    if (errorEl) errorEl.style.display = 'none';
+    renderPlatforms();
+  }
+  renderVoices();
 }
+
+function showAlreadyConfigured(providerName) {
+  var summary = document.getElementById('final-summary');
+  if (summary) {
+    summary.innerHTML =
+      '<div class="row"><span class="label">AI 平台</span><span class="value">' + (providerName || '已配置') + '</span></div>' +
+      '<div class="row"><span class="label">API Key</span><span class="value">✅ 已就绪</span></div>' +
+      '<div class="row"><span class="label">状态</span><span class="value">🟢 可正常使用</span></div>';
+  }
+  goStep(4);
+  loadMobileQR();
+}
+
+function loadMobileQR() {
+  fetch(API + '/api/server-info').then(function(r) { return r.json(); }).then(function(info) {
+    var ips = (info.ips || []).filter(function(ip) { return ip !== '127.0.0.1' && ip.indexOf('::') !== 0; });
+    var port = info.http_port || (info.port + 1);
+    var mainIp = ips[0];
+    if (!mainIp) {
+      document.getElementById('final-url').textContent = '未检测到局域网，请确认电脑已连接 WiFi';
+      return;
+    }
+    var url = 'http://' + mainIp + ':' + port + '/chat';
+    var qrEl = document.getElementById('final-qr');
+    if (qrEl) qrEl.innerHTML = '<img src="/api/qr?url=' + encodeURIComponent(url) + '&size=160" alt="扫码" width="160" height="160">';
+    var urlEl = document.getElementById('final-url');
+    if (urlEl) urlEl.textContent = url;
+  }).catch(function() {
+    document.getElementById('final-url').textContent = '获取地址失败，请刷新页面';
+  });
+}
+
+function renderPlatforms() {
+  const el = document.getElementById('platform-list');
+  const badges = {
+    free_unlimited: ['永久免费', 'badge-free'],
+    quota: ['有免费额度', 'badge-bonus'],
+    custom: ['自定义', 'badge-quota']
+  };
+  el.innerHTML = providers.map(p => {
+    const [bText, bClass] = badges[p.tier] || ['', ''];
+    return `<div class="platform-card" data-id="${p.id}" onclick="selectPlatform(this,'${p.id}')">
+      ${bText ? `<span class="badge ${bClass}">${bText}</span>` : ''}
+      <div class="pc-name">${p.name_short || p.name}</div>
+      <div class="pc-desc">${p.description || ''}</div>
+      ${p.free_info ? `<div class="pc-free">${p.free_info}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectPlatform(el, id) {
+  document.querySelectorAll('.platform-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedPlatform = providers.find(p => p.id === id);
+  document.getElementById('btn-next-0').disabled = false;
+}
+
+function renderVoices() {
+  const voices = [
+    {id:'zh-CN-XiaoxiaoNeural', name:'晓晓', desc:'女声 · 温柔自然', icon:'👩'},
+    {id:'zh-CN-YunxiNeural', name:'云希', desc:'男声 · 年轻活力', icon:'👨'},
+    {id:'zh-CN-YunjianNeural', name:'云健', desc:'男声 · 浑厚稳重', icon:'🧔'},
+    {id:'zh-CN-XiaoyiNeural', name:'晓伊', desc:'女声 · 活泼甜美', icon:'👧'},
+    {id:'zh-CN-YunyangNeural', name:'云扬', desc:'男声 · 播音腔', icon:'🎙️'},
+    {id:'zh-CN-XiaohanNeural', name:'晓涵', desc:'女声 · 恬静优雅', icon:'👩‍🦰'},
+  ];
+  const el = document.getElementById('voice-list');
+  el.innerHTML = voices.map(v => `<div class="voice-card ${v.id === selectedVoice ? 'selected' : ''}" data-voice="${v.id}" onclick="selectVoiceCard(this,'${v.id}')">
+    <span class="vc-icon">${v.icon}</span>
+    <div><div class="vc-name">${v.name}</div><div class="vc-desc">${v.desc}</div></div>
+    <button class="voice-preview-btn" onclick="event.stopPropagation();previewVoice('${v.id}','${v.name}')">试听</button>
+  </div>`).join('');
+}
+
+function selectVoiceCard(el, id) {
+  document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedVoice = id;
+}
+
+async function previewVoice(voiceId, name) {
+  try {
+    const r = await fetch(API + '/api/tts/preview', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text: `你好，我是${name}，很高兴为你服务。`, voice: voiceId})
+    });
+    if (r.ok) {
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = new Audio(url);
+      a.play();
+    }
+  } catch (e) {
+    toast('语音预览暂不可用', 'error');
+  }
+}
+
+function goStep(n) {
+  // If going back to step 0 but providers not loaded (skipped via status check), load them now
+  if (n === 0 && providers.length === 0) {
+    fetch(API + '/api/providers').then(function(r){ return r.json(); }).then(function(data){
+      providers = data.providers || [];
+      if (providers.length > 0) renderPlatforms();
+      renderVoices();
+    }).catch(function(){});
+  }
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  document.querySelectorAll('.progress .dot').forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i < n) d.classList.add('done');
+    else if (i === n) d.classList.add('active');
+  });
+  currentStep = n;
+  var logo = document.querySelector('.logo');
+  var progress = document.getElementById('progress');
+  if (n >= 4) {
+    if (logo) logo.style.display = 'none';
+    if (progress) progress.style.display = 'none';
+  } else {
+    if (logo) logo.style.display = '';
+    if (progress) progress.style.display = '';
+  }
+  if (n === 1 && selectedPlatform) renderKeyStep();
+}
+
+function renderKeyStep() {
+  const p = selectedPlatform;
+  if (!p) return;
+  document.getElementById('selected-info').innerHTML = `
+    <span class="si-icon">🔑</span>
+    <div><span class="si-name">${p.name}</span><span class="si-tag">${p.free_info || ''}</span></div>`;
+  document.getElementById('api-key-input').placeholder = p.key_placeholder || 'your_api_key';
+  document.getElementById('key-status').innerHTML = '';
+  keyVerified = false;
+  updateSaveKeyBtn();
+
+  const guide = document.getElementById('reg-guide');
+  if (p.guide_steps && p.guide_steps.length) {
+    guide.innerHTML = '<h4>📖 获取 API Key 步骤：</h4>' + p.guide_steps.map(s => {
+      let content = '';
+      if (s.action === 'open_url') {
+        content = `<div>${s.title}<br><a href="${s.url}" target="_blank">👉 点击打开注册页面</a><div class="reg-tip">${s.tip || ''}</div></div>`;
+      } else if (s.action === 'input') {
+        content = `<div>${s.title}<div class="reg-tip">${s.tip || ''}</div></div>`;
+      } else {
+        content = `<div>${s.title}<div class="reg-tip">${s.tip || ''}</div></div>`;
+      }
+      return `<div class="reg-step"><span class="num">${s.step}</span>${content}</div>`;
+    }).join('');
+  }
+}
+
+function updateSaveKeyBtn() {
+  var key = document.getElementById('api-key-input').value.trim();
+  var btn = document.getElementById('btn-next-1');
+  btn.disabled = !key;
+  if (key && keyVerified) {
+    btn.textContent = '保存并继续 →';
+  } else if (key) {
+    btn.textContent = '保存并继续（未验证） →';
+  }
+}
+
+async function verifyKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { toast('请先填写 API Key', 'error'); return; }
+  const btn = document.getElementById('verify-btn');
+  const status = document.getElementById('key-status');
+  btn.disabled = true; btn.textContent = '验证中...';
+  status.className = 'key-status checking';
+  status.innerHTML = '⏳ 正在连接服务器...';
+
+  try {
+    var pingOk = false;
+    try {
+      var pc = new AbortController();
+      var pt = setTimeout(function(){ pc.abort(); }, 5000);
+      var pr = await fetch(API + '/api/ping', { signal: pc.signal });
+      clearTimeout(pt);
+      pingOk = pr.ok;
+    } catch(_) {}
+
+    if (!pingOk) {
+      status.className = 'key-status fail';
+      status.innerHTML = '❌ 无法连接服务器（端口 ' + (window.location.port || '8766') + '），请确认「十三香小龙虾」已启动<br><button class="btn btn-ghost" style="margin-top:8px;font-size:12px" onclick="verifyKey()">🔄 重试</button>';
+      btn.disabled = false; btn.textContent = '验证';
+      return;
+    }
+
+    status.innerHTML = '⏳ 正在验证密钥（可能需要 10-20 秒）...';
+
+    var ac = new AbortController();
+    var timer = setTimeout(function(){ ac.abort(); }, 30000);
+
+    const r = await fetch(API + '/api/setup/verify-key', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({provider_id: selectedPlatform.id, api_key: key}),
+      signal: ac.signal
+    });
+    clearTimeout(timer);
+
+    const text = await r.text();
+    let d;
+    try { d = JSON.parse(text); } catch (_) {
+      status.className = 'key-status fail';
+      status.innerHTML = '❌ 服务器返回异常（非JSON响应），请尝试重启服务<br><button class="btn btn-ghost" style="margin-top:8px;font-size:12px" onclick="verifyKey()">🔄 重试</button>';
+      btn.disabled = false; btn.textContent = '验证';
+      return;
+    }
+    if (d.ok) {
+      status.className = 'key-status ok';
+      status.innerHTML = '✅ 验证成功！可以正常使用';
+      keyVerified = true;
+      updateSaveKeyBtn();
+    } else {
+      status.className = 'key-status fail';
+      status.innerHTML = '❌ ' + (d.error || '验证失败，请检查 Key 是否正确') + '<br><button class="btn btn-ghost" style="margin-top:8px;font-size:12px" onclick="verifyKey()">🔄 重试</button>';
+      keyVerified = false;
+    }
+  } catch (e) {
+    status.className = 'key-status fail';
+    var msg = e.name === 'AbortError' ? '验证超时（30秒），AI 平台响应过慢' : '网络错误: ' + (e.message || '未知');
+    status.innerHTML = '❌ ' + msg + '<br><button class="btn btn-ghost" style="margin-top:8px;font-size:12px" onclick="verifyKey()">🔄 重试</button>';
+  }
+  btn.disabled = false; btn.textContent = '验证';
+}
+
+async function saveKeyAndNext() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key || !selectedPlatform) return;
+  try {
+    await fetch(API + '/api/setup/save-key', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({provider_id: selectedPlatform.id, api_key: key})
+    });
+    toast('API Key 已保存', 'success');
+  } catch (e) {}
+  goStep(2);
+}
+
+async function saveVoiceAndNext() {
+  try {
+    await fetch(API + '/api/setup/save-voice', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({voice_id: selectedVoice})
+    });
+  } catch (e) {}
+  goStep(3);
+}
+
+function selectEnv(el) {
+  document.querySelectorAll('.env-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedEnv = el.dataset.env;
+}
+
+async function finishSetup() {
+  try {
+    await fetch(API + '/api/setup/finish', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        provider_id: selectedPlatform?.id || null,
+        voice_id: selectedVoice,
+        environment: selectedEnv
+      })
+    });
+  } catch (e) {}
+
+  const summary = document.getElementById('final-summary');
+  summary.innerHTML = `
+    <div class="row"><span class="label">AI 平台</span><span class="value">${selectedPlatform?.name || '未配置'}</span></div>
+    <div class="row"><span class="label">API Key</span><span class="value">${keyVerified ? '✅ 已验证' : '⚠️ 未配置'}</span></div>
+    <div class="row"><span class="label">语音</span><span class="value">${selectedVoice.replace('zh-CN-','').replace('Neural','')}</span></div>
+    <div class="row"><span class="label">使用模式</span><span class="value">${selectedEnv === 'family' ? '🏠 家庭模式' : '💼 工作模式'}</span></div>
+  `;
+  goStep(4);
+  loadMobileQR();
+}
+
+// Voice clone
+function openCloneDialog() {
+  document.getElementById('clone-modal').style.display = 'flex';
+}
+function closeCloneDialog() {
+  document.getElementById('clone-modal').style.display = 'none';
+  stopCloneRecording();
+}
+
+async function toggleCloneRecord() {
+  const btn = document.getElementById('clone-record-btn');
+  if (cloneRecorder && cloneRecorder.state === 'recording') {
+    stopCloneRecording();
+    btn.textContent = '⏺ 重新录音';
+    btn.style.background = 'var(--accent)';
+  } else {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      cloneChunks = [];
+      cloneRecorder = new MediaRecorder(stream);
+      cloneRecorder.ondataavailable = e => { if (e.data.size > 0) cloneChunks.push(e.data); };
+      cloneRecorder.onstop = () => {
+        cloneBlob = new Blob(cloneChunks, {type: 'audio/webm'});
+        const url = URL.createObjectURL(cloneBlob);
+        const preview = document.getElementById('clone-preview');
+        preview.src = url;
+        preview.style.display = 'block';
+        document.getElementById('clone-save-btn').disabled = false;
+        document.getElementById('clone-status').textContent = '录音完成，可以试听或重新录制';
+        stream.getTracks().forEach(t => t.stop());
+      };
+      cloneRecorder.start();
+      btn.textContent = '⏹ 停止录音';
+      btn.style.background = 'var(--danger)';
+      cloneSeconds = 0;
+      document.getElementById('clone-timer').textContent = '00:00';
+      cloneTimerInterval = setInterval(() => {
+        cloneSeconds++;
+        const m = String(Math.floor(cloneSeconds / 60)).padStart(2, '0');
+        const s = String(cloneSeconds % 60).padStart(2, '0');
+        document.getElementById('clone-timer').textContent = `${m}:${s}`;
+        if (cloneSeconds >= 30) stopCloneRecording();
+      }, 1000);
+      document.getElementById('clone-status').textContent = '正在录音...';
+    } catch (e) {
+      toast('无法访问麦克风', 'error');
+    }
+  }
+}
+
+function stopCloneRecording() {
+  if (cloneRecorder && cloneRecorder.state === 'recording') cloneRecorder.stop();
+  if (cloneTimerInterval) { clearInterval(cloneTimerInterval); cloneTimerInterval = null; }
+}
+
+async function saveCloneVoice() {
+  if (!cloneBlob) return;
+  const status = document.getElementById('clone-status');
+  status.textContent = '正在上传并生成克隆声音...';
+  try {
+    const fd = new FormData();
+    fd.append('audio', cloneBlob, 'voice_clone.webm');
+    fd.append('name', '我的声音');
+    const r = await fetch(API + '/api/voice-clone/create', {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.ok) {
+      status.textContent = '✅ 声音克隆成功！已添加到声音列表';
+      toast('声音克隆成功', 'success');
+      setTimeout(closeCloneDialog, 2000);
+    } else {
+      status.textContent = '❌ ' + (d.error || '克隆失败');
+    }
+  } catch (e) {
+    status.textContent = '❌ 网络错误';
+  }
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+init();
 </script>
 </body>
 </html>

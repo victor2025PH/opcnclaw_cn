@@ -13,6 +13,7 @@ async function toggleCamera() {
 }
 
 async function openCamera() {
+  document.getElementById('camera-backdrop')?.classList.remove('hidden');
   dom.cameraPanel.classList.remove('hidden');
   dom.gestureTags.innerHTML = `<span class="gesture-tag">${t('camera.requesting')}</span>`;
 
@@ -69,6 +70,7 @@ async function openCamera() {
 
 function closeCamera() {
   S.isCameraOn = false;
+  document.getElementById('camera-backdrop')?.classList.add('hidden');
   dom.cameraPanel.classList.add('hidden');
   if (S.gestureAnimFrame) { cancelAnimationFrame(S.gestureAnimFrame); S.gestureAnimFrame = null; }
   if (S.cameraStream) { S.cameraStream.getTracks().forEach(t => t.stop()); S.cameraStream = null; }
@@ -1217,12 +1219,15 @@ const CalibWizard = {
   open() {
     this.currentStep = 0;
     const el = document.getElementById('calib-wizard');
+    el.style.display = 'flex';
     el.classList.remove('hidden');
     this.renderStep();
   },
 
   close() {
-    document.getElementById('calib-wizard').classList.add('hidden');
+    const el = document.getElementById('calib-wizard');
+    el.classList.add('hidden');
+    el.style.display = 'none';
     localStorage.setItem('oc-calib-done', '1');
   },
 
@@ -1333,9 +1338,8 @@ const CalibWizard = {
 };
 
 function maybeShowCalibWizard() {
-  if (!localStorage.getItem('oc-calib-done')) {
-    CalibWizard.open();
-  }
+  // Calibration is opt-in: only show when user explicitly requests it from settings,
+  // not automatically on first visit (which blocks the main chat interface).
 }
 
 // ═══════════════════════════════════════════════════

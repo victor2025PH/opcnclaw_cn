@@ -1,11 +1,8 @@
-// OpenClaw Voice — Service Worker v2
-// App shell caching + API response caching for offline support
-
-const CACHE_NAME = 'openclaw-v2';
-const API_CACHE = 'openclaw-api-v1';
+// OpenClaw Voice — Service Worker v7
+const CACHE_NAME = 'oc-v7';
+const API_CACHE = 'ssx-api-v2';
 
 const OFFLINE_URLS = [
-  '/app',
   '/chat',
   '/manifest.json',
 ];
@@ -20,7 +17,13 @@ const CACHEABLE_API = [
   '/api/system/disk',
   '/api/models/summary',
   '/api/emotion/state',
+  '/api/history/sessions',
+  '/api/router/status',
+  '/api/setup/status',
 ];
+
+// History sync — cache for offline viewing
+const HISTORY_API = '/api/history/sync';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -51,8 +54,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cacheable GET API endpoints: network-first, fall back to cached
-  if (CACHEABLE_API.some(p => url.pathname === p)) {
+  // Cacheable API + history sync: network-first with cache fallback
+  const isCacheableApi = CACHEABLE_API.some(p => url.pathname === p);
+  const isHistorySync = url.pathname === HISTORY_API;
+
+  if (isCacheableApi || isHistorySync) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -77,16 +83,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip non-cacheable API / POST requests
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) {
+  // Never intercept these paths
+  const BYPASS = ['/', '/qr', '/setup', '/cert', '/admin', '/api/'];
+  if (BYPASS.some(p => url.pathname.startsWith(p))) {
     return;
   }
 
-  // App shell: network-first with cache fallback
+  if (!OFFLINE_URLS.some((u) => url.pathname === u || url.pathname === u + '/')) {
+    return;
+  }
+
+  // App shell: network-first with offline fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (response.ok && OFFLINE_URLS.some((u) => url.pathname === u || url.pathname.startsWith(u))) {
+        if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
@@ -96,10 +107,12 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cached) => {
           if (cached) return cached;
           return new Response(
-            '<!DOCTYPE html><html><head><meta charset="utf-8"><title>OpenClaw 离线</title></head>' +
-            '<body style="font-family:sans-serif;text-align:center;padding:60px;background:#0f0f10;color:#fff">' +
-            '<h1>📡 无网络连接</h1><p>请连接到 OpenClaw 服务器所在的局域网后重试。</p>' +
-            '<button onclick="location.reload()" style="padding:12px 24px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer">重试</button>' +
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>十三香小龙虾 - 离线</title></head>' +
+            '<body style="font-family:-apple-system,sans-serif;text-align:center;padding:60px 20px;background:#0a0a14;color:#e8e8f0">' +
+            '<div style="font-size:64px;margin-bottom:16px">🦞</div>' +
+            '<h1 style="font-size:22px;margin-bottom:8px">无网络连接</h1>' +
+            '<p style="color:#666688;margin-bottom:24px">请连接到局域网后重试</p>' +
+            '<button onclick="location.reload()" style="padding:14px 28px;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:600">重试连接</button>' +
             '</body></html>',
             { headers: { 'Content-Type': 'text/html;charset=utf-8' } }
           );
@@ -108,9 +121,11 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listen for cache-clear messages from the app
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CLEAR_API_CACHE') {
     caches.delete(API_CACHE);
+  }
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });

@@ -59,9 +59,12 @@ hiddenimports = [
     "skills._engine.registry",
     "skills._engine.matcher",
     "skills._engine.executor",
-    # jieba
+    # jieba (local voice commands)
     "jieba",
     "jieba.analyse",
+    # accessibility modules
+    "src.server.access_config",
+    "src.server.local_voice_commands",
     # pystray
     "pystray",
     "pystray._win32",

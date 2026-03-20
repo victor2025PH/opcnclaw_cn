@@ -63,6 +63,17 @@ class TextToSpeech:
         return "pcm"
 
     @property
+    def sample_rate(self) -> int:
+        rates = {
+            "dashscope-cosyvoice": 22050,
+            "cosyvoice-local": 22050,
+            "glm-tts": 24000,
+            "elevenlabs": 24000,
+            "edge-tts": 24000,
+        }
+        return rates.get(self._backend, 24000)
+
+    @property
     def backend_name(self) -> str:
         return self._backend
 
@@ -85,6 +96,20 @@ class TextToSpeech:
         if self._try_dashscope_cosyvoice():
             return
 
+        # Edge TTS first: free, unlimited, stable MP3 output, no PCM conversion needed
+        try:
+            import edge_tts  # noqa: F401
+            self._backend = "edge-tts"
+            logger.info(f"Edge TTS ready — voice: {self._edge_voice}")
+            # Also keep GLM-TTS key as backup
+            zhipu_key = os.environ.get("ZHIPU_API_KEY")
+            if zhipu_key:
+                self._zhipu_api_key = zhipu_key
+                self._zhipu_voice = os.environ.get("ZHIPU_TTS_VOICE", "female")
+            return
+        except ImportError:
+            pass
+
         zhipu_key = os.environ.get("ZHIPU_API_KEY")
         if zhipu_key:
             self._zhipu_api_key = zhipu_key
@@ -92,14 +117,6 @@ class TextToSpeech:
             self._backend = "glm-tts"
             logger.info(f"GLM-TTS cloud ready — voice: {self._zhipu_voice}")
             return
-
-        try:
-            import edge_tts  # noqa: F401
-            self._backend = "edge-tts"
-            logger.info(f"Edge TTS ready — voice: {self._edge_voice}")
-            return
-        except ImportError:
-            pass
 
         elevenlabs_key = os.environ.get("ELEVENLABS_API_KEY")
         if elevenlabs_key:
@@ -424,7 +441,8 @@ class TextToSpeech:
                                 pass
         except Exception as e:
             logger.error(f"GLM-TTS error: {e}")
-        if yield_count == 0:
+        if yield_count < 3:
+            logger.info(f"GLM-TTS insufficient data ({yield_count} chunks), falling back to Edge TTS")
             async for chunk in self._stream_edge(text):
                 yield chunk
 

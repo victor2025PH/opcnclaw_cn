@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>十三香小龙虾 - 开启语音模式</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a14;--card:#12122a;--card2:#1a1a3e;
+  --text:#e2e8f0;--muted:#94a3b8;--dim:#64748b;
+  --accent:#6366f1;--accent2:#818cf8;--glow:rgba(99,102,241,.25);
+  --success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+  --cyan:#22d3ee;--r:14px;
+  --safe-top:env(safe-area-inset-top,0px);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:calc(20px + var(--safe-top)) 16px 40px}
+.wrap{max-width:480px;margin:0 auto}
+
+.hero{text-align:center;margin-bottom:28px}
+.hero-icon{font-size:48px;margin-bottom:12px}
+.hero h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.hero p{color:var(--muted);font-size:13px;line-height:1.6}
+
+.features{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center}
+.feat{background:var(--card);border-radius:10px;padding:8px 14px;font-size:12px;display:flex;align-items:center;gap:6px;color:var(--muted)}
+.feat span{font-size:16px}
+
+.section{background:var(--card);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.section h2{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;color:#fff}
+.dl-btn-ios{background:linear-gradient(135deg,#6366f1,#818cf8)}
+.dl-btn-ios:active{transform:scale(.97)}
+.dl-btn-android{background:linear-gradient(135deg,#22c55e,#16a34a)}
+.dl-btn-android:active{transform:scale(.97)}
+
+.steps-list{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.step-item{display:flex;gap:12px;align-items:flex-start}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--card2);color:var(--accent2);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13px;color:var(--muted);line-height:1.5}
+.step-text strong{color:var(--text)}
+
+.test-section{text-align:center}
+.test-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:2px solid var(--accent);border-radius:12px;background:transparent;color:var(--accent2);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.test-btn:hover{background:var(--glow)}
+.test-btn:active{transform:scale(.97)}
+.test-result{margin-top:14px;padding:12px;border-radius:10px;font-size:13px;display:none}
+.test-ok{display:block;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success)}
+.test-fail{display:block;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger)}
+
+.go-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--cyan));color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;text-decoration:none;margin-top:16px}
+.go-btn:active{transform:scale(.97)}
+
+.alt-link{text-align:center;margin-top:20px;font-size:12px;color:var(--dim)}
+.alt-link a{color:var(--accent2);text-decoration:none}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-icon">🎤</div>
+    <h1>开启完整语音模式</h1>
+    <p>一次性设置，解锁语音对话、唤醒词、摄像头等全部功能</p>
+  </div>
+
+  <div class="features">
+    <div class="feat"><span>🗣️</span>语音对话</div>
+    <div class="feat"><span>👋</span>唤醒词</div>
+    <div class="feat"><span>📷</span>摄像头 AI</div>
+    <div class="feat"><span>🖥️</span>远程桌面</div>
+    <div class="feat"><span>🤟</span>手势控制</div>
+  </div>
+
+  <!-- iOS Section -->
+  <div class="section" id="sec-ios">
+    <h2>🍎 iPhone / iPad 设置</h2>
+    <p>下载配置描述文件，按提示安装即可。全程约 30 秒。</p>
+    <a class="dl-btn dl-btn-ios" href="/ca.mobileconfig">⬇️ 下载并安装描述文件</a>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">点击上方按钮，弹出<strong>"要允许此网站下载一个配置描述文件吗？"</strong>选 <strong>允许</strong></div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">打开 <strong>设置</strong> App → 顶部出现<strong>"已下载描述文件"</strong>→ 点击 → <strong>安装</strong></div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>设置 → 通用 → 关于本机 → 证书信任设置</strong> → 开启 <strong>十三香小龙虾 CA</strong> 的信任开关</div></div>
+    </div>
+  </div>
+
+  <!-- Android Section -->
+  <div class="section" id="sec-android">
+    <h2>🤖 Android 手机设置</h2>
+    <p>下载 CA 证书文件，在系统设置中安装。全程约 30 秒。</p>
+    <a class="dl-btn dl-btn-android" href="/ca.crt">⬇️ 下载 CA 证书</a>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">点击上方按钮下载证书文件</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">打开 <strong>设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书</strong></div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">选择刚下载的 <strong>十三香小龙虾-CA.crt</strong> 文件，确认安装</div></div>
+    </div>
+  </div>
+
+  <!-- Test Connection -->
+  <div class="section test-section">
+    <h2 style="justify-content:center">✅ 验证安装</h2>
+    <p style="text-align:center">安装完成后，点击下方按钮测试是否成功</p>
+    <button class="test-btn" id="testBtn" onclick="testConnection()">🔍 测试 HTTPS 连接</button>
+    <div class="test-result" id="testOk">
+      ✅ 连接成功！证书已正确安装。
+      <a class="go-btn" id="goBtn" href="#">🚀 进入完整语音版</a>
+    </div>
+    <div class="test-result" id="testFail">
+      ❌ 连接失败 — 请确认已完成上述全部步骤。<br>
+      <span style="font-size:12px;color:var(--dim)">iOS 用户请检查"证书信任设置"是否已开启。安装后可能需要重启浏览器。</span>
+    </div>
+  </div>
+
+  <div class="alt-link">
+    不想安装证书？<a href="/chat">使用 HTTP 文字聊天版</a>（语音功能受限）
+  </div>
+
+</div>
+
+<script>
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isAndroid = /Android/i.test(navigator.userAgent);
+
+if (isIOS) {
+  document.getElementById('sec-android').classList.add('hidden');
+} else if (isAndroid) {
+  document.getElementById('sec-ios').classList.add('hidden');
+}
+
+let _httpsBase = '';
+
+(async () => {
+  try {
+    const r = await fetch('/api/server-info');
+    const info = await r.json();
+    const ips = (info.ips || []).filter(ip => ip !== '127.0.0.1' && !ip.startsWith('::'));
+    const lanIp = ips.find(ip => /^192\.168\./.test(ip)) || ips.find(ip => /^10\./.test(ip)) || ips[0] || location.hostname;
+    const port = info.port || 8765;
+    _httpsBase = `https://${lanIp}:${port}`;
+    document.getElementById('goBtn').href = `${_httpsBase}/app`;
+  } catch (e) {
+    console.warn('Failed to load server info:', e);
+    const u = new URL(location.href);
+    _httpsBase = `https://${u.hostname}:8765`;
+    document.getElementById('goBtn').href = `${_httpsBase}/app`;
+  }
+})();
+
+async function testConnection() {
+  const btn = document.getElementById('testBtn');
+  const ok = document.getElementById('testOk');
+  const fail = document.getElementById('testFail');
+  ok.className = 'test-result';
+  fail.className = 'test-result';
+  btn.textContent = '⏳ 测试中...';
+  btn.disabled = true;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const r = await fetch(`${_httpsBase}/api/ping`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (r.ok) {
+      ok.className = 'test-result test-ok';
+      btn.textContent = '✅ 测试通过';
+    } else {
+      throw new Error('not ok');
+    }
+  } catch (e) {
+    fail.className = 'test-result test-fail';
+    btn.textContent = '🔍 重新测试';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

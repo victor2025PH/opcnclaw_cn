@@ -1,0 +1,91 @@
+{
+  "category": "05_health",
+  "name": "💊 健康养生",
+  "description": "BMI计算、热量查询、健康建议、用药常识",
+  "preinstalled": true,
+  "skills": [
+    {
+      "id": "bmi_calc", "name_zh": "BMI体重指数", "type": "code",
+      "category": "05_health", "subcategory": "体重",
+      "description": "计算BMI并给出健康建议",
+      "trigger_words": ["BMI","体重指数","我胖吗","体重","身高体重","超重","肥胖","偏瘦"],
+      "examples": ["我身高170体重70，BMI多少","BMI怎么算"],
+      "handler": "health.calc_bmi",
+      "params": [
+        {"name": "weight", "type": "number", "desc": "体重(kg)", "required": true},
+        {"name": "height", "type": "number", "desc": "身高(cm)", "required": true}
+      ],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "calorie_food", "name_zh": "食物热量查询", "type": "prompt",
+      "category": "05_health", "subcategory": "营养",
+      "description": "查询常见食物的热量和营养成分",
+      "trigger_words": ["热量","卡路里","calories","多少大卡","kcal","能量","营养","蛋白质","碳水","脂肪含量"],
+      "examples": ["一碗米饭多少热量", "鸡胸肉热量", "这顿饭有多少卡路里"],
+      "system_injection": "你是专业营养师，精通各种食物的热量和营养成分。当用户询问食物热量时，请提供：①热量(kcal/100g)②主要营养成分(蛋白质/碳水/脂肪)③是否适合减脂期④对比参考。数据要具体精准，用口语化方式表达。如：\"一碗米饭（200g）约290大卡，相当于走路50分钟才能消耗。\"",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "water_reminder", "name_zh": "每日喝水量", "type": "code",
+      "category": "05_health", "subcategory": "生活习惯",
+      "description": "根据体重计算每日推荐饮水量",
+      "trigger_words": ["喝水","饮水量","每天喝多少水","补水","水分"],
+      "examples": ["我每天应该喝多少水", "体重60kg每天饮水量"],
+      "handler": "health.water_intake",
+      "params": [{"name": "weight", "type": "number", "desc": "体重(kg)", "default": 60}],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "heart_rate_zone", "name_zh": "心率区间计算", "type": "code",
+      "category": "05_health", "subcategory": "运动",
+      "description": "根据年龄计算最大心率和运动心率区间",
+      "trigger_words": ["心率","最大心率","有氧心率","燃脂心率","跑步心率","心率区间","运动心率"],
+      "examples": ["我30岁跑步心率多少合适", "最大心率怎么算"],
+      "handler": "health.heart_rate",
+      "params": [{"name": "age", "type": "number", "desc": "年龄", "required": true}],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "sleep_advice", "name_zh": "睡眠建议", "type": "prompt",
+      "category": "05_health", "subcategory": "睡眠",
+      "description": "睡眠质量改善建议和睡前指导",
+      "trigger_words": ["睡眠","失眠","睡不着","睡眠质量","几点睡觉","睡多久","深度睡眠","午睡","褪黑素"],
+      "examples": ["我总是失眠怎么办", "几点睡觉最好", "午睡多久合适"],
+      "system_injection": "你是睡眠专家，了解睡眠科学和改善方法。提供具体可操作的建议，包括：睡眠时间、睡前准备、环境设置等。建议要简洁实用，适合语音播报，不超过100字。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "medicine_common", "name_zh": "常见药物用法", "type": "prompt",
+      "category": "05_health", "subcategory": "用药",
+      "description": "常见非处方药的用法用量（仅供参考，不替代医嘱）",
+      "trigger_words": ["布洛芬","对乙酰氨基酚","阿莫西林","感冒药","退烧药","止痛药","胃药","板蓝根","藿香正气","用药","怎么吃","剂量"],
+      "examples": ["布洛芬怎么吃", "退烧药多久吃一次", "感冒了吃什么药"],
+      "system_injection": "你是药剂师，了解常见非处方药的用法。提供用法时必须声明：仅供参考，具体用药请遵医嘱或看药品说明书。内容包括：①标准用量②用药间隔③注意事项④何时需就医。用口语化表达。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "diet_plan", "name_zh": "减肥/增肌饮食", "type": "prompt",
+      "category": "05_health", "subcategory": "饮食",
+      "description": "减脂增肌饮食计划和建议",
+      "trigger_words": ["减肥","减脂","增肌","减重","瘦身","控制饮食","节食","增重","增加体重","健身饮食"],
+      "examples": ["我想减肥饮食怎么安排", "增肌期吃什么", "低卡饮食怎么做"],
+      "system_injection": "你是专业健身教练和营养师。提供科学减脂/增肌饮食建议，强调：①热量缺口/盈余原则②蛋白质摄入重要性③避免极端节食。建议具体可行，语气鼓励。必要时提醒去咨询专业医生。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    },
+    {
+      "id": "acupoint", "name_zh": "穴位按摩", "type": "prompt",
+      "category": "05_health", "subcategory": "中医",
+      "description": "简单穴位按摩缓解常见不适",
+      "trigger_words": ["穴位","按摩","头疼按哪里","失眠穴位","缓解疲劳","按摩穴位","颈椎","腰疼","眼睛疲劳"],
+      "examples": ["头疼按哪个穴位", "失眠按什么穴位", "腰疼怎么按摩"],
+      "system_injection": "你是中医推拿专家，熟悉常用穴位按摩。介绍穴位时要说明：①穴位位置（用通俗方式描述）②按摩方法③效果。每次介绍1-2个最关键穴位，言简意赅，适合语音播报。",
+      "params": [],
+      "preinstalled": true, "safe": true, "needs_network": false
+    }
+  ]
+}

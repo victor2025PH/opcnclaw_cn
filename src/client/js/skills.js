@@ -659,7 +659,7 @@ function initSkillChains() {
   });
 
   $('sc-open')?.addEventListener('click', open);
-  $('sc-back')?.addEventListener('click', close);
+  $('sc-chain-back')?.addEventListener('click', close);
   window.addEventListener('resize', () => { if (!panel.classList.contains('hidden')) resizeCanvas(); });
 }
 

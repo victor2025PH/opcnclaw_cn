@@ -1,0 +1,10 @@
+{
+  "category": "02_weather_travel",
+  "name": "🌤️ 天气出行",
+  "description": "天气查询、空气质量、出行建议",
+  "preinstalled": true,
+  "skills": [
+    {"id":"weather_now","name_zh":"实时天气","name_en":"weather_now","category":"02_weather_travel","subcategory":"天气","description":"查询指定城市当前天气和近期预报","trigger_words":["天气","气温","下雨","下雪","晴天","温度","今天天气","明天天气","这周天气","热不热","冷不冷","带伞","穿什么衣服"],"examples":["北京今天天气怎么样","明天上海会下雨吗","成都这周天气"],"handler":"weather.get_weather","params":[{"name":"city","type":"city","desc":"城市名","default":"北京"}],"preinstalled":true,"safe":true,"needs_network":true},
+    {"id":"oil_price","name_zh":"今日油价","name_en":"oil_price","category":"02_weather_travel","subcategory":"出行","description":"查询全国各省份今日油价","trigger_words":["油价","92号","95号","98号","柴油","汽油","加油","今天油价","多少钱一升"],"examples":["今天上海油价多少","92号汽油多少钱","北京加油多少钱"],"handler":"travel.get_oil_price","params":[{"name":"province","type":"string","default":"全国"}],"preinstalled":true,"safe":true,"needs_network":true}
+  ]
+}

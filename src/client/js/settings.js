@@ -1,5 +1,5 @@
 // settings.js — Orchestrator (sections extracted to settings-models.js, settings-wechat.js, settings-chat.js)
-import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml } from '/js/state.js';
+import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, bus } from '/js/state.js';
 import { initWechatPanel } from '/js/settings-wechat.js';
 import { initModelPanel, initMcpPanel, initModelDepGraph } from '/js/settings-models.js';
 import { initMessageSearch, initBookmarks, initReactions, initTranslate, initMessageExport, initMessageEdit, initPinnedMessages, initSummary } from '/js/settings-chat.js';
@@ -620,15 +620,27 @@ function initVoiceClone() {
 function initSettingsTabs() {
   const tabs = document.getElementById('settings-tabs');
   if (!tabs) return;
-  tabs.addEventListener('click', (e) => {
-    const btn = e.target.closest('.stab');
-    if (!btn) return;
-    const tabId = btn.dataset.tab;
+
+  function activateTab(tabId) {
+    const btn = tabs.querySelector(`.stab[data-tab="${tabId}"]`);
+    if (!btn) return false;
     tabs.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     document.querySelectorAll('.stab-pane').forEach(p => p.classList.remove('active'));
     const pane = document.getElementById(tabId);
     if (pane) pane.classList.add('active');
+    return true;
+  }
+
+  const saved = localStorage.getItem('oc-settings-tab');
+  if (saved) activateTab(saved);
+
+  tabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.stab');
+    if (!btn) return;
+    const tabId = btn.dataset.tab;
+    activateTab(tabId);
+    localStorage.setItem('oc-settings-tab', tabId);
   });
 }
 
@@ -726,18 +738,6 @@ function initKeyboardShortcuts() {
 
     if (e.key === 'Escape') {
       if (shortcuts.classList.contains('open')) { shortcuts.classList.remove('open'); return; }
-      const panels = ['model-panel', 'mcp-panel', 'settings-modal', 'shortcuts-overlay'];
-      for (const id of panels) {
-        const p = document.getElementById(id);
-        if (p && !p.classList.contains('hidden') && !p.classList.contains('open') === false) {
-          p.classList.add('hidden'); return;
-        }
-        if (p && p.classList.contains('open')) { p.classList.remove('open'); return; }
-      }
-      for (const pid of ['perf-panel', 'voice-cmd-panel', 'model-panel', 'mcp-panel', 'settings-modal']) {
-        const el = document.getElementById(pid);
-        if (el && !el.classList.contains('hidden')) { el.classList.add('hidden'); return; }
-      }
     }
 
     if (e.ctrlKey && !e.shiftKey && e.key === 'm') {
@@ -1745,17 +1745,17 @@ window.ocPlugins = ocPlugins;
   });
   const syncVisibility = () => {
     menu.querySelectorAll('.hom-item').forEach(item => {
+      if (!item.dataset.target) return;
       const btn = document.getElementById(item.dataset.target);
       item.style.display = (btn && getComputedStyle(btn).display === 'none') ? '' : 'none';
     });
-    const sep = menu.querySelector('.hom-sep');
-    if(sep){
+    menu.querySelectorAll('.hom-sep').forEach(sep => {
       const children = [...menu.children];
       const si = children.indexOf(sep);
       const hasAbove = children.some((c,i) => i < si && c.classList.contains('hom-item') && c.style.display !== 'none');
       const hasBelow = children.some((c,i) => i > si && c.classList.contains('hom-item') && c.style.display !== 'none');
       sep.style.display = (hasAbove && hasBelow) ? '' : 'none';
-    }
+    });
   };
   moreBtn.addEventListener('click', syncVisibility);
   window.addEventListener('resize', () => { if(menu.classList.contains('open')) syncVisibility(); });
