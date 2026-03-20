@@ -77,6 +77,9 @@ class WeChatAdapter:
         # 消息回调
         self._callbacks: List[Callable[[WxMessage], None]] = []
 
+        # 我的昵称（用于 @me 检测）
+        self._my_nickname: str = ""
+
         # 去重
         self._seen_fps: Dict[str, float] = {}
         self._fp_lock = threading.Lock()
@@ -145,6 +148,19 @@ class WeChatAdapter:
                 best_name = name
         return best_name
 
+    def _enrich_message(self, msg: WxMessage) -> WxMessage:
+        """补充 is_group 和 at_me 字段"""
+        # 群聊判断：会话名含"群"或包含多人标记
+        if not msg.is_group:
+            name = msg.contact
+            if "群" in name or "Group" in name:
+                msg.is_group = True
+        # @me 检测
+        if msg.is_group and self._my_nickname and not msg.at_me:
+            if f"@{self._my_nickname}" in msg.content:
+                msg.at_me = True
+        return msg
+
     def get_new_messages(self) -> List[WxMessage]:
         """从最优轨道获取新消息"""
         messages = []
@@ -203,7 +219,8 @@ class WeChatAdapter:
             except Exception as e:
                 self._track_fail("ocr", str(e))
 
-        # 去重
+        # 补充 is_group / at_me + 去重
+        messages = [self._enrich_message(m) for m in messages]
         unique = self._dedup(messages)
         return unique
 
@@ -360,6 +377,10 @@ class WeChatAdapter:
         else:
             logger.info(f"可用轨道: {', '.join(available)}")
 
+        # 我的昵称（用于群聊 @me 检测）
+        import os
+        self._my_nickname = os.environ.get("OPENCLAW_WECHAT_NICKNAME", "")
+
     # ── 监控循环 ──────────────────────────────────────────────────────────
 
     _KEEPALIVE_INTERVAL = 30.0    # 每30秒检查微信窗口
@@ -421,14 +442,14 @@ class WeChatAdapter:
                     c, msgs = self._uia_reader.get_current_chat_messages(last_n=unread)
                     for m in msgs:
                         if not m.get("is_mine", False):
-                            msg = WxMessage(
+                            msg = self._enrich_message(WxMessage(
                                 contact=contact,
                                 sender=m.get("sender", ""),
                                 content=m.get("content", ""),
                                 msg_type=m.get("msg_type", "text"),
                                 is_mine=False,
                                 source="uia",
-                            )
+                            ))
                             # 去重 + 分发
                             fp2 = msg.fingerprint()
                             if fp2 not in self._seen_fps:
