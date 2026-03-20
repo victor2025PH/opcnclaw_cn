@@ -362,25 +362,86 @@ class WeChatAdapter:
 
     # ── 监控循环 ──────────────────────────────────────────────────────────
 
-    _KEEPALIVE_INTERVAL = 30.0  # 每30秒检查微信窗口
+    _KEEPALIVE_INTERVAL = 30.0    # 每30秒检查微信窗口
+    _UNREAD_SCAN_INTERVAL = 15.0  # 每15秒扫描未读会话
 
     def _monitor_loop(self):
         """后台监控主循环"""
         last_keepalive = 0.0
+        last_unread_scan = 0.0
         while self._running:
             try:
                 now = time.time()
-                # 保活：定期激活微信窗口防止最小化后失联
+
+                # 保活
                 if now - last_keepalive > self._KEEPALIVE_INTERVAL:
                     last_keepalive = now
                     self._keepalive()
 
+                # 多会话扫描：检查未读列表 → 切换到有新消息的会话
+                if now - last_unread_scan > self._UNREAD_SCAN_INTERVAL:
+                    last_unread_scan = now
+                    self._scan_unread_sessions()
+
+                # 常规扫描：读取当前聊天窗口的消息
                 interval = self._get_scan_interval()
                 self._scan_cycle()
                 time.sleep(interval)
             except Exception as e:
                 logger.debug(f"[WeChatAdapter] monitor error: {e}")
                 time.sleep(3.0)
+
+    def _scan_unread_sessions(self):
+        """扫描未读会话列表，自动切换到有新消息的会话"""
+        if not self._uia_reader:
+            return
+        try:
+            sessions = self._uia_reader.get_unread_sessions()
+            if not sessions:
+                return
+
+            for session in sessions:
+                contact = session.get("contact", "")
+                unread = session.get("unread_count", 0)
+                if not contact or unread <= 0:
+                    continue
+
+                # 跳过已处理的（指纹去重）
+                fp = f"session:{contact}:{unread}"
+                if fp in self._seen_fps:
+                    continue
+                self._seen_fps[fp] = time.time()
+
+                logger.info(f"[Adapter] 发现未读: {contact} ({unread}条)")
+
+                # 切换到该会话
+                if self._uia_reader.click_session(contact):
+                    time.sleep(1.0)
+                    # 读取消息
+                    c, msgs = self._uia_reader.get_current_chat_messages(last_n=unread)
+                    for m in msgs:
+                        if not m.get("is_mine", False):
+                            msg = WxMessage(
+                                contact=contact,
+                                sender=m.get("sender", ""),
+                                content=m.get("content", ""),
+                                msg_type=m.get("msg_type", "text"),
+                                is_mine=False,
+                                source="uia",
+                            )
+                            # 去重 + 分发
+                            fp2 = msg.fingerprint()
+                            if fp2 not in self._seen_fps:
+                                self._seen_fps[fp2] = time.time()
+                                self.stats["messages_detected"] += 1
+                                for cb in self._callbacks:
+                                    try:
+                                        cb(msg)
+                                        self.stats["messages_dispatched"] += 1
+                                    except Exception as e:
+                                        logger.error(f"Callback error: {e}")
+        except Exception as e:
+            logger.debug(f"[Adapter] unread scan error: {e}")
 
     def _keepalive(self):
         """确保微信窗口可访问（不强制前台，仅检测并恢复）"""
