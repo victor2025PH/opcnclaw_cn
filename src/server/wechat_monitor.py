@@ -556,17 +556,8 @@ class UIAReader:
                             sender = remaining[0] if len(remaining) > 1 else ""
                             content = remaining[-1]
 
-                        # 识别消息类型
-                        if content in ("[图片]", "[图片消息]", "[Photo]"):
-                            msg_type = "image"
-                        elif content in ("[语音]", "[语音消息]", "[Voice]"):
-                            msg_type = "voice"
-                        elif content in ("[文件]", "[File]"):
-                            msg_type = "file"
-                        elif content in ("[视频]", "[Video]", "[小视频]"):
-                            msg_type = "video"
-                        elif content.startswith("[") and content.endswith("]"):
-                            msg_type = "system"
+                        # 识别消息类型（扩展版）
+                        msg_type = _detect_msg_type(content)
 
                         # is_mine: 判断消息气泡是否在右侧
                         is_mine = _is_mine_by_rect(item, win_rect)
@@ -1074,14 +1065,96 @@ def _is_mine_by_rect(ctrl, win_rect) -> bool:
         return False
 
 
+def _detect_msg_type(content: str) -> str:
+    """识别消息类型（扩展版：支持13种类型）"""
+    if not content:
+        return "text"
+
+    # 精确匹配
+    _EXACT_MAP = {
+        "[图片]": "image", "[图片消息]": "image", "[Photo]": "image",
+        "[语音]": "voice", "[语音消息]": "voice", "[Voice]": "voice",
+        "[文件]": "file", "[File]": "file",
+        "[视频]": "video", "[Video]": "video", "[小视频]": "video",
+        "[动画表情]": "sticker", "[Sticker]": "sticker",
+        "[位置]": "location", "[Location]": "location",
+        "[名片]": "contact_card", "[Contact]": "contact_card",
+        "[转账]": "transfer", "[红包]": "red_packet",
+        "[音乐]": "music", "[Music]": "music",
+    }
+    if content in _EXACT_MAP:
+        return _EXACT_MAP[content]
+
+    # 前缀匹配
+    if content.startswith("[链接]") or content.startswith("[Link]"):
+        return "link"
+    if content.startswith("[小程序]") or content.startswith("[MiniApp]"):
+        return "miniprogram"
+    if content.startswith("[引用]") or content.startswith("[Reply]"):
+        return "quote"
+    if content.startswith("[视频号]"):
+        return "channels_video"
+
+    # 链接检测：包含 URL 的文本也标记
+    if re.search(r'https?://\S+', content):
+        return "link"
+
+    # 系统消息：[xxx] 格式且未被上面匹配
+    if content.startswith("[") and content.endswith("]") and len(content) < 30:
+        return "system"
+
+    return "text"
+
+
 def _is_group_name(name: str) -> bool:
     """简单判断是否群聊（含括号数字 如 "工作群(12)"，或名字超长）"""
     return bool(re.search(r'[\(\（]\d+[\)\）]', name)) or len(name) > 10
 
 
+# 缓存我的微信昵称（从环境变量或配置读取）
+_MY_NICKNAME = ""
+
+
+def _get_my_nickname() -> str:
+    """获取我的微信昵称（用于精确 @ 检测）"""
+    global _MY_NICKNAME
+    if not _MY_NICKNAME:
+        import os
+        _MY_NICKNAME = os.environ.get("OPENCLAW_WECHAT_NICKNAME", "")
+    return _MY_NICKNAME
+
+
 def _check_at_me(content: str) -> bool:
-    """检测消息是否 @了我（@所有人 或 @具体名字）"""
-    return "@所有人" in content or re.search(r'@\S+', content) is not None
+    """检测消息是否 @了我（精确匹配版）
+
+    支持：
+      - @所有人（群公告）
+      - @我的昵称（精确匹配，需配置 OPENCLAW_WECHAT_NICKNAME）
+      - @任何人（回退：只要有 @ 就触发）
+    """
+    if "@所有人" in content:
+        return True
+
+    # 精确匹配我的昵称
+    my_name = _get_my_nickname()
+    if my_name and f"@{my_name}" in content:
+        return True
+
+    # 回退：任何 @ 都触发（保持兼容性）
+    return re.search(r'@\S+', content) is not None
+
+
+def _check_at_anyone(content: str) -> List[str]:
+    """提取消息中所有被 @ 的人（返回昵称列表）"""
+    names = []
+    if "@所有人" in content:
+        names.append("所有人")
+    # 匹配 @xxx 到空格或末尾
+    for match in re.finditer(r'@(\S+?)(?:\s|$|\u2005|\u200b)', content):
+        name = match.group(1)
+        if name != "所有人":
+            names.append(name)
+    return names
 
 
 def _wechat_is_running() -> bool:

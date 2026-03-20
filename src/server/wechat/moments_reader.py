@@ -101,16 +101,67 @@ class MomentsReader:
         return MomentsPage(posts=[], has_more=False, source="none")
 
     async def scroll_next(self, max_posts: int = 10) -> MomentsPage:
-        """向下滚动并读取新的动态"""
+        """向下滚动并读取新的动态（智能滚动+到底检测）"""
+        # 滚动前截图用于到底检测
+        pre_screenshot = self._take_moments_screenshot()
+
         self._scroll_pos += 1
         self._scroll_moments_page()
 
         page = await self._try_vision_browse(max_posts)
         if page and page.posts:
+            # 去重：只保留新内容
+            new_posts = self.dedup(page.posts)
+            page.posts = new_posts
             page.scroll_position = self._scroll_pos
+
+            # 到底检测：无新内容 = 到底了
+            if not new_posts:
+                page.has_more = False
+                logger.info(f"[Moments] 滚动到底（位置={self._scroll_pos}，无新内容）")
             return page
 
-        return MomentsPage(posts=[], has_more=False, scroll_position=self._scroll_pos)
+        # Vision 失败时用截图对比检测到底
+        post_screenshot = self._take_moments_screenshot()
+        at_bottom = self._detect_scroll_end(pre_screenshot, post_screenshot)
+
+        return MomentsPage(
+            posts=[], has_more=not at_bottom,
+            scroll_position=self._scroll_pos,
+        )
+
+    async def browse_pages(self, max_pages: int = 5, max_posts: int = 50) -> List[MomentPost]:
+        """多页浏览：自动滚动直到收集够或到底
+
+        Args:
+            max_pages: 最多滚动页数
+            max_posts: 最多收集动态数
+
+        Returns:
+            去重后的所有动态列表
+        """
+        all_posts: List[MomentPost] = []
+
+        # 先读首页
+        page = await self.browse(max_posts=max_posts)
+        if page.posts:
+            new = self.dedup(page.posts)
+            all_posts.extend(new)
+
+        # 逐页滚动
+        for i in range(max_pages - 1):
+            if len(all_posts) >= max_posts:
+                break
+
+            page = await self.scroll_next(max_posts=max_posts - len(all_posts))
+            if page.posts:
+                all_posts.extend(page.posts)  # scroll_next 内部已去重
+
+            if not page.has_more:
+                logger.info(f"[Moments] 多页浏览结束：共 {len(all_posts)} 条，{i+2} 页")
+                break
+
+        return all_posts[:max_posts]
 
     def dedup(self, posts: List[MomentPost]) -> List[MomentPost]:
         """去重：只返回未见过的动态"""
@@ -268,13 +319,57 @@ class MomentsReader:
             logger.warning("pyautogui 未安装")
 
     def _scroll_moments_page(self):
-        """在朋友圈页面向下滚动"""
+        """在朋友圈页面向下滚动（混合策略：滚轮+PageDown）"""
         try:
             import pyautogui
-            pyautogui.scroll(-5)
-            time.sleep(0.8)
+            # 策略：前3页用滚轮（平滑），之后用 PageDown（可靠）
+            if self._scroll_pos <= 3:
+                pyautogui.scroll(-5)
+            else:
+                pyautogui.press("pagedown")
+            time.sleep(1.0)  # 等待内容加载（0.8→1.0 更稳定）
         except Exception as e:
             logger.debug(f"滚动失败: {e}")
+
+    def _detect_scroll_end(self, before_b64: Optional[str], after_b64: Optional[str]) -> bool:
+        """截图对比检测是否滚到底（图片相似度 > 95% = 到底）"""
+        if not before_b64 or not after_b64:
+            return False
+        try:
+            # 快速比较：前1000字符的 hash（截图几乎相同 = 没有新内容加载）
+            import hashlib
+            h1 = hashlib.md5(before_b64[:2000].encode()).hexdigest()
+            h2 = hashlib.md5(after_b64[:2000].encode()).hexdigest()
+            if h1 == h2:
+                return True
+
+            # 精确比较：像素级差异（需要 PIL）
+            import base64
+            from io import BytesIO
+            from PIL import Image
+            img1 = Image.open(BytesIO(base64.b64decode(before_b64)))
+            img2 = Image.open(BytesIO(base64.b64decode(after_b64)))
+
+            # 缩放到相同小尺寸比较
+            size = (160, 90)
+            img1 = img1.resize(size).convert("L")  # 灰度
+            img2 = img2.resize(size).convert("L")
+
+            pixels1 = list(img1.getdata())
+            pixels2 = list(img2.getdata())
+
+            diff = sum(abs(a - b) for a, b in zip(pixels1, pixels2))
+            max_diff = 255 * len(pixels1)
+            similarity = 1.0 - (diff / max_diff)
+
+            at_bottom = similarity > 0.95
+            if at_bottom:
+                logger.info(f"[Moments] 截图对比：相似度 {similarity:.2%}，判定到底")
+            return at_bottom
+
+        except Exception as e:
+            logger.debug(f"截图对比失败: {e}")
+            return False
 
     # Vision AI 缓存（同一截图 30 秒内不重复调 API）
     _vision_cache: Dict = {}

@@ -325,6 +325,8 @@ from .routers.workflow import router as workflow_router
 from .routers.admin import router as admin_router
 from .routers.models import router as models_router
 from .routers.mcp import router as mcp_router
+from .routers.intent import router as intent_router
+from .routers.a2a import router as a2a_router
 
 app.include_router(voice_router)
 app.include_router(desktop_router)
@@ -333,6 +335,8 @@ app.include_router(workflow_router)
 app.include_router(admin_router)
 app.include_router(models_router)
 app.include_router(mcp_router)
+app.include_router(intent_router)
+app.include_router(a2a_router)
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -192,7 +192,7 @@ async def mcp_server_info():
     server = _get_mcp_server()
     return {
         "name": "ShisanXiang",
-        "version": "3.8.0",
+        "version": "4.1.0",
         "protocol": "2024-11-05",
         "tools_count": len(server._tools),
         "tools": [t.to_dict() for t in server._tools.values()],

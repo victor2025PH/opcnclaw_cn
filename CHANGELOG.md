@@ -1,5 +1,37 @@
 # Changelog
 
+## v4.1.0 (2026-03-21)
+
+### 意图融合引擎（多模态信号融合）
+- 四通道信号融合：注视(gaze) + 表情(expression) + 语音(voice) + 桌面(desktop)
+- 500ms 滑动窗口 + 优先级排序：紧急停止 > 语音 > 手势 > 情感
+- 跨模态增强矩阵：点头+"好"=2x置信度，摇头+"不"=2x
+- 紧急停止立即响应（不等融合窗口）→ CoworkBus 自动暂停
+- 在线配置调整：窗口/阈值/置信度无需重启
+- API: POST /api/intent/signal, GET /api/intent/state, POST /api/intent/emergency
+
+### A2A 协议（Agent-to-Agent 通信）
+- Google A2A 标准兼容的 Agent Card 发现（/.well-known/agent.json）
+- 任务生命周期管理：submitted → working → completed/failed
+- 5 个内置技能处理器：wechat_send/read, screenshot, ocr, voice
+- 桌面操作任务自动委派 CoworkBus 调度
+- Webhook 异步通知 + EventBus 事件广播
+- Claude Desktop / Cursor 可通过 A2A 委派桌面操作
+- API: POST /api/a2a/task, GET /api/a2a/card, GET /api/a2a/tasks
+
+### 微信引擎增强
+- 朋友圈多页浏览：browse_pages() 自动滚动+去重+到底检测
+- 混合滚动策略：前3页滚轮（平滑）→ 之后 PageDown（可靠）
+- 截图对比到底检测：像素级相似度 > 95% = 到底
+- 消息类型扩展至 13 种：链接/小程序/引用/表情包/位置/名片/转账/红包等
+- @检测精确匹配：优先匹配 OPENCLAW_WECHAT_NICKNAME，回退泛匹配
+- 新增 _check_at_anyone() 提取所有被@的人列表
+
+### 测试
+- 新增 test_intent_fusion.py（36 tests）
+- 新增 test_a2a.py（33 tests）
+- 全量: 306 passed, 6 skipped, 0 failed (新模块)
+
 ## v4.0.0 (2026-03-21)
 
 ### 里程碑版本：全栈重构 + 微信4.x + 人机协作

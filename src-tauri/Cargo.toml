@@ -1,6 +1,6 @@
 [package]
 name = "shisanxiang"
-version = "4.0.0"
+version = "4.1.0"
 description = "十三香小龙虾 AI 桌面客户端"
 authors = ["OpenClaw Team"]
 edition = "2021"
