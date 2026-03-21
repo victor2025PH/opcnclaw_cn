@@ -191,14 +191,48 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="drag-bar" data-tauri-drag-region>拖动 · 双击回主窗口 · 托盘可隐藏</div>
-    <div class="pet-stage state-idle" id="petStage" aria-label="桌宠" title="单击弹跳 · 双击打开主窗口">
+    <div class="drag-bar" data-tauri-drag-region style="height:8px;background:transparent;border:none;min-height:0;padding:0"></div>
+    <div class="pet-stage state-idle" id="petStage" aria-label="桌宠" title="单击弹跳 · 双击对话">
       <div class="pet-mic-wrap" id="petMicWrap">
-        <div class="pet-body" id="petBody"></div>
-        <div class="pet-face">
-          <span class="eye l"><span class="pupil" id="pupilL"></span></span>
-          <span class="eye r"><span class="pupil" id="pupilR"></span></span>
-        </div>
+        <!-- 小龙虾造型 -->
+        <svg class="pet-lobster" viewBox="0 0 100 110" width="88" height="97">
+          <!-- 钳子 -->
+          <ellipse class="claw claw-l" cx="15" cy="38" rx="14" ry="10" fill="#e63946" stroke="#c1121f" stroke-width="1.5"/>
+          <ellipse class="claw claw-r" cx="85" cy="38" rx="14" ry="10" fill="#e63946" stroke="#c1121f" stroke-width="1.5"/>
+          <line class="arm arm-l" x1="28" y1="40" x2="38" y2="48" stroke="#d62828" stroke-width="4" stroke-linecap="round"/>
+          <line class="arm arm-r" x1="72" y1="40" x2="62" y2="48" stroke="#d62828" stroke-width="4" stroke-linecap="round"/>
+          <!-- 身体 -->
+          <ellipse cx="50" cy="58" rx="24" ry="28" fill="url(#bodyGrad)" stroke="#c1121f" stroke-width="1.5"/>
+          <!-- 头部 -->
+          <ellipse cx="50" cy="38" rx="20" ry="18" fill="url(#headGrad)" stroke="#c1121f" stroke-width="1.5"/>
+          <!-- 触角 -->
+          <path class="antenna antenna-l" d="M38 24 Q30 8 22 12" stroke="#e63946" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path class="antenna antenna-r" d="M62 24 Q70 8 78 12" stroke="#e63946" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- 眼睛 -->
+          <circle class="eye-bg" cx="42" cy="34" r="6" fill="white" stroke="#333" stroke-width="1"/>
+          <circle class="eye-bg" cx="58" cy="34" r="6" fill="white" stroke="#333" stroke-width="1"/>
+          <circle class="pupil" id="pupilL" cx="42" cy="35" r="3" fill="#1a1025"/>
+          <circle class="pupil" id="pupilR" cx="58" cy="35" r="3" fill="#1a1025"/>
+          <!-- 嘴巴 -->
+          <path class="mouth" d="M44 44 Q50 48 56 44" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <!-- 小脚 -->
+          <line x1="35" y1="78" x2="30" y2="90" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="42" y1="80" x2="38" y2="92" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="58" y1="80" x2="62" y2="92" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="70" y2="90" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- 渐变定义 -->
+          <defs>
+            <radialGradient id="bodyGrad" cx="50%" cy="40%">
+              <stop offset="0%" stop-color="#ef476f"/>
+              <stop offset="100%" stop-color="#c1121f"/>
+            </radialGradient>
+            <radialGradient id="headGrad" cx="50%" cy="30%">
+              <stop offset="0%" stop-color="#e63946"/>
+              <stop offset="100%" stop-color="#c1121f"/>
+            </radialGradient>
+          </defs>
+        </svg>
+        <div class="pet-body" id="petBody" style="display:none"></div>
       </div>
     </div>
     <div class="caption" id="caption">
@@ -244,6 +278,37 @@
   </div>
 
   <style>
+    /* 小龙虾动画 */
+    .pet-lobster{transition:transform 0.3s ease}
+    .pet-stage.state-idle .pet-lobster{animation:lobster-idle 3s ease-in-out infinite}
+    .pet-stage.state-listening .pet-lobster{animation:lobster-listen 1.5s ease-in-out infinite}
+    .pet-stage.state-thinking .pet-lobster{animation:lobster-think 2s ease-in-out infinite}
+    .pet-stage.state-speaking .pet-lobster{animation:lobster-speak 0.8s ease-in-out infinite}
+    .pet-stage.bounce .pet-lobster{animation:lobster-bounce 0.5s ease}
+    .pet-stage.state-error .pet-lobster{filter:grayscale(0.5);animation:lobster-shake 0.3s ease infinite}
+
+    @keyframes lobster-idle{0%,100%{transform:rotate(0)}25%{transform:rotate(-3deg)}75%{transform:rotate(3deg)}}
+    @keyframes lobster-listen{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+    @keyframes lobster-think{0%,100%{transform:rotate(0) translateY(0)}50%{transform:rotate(5deg) translateY(-3px)}}
+    @keyframes lobster-speak{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    @keyframes lobster-bounce{0%{transform:translateY(0)}40%{transform:translateY(-15px)}100%{transform:translateY(0)}}
+    @keyframes lobster-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+    /* 钳子动画 */
+    .pet-stage.state-listening .claw-l{animation:claw-open-l 1.5s ease-in-out infinite}
+    .pet-stage.state-listening .claw-r{animation:claw-open-r 1.5s ease-in-out infinite}
+    @keyframes claw-open-l{0%,100%{transform:rotate(0)}50%{transform:rotate(-15deg) translateX(-3px)}}
+    @keyframes claw-open-r{0%,100%{transform:rotate(0)}50%{transform:rotate(15deg) translateX(3px)}}
+
+    /* 触角动画 */
+    .antenna{animation:antenna-wave 2.5s ease-in-out infinite}
+    .antenna-r{animation-delay:0.3s}
+    @keyframes antenna-wave{0%,100%{d:path("M38 24 Q30 8 22 12")}50%{d:path("M38 24 Q28 6 20 14")}}
+
+    /* 嘴巴：说话时张嘴 */
+    .pet-stage.state-speaking .mouth{animation:mouth-talk 0.4s ease-in-out infinite}
+    @keyframes mouth-talk{0%,100%{d:path("M44 44 Q50 48 56 44")}50%{d:path("M44 44 Q50 52 56 44")}}
+
     /* 输入面板 */
     .pet-input-panel{
       display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);

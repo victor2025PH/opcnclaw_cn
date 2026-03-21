@@ -952,13 +952,52 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
                 template = "startup"
             tpl = get_template(template)
 
+        # ── 检测可用 AI 平台 ──
+        import os
+        available_platforms = []
+        platform_checks = [
+            ("zhipu_flash", "ZHIPU_API_KEY", "智谱GLM-4-Flash(免费)"),
+            ("deepseek", "DEEPSEEK_API_KEY", "DeepSeek(送500万token)"),
+            ("baidu_speed", "BAIDU_API_KEY", "百度文心(免费)"),
+            ("siliconflow_free", "SILICONFLOW_API_KEY", "硅基流动(免费)"),
+            ("tongyi", "TONGYI_API_KEY", "通义千问"),
+            ("openai", "OPENAI_API_KEY", "OpenAI"),
+        ]
+        missing_platforms = []
+        for pid, env_key, name in platform_checks:
+            if os.environ.get(env_key):
+                available_platforms.append((pid, name))
+            else:
+                missing_platforms.append(name)
+
+        if not available_platforms:
+            return {
+                "error": "没有可用的 AI 平台！请在设置中配置至少一个 API Key。",
+                "hint": "推荐：智谱GLM-4-Flash（永久免费）→ 设置 → AI配置",
+            }
+
+        # ── 检测路由模式，提醒切换 ──
+        route_mode_hint = ""
+        try:
+            from src.router.config import RouterConfig
+            cfg = RouterConfig()
+            if cfg.routing_mode == "cost_saving":
+                route_mode_hint = "\n\n⚠️ 当前为「省钱模式」，团队工作建议切换为「质量优先」模式（设置 → AI配置 → 路由模式）以获得更好的方案质量。"
+        except Exception:
+            pass
+
+        # ── 智能分配 Agent 到可用平台（轮询分散）──
+        platform_cycle = available_platforms * 10  # 足够多
+        for i, (aid, agent) in enumerate(list(AGENT_ROLES.items())):
+            if aid in [r for r in (tpl["roles"] if tpl else [])]:
+                assigned = platform_cycle[i % len(platform_cycle)]
+                AGENT_ROLES[aid].preferred_model = assigned[0]
+
         # 创建团队（但不执行）
-        # AI 调用：根据 Agent 的 preferred_model 分散到不同平台
         async def _ai_call(messages, model=""):
             try:
                 from .main import backend as _b
                 if _b and _b._router:
-                    # 通过路由器调用，自动分散到不同平台
                     result = ""
                     async for chunk, _ in _b._router.chat_stream(
                         messages, max_tokens=600, temperature=0.7
@@ -1000,7 +1039,18 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
             "agent_count": len(team.agents),
             "status": "awaiting_confirmation",
             "introductions": introductions,
-            "message": "请你把每个成员的自我介绍逐一展示给用户（用 full_intro 字段），一个一个展示。展示完后问用户'团队已就位，是否开始执行？'。用户确认后调用 confirm_team，team_id 是：" + team.team_id,
+            "available_platforms": [p[1] for p in available_platforms],
+            "missing_platforms_hint": f"💡 提示：配置更多 AI 平台可提升团队工作质量。当前未配置：{', '.join(missing_platforms[:3])}" if missing_platforms else "",
+            "route_mode_hint": route_mode_hint,
+            "message": (
+                "请按以下步骤展示给用户：\n"
+                "1. 先说'我为你组建了XX团队，来认识一下你的团队成员：'\n"
+                "2. 把每个成员的 full_intro 逐一展示（一个一个，像报到一样）\n"
+                "3. 如果有 missing_platforms_hint，展示给用户\n"
+                "4. 如果有 route_mode_hint，展示给用户\n"
+                "5. 最后问'团队已就位，是否开始执行？'\n"
+                "6. 用户确认后调用 confirm_team，team_id 是：" + team.team_id
+            ),
         }
     except Exception as e:
         return {"error": f"团队部署失败: {e}"}

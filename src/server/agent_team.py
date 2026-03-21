@@ -218,6 +218,27 @@ class AgentTeam:
             self.final_result = summary
             self.status = "done"
 
+            # 持久化结果到 SQLite
+            try:
+                from . import db as _db
+                conn = _db.get_conn("main")
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS team_history (
+                        team_id TEXT PRIMARY KEY, name TEXT, task TEXT,
+                        agent_count INTEGER, result TEXT,
+                        created_at REAL, finished_at REAL
+                    )
+                """)
+                conn.execute(
+                    "INSERT OR REPLACE INTO team_history VALUES (?,?,?,?,?,?,?)",
+                    (self.team_id, self.name, user_request[:500],
+                     len(self.agents), summary[:5000] if summary else "",
+                     self.created_at, time.time()),
+                )
+                conn.commit()
+            except Exception:
+                pass
+
             # 发布事件
             try:
                 from .event_bus import publish

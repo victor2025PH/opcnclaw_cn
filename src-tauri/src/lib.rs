@@ -491,11 +491,12 @@ pub fn run() {
                         WebviewUrl::External(PET_URL.parse().unwrap()),
                     )
                     .title("桌宠")
-                    .inner_size(280.0, 320.0)
-                    .min_inner_size(240.0, 280.0)
+                    .inner_size(140.0, 200.0)
+                    .min_inner_size(120.0, 160.0)
                     .decorations(false)
                     .transparent(true)
                     .always_on_top(true)
+                    .skip_taskbar(true)
                     .resizable(true)
                     .build()
                     {
@@ -503,9 +504,9 @@ pub fn run() {
                             if let Ok(Some(monitor)) = app_handle.primary_monitor() {
                                 let pos = monitor.position();
                                 let size = monitor.size();
-                                let margin = 24i32;
-                                let pw = 280i32;
-                                let ph = 320i32;
+                                let margin = 16i32;
+                                let pw = 140i32;
+                                let ph = 200i32;
                                 let x = pos.x + size.width as i32 - pw - margin;
                                 let y = pos.y + size.height as i32 - ph - margin;
                                 let _ = pet.set_position(PhysicalPosition::new(x, y));
