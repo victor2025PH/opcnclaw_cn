@@ -36,16 +36,18 @@ async def get_roles():
 async def create_agent_team(req: CreateTeamRequest):
     """一键创建团队"""
     try:
-        # 获取 AI 调用函数
+        # 获取 AI 调用函数（复用全局 backend）
         async def _ai_call(messages, model=""):
             try:
+                # 尝试获取已初始化的全局 backend
+                from src.server.main import backend as _global_backend
+                if _global_backend:
+                    return await _global_backend.chat_simple(messages)
+
+                # 降级：创建临时 backend
                 from src.server.backend import AIBackend
-                backend = AIBackend(backend_type="router")
-                result = await backend.chat_simple(
-                    messages[-1]["content"] if messages else "",
-                    system=messages[0]["content"] if messages and messages[0]["role"] == "system" else "",
-                )
-                return result
+                _temp = AIBackend(backend_type="router")
+                return await _temp.chat_simple(messages)
             except Exception as e:
                 return f"AI 调用失败: {e}"
 

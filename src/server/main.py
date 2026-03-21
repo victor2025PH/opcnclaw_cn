@@ -2181,7 +2181,7 @@ async def remote_status():
     """远程连接状态"""
     return {
         "desktop_available": desktop is not None,
-        "screen_size": f"{desktop.screen_w}x{desktop.screen_h}" if desktop else "N/A",
+        "screen_size": f"{desktop._screen_w}x{desktop._screen_h}" if desktop else "N/A",
     }
 
 
