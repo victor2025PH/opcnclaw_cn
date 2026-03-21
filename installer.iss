@@ -14,7 +14,7 @@
 ; 生成文件: dist\十三香小龙虾-v5.x.x-Setup.exe（版本见下方 #define AppVersion）
 
 #define AppName       "十三香小龙虾"
-#define AppVersion    "5.3.0"
+#define AppVersion    "5.4.0"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
 #define AppExeName    "十三香小龙虾.exe"
