@@ -437,8 +437,82 @@ def get_engine() -> IntentFusionEngine:
                 pass
 
         _engine.on_emergency(_on_emergency)
+
+        # 注册融合结果回调 → IntentRouter 自动执行桌面操作
+        def _on_fused_intent(intent: FusedIntent):
+            _auto_execute_intent(intent)
+
+        _engine.on_intent(_on_fused_intent)
         _engine.start()
     return _engine
+
+
+# 需要桌面操作的意图（来自 IntentRouter.DESKTOP_DIRECT_MAP）
+_DESKTOP_ACTIONS = {
+    "click", "right_click", "double_click", "scroll_up", "scroll_down",
+    "enter", "undo", "redo", "copy", "paste", "cut", "screenshot",
+    "switch_app", "close_window", "minimize", "show_desktop",
+    "confirm", "cancel",
+}
+
+# 自动执行的置信度阈值（后端融合比前端保守）
+_AUTO_EXECUTE_THRESHOLD = 0.7
+
+
+def _auto_execute_intent(intent: FusedIntent):
+    """融合结果自动执行桥接
+
+    高置信度 + 桌面直接动作 → 通过 IntentRouter 执行
+    需要 CoworkBus 允许桌面操作
+    """
+    if intent.confidence < _AUTO_EXECUTE_THRESHOLD:
+        return
+    if intent.intent not in _DESKTOP_ACTIONS:
+        return
+
+    try:
+        from .cowork_bus import get_bus
+        bus = get_bus()
+        if not bus.can_operate_desktop():
+            logger.debug(f"[IntentFusion] 自动执行跳过: 用户活跃")
+            return
+
+        from .intent_router import IntentRouter, IntentCategory
+        router = IntentRouter()
+        # 合并所有信号源的参数
+        merged_params = {}
+        for s in intent.sources:
+            if s.params:
+                merged_params.update(s.params)
+
+        result = router.route(
+            action=intent.intent,
+            params=merged_params,
+            source="backend_fusion",
+            confidence=intent.confidence,
+        )
+
+        if result.category == IntentCategory.DESKTOP_DIRECT:
+            from .routers.desktop import desktop
+            if desktop:
+                desktop.handle_command(result.params)
+                logger.info(f"[IntentFusion→Desktop] 自动执行: {intent.intent} "
+                           f"(置信度={intent.confidence:.2f})")
+
+                # 记录到 ActionJournal
+                try:
+                    from .action_journal import get_journal
+                    journal = get_journal()
+                    journal.record(
+                        action=intent.intent,
+                        params=result.params,
+                        source="intent_fusion",
+                    )
+                except Exception:
+                    pass
+
+    except Exception as e:
+        logger.debug(f"[IntentFusion] 自动执行失败: {e}")
 
 
 def push_signal(channel: str, name: str, confidence: float = 1.0,

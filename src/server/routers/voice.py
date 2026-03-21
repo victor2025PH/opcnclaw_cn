@@ -982,6 +982,34 @@ async def websocket_endpoint(websocket: WebSocket):
                 logger.info(f"WS profile sync: {pid} (session={backend.session_id})")
                 await websocket.send_json({"type": "profile_synced", "session_id": backend.session_id})
 
+            elif msg["type"] == "intent_signal":
+                # WebSocket 信号通道：前端通过 WS 发送多模态信号（比 HTTP 低延迟）
+                from src.server.intent_fusion import push_signal
+                push_signal(
+                    channel=msg.get("channel", "expression"),
+                    name=msg.get("name", ""),
+                    confidence=msg.get("confidence", 1.0),
+                    params=msg.get("params", {}),
+                    priority=msg.get("priority", 0),
+                )
+
+            elif msg["type"] == "intent_batch":
+                # 批量信号（前端定时批量上报）
+                from src.server.intent_fusion import push_signal
+                for sig in msg.get("signals", []):
+                    push_signal(
+                        channel=sig.get("channel", "expression"),
+                        name=sig.get("name", ""),
+                        confidence=sig.get("confidence", 1.0),
+                        params=sig.get("params", {}),
+                        priority=sig.get("priority", 0),
+                    )
+
+            elif msg["type"] == "gaze_update":
+                # 注视区域更新 → HumanDetector
+                from src.server.human_detector import get_detector
+                get_detector().update_gaze(msg.get("zone", ""))
+
             elif msg["type"] == "ping":
                 await websocket.send_json({"type": "pong"})
                 

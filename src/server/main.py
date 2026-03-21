@@ -285,6 +285,85 @@ async def system_metrics():
         pass
     return metrics
 
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus 格式 metrics 端点 — 供 Grafana/Prometheus 采集"""
+    import psutil
+    uptime = time.time() - _startup_progress["started_at"] if _startup_progress["started_at"] else 0
+    lines = []
+
+    # 系统指标
+    lines.append(f"# HELP openclaw_uptime_seconds Server uptime in seconds")
+    lines.append(f"# TYPE openclaw_uptime_seconds gauge")
+    lines.append(f"openclaw_uptime_seconds {uptime:.0f}")
+
+    lines.append(f"# HELP openclaw_cpu_percent CPU usage percentage")
+    lines.append(f"# TYPE openclaw_cpu_percent gauge")
+    lines.append(f'openclaw_cpu_percent {psutil.cpu_percent(interval=0):.1f}')
+
+    mem = psutil.virtual_memory()
+    lines.append(f"# HELP openclaw_memory_used_bytes Memory used in bytes")
+    lines.append(f"# TYPE openclaw_memory_used_bytes gauge")
+    lines.append(f"openclaw_memory_used_bytes {mem.used}")
+
+    lines.append(f"# HELP openclaw_memory_percent Memory usage percentage")
+    lines.append(f"# TYPE openclaw_memory_percent gauge")
+    lines.append(f"openclaw_memory_percent {mem.percent:.1f}")
+
+    # 数据库指标
+    try:
+        data_dir = _PROJECT_ROOT / "data"
+        for db_name in ("main.db", "wechat.db"):
+            db_path = data_dir / db_name
+            if db_path.exists():
+                size = db_path.stat().st_size
+                safe_name = db_name.replace(".", "_")
+                lines.append(f'openclaw_db_size_bytes{{db="{db_name}"}} {size}')
+    except Exception:
+        pass
+
+    # 消息统计
+    try:
+        conn = _db.get_conn("main")
+        total = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+        lines.append(f"# HELP openclaw_messages_total Total messages stored")
+        lines.append(f"# TYPE openclaw_messages_total gauge")
+        lines.append(f"openclaw_messages_total {total}")
+    except Exception:
+        pass
+
+    # 意图融合统计
+    try:
+        from .intent_fusion import get_engine
+        engine = get_engine()
+        stats = engine._stats
+        lines.append(f"# HELP openclaw_intent_signals_total Total signals received")
+        lines.append(f"# TYPE openclaw_intent_signals_total counter")
+        lines.append(f"openclaw_intent_signals_total {stats['signals_received']}")
+        lines.append(f"openclaw_intent_fusions_total {stats['fusions_performed']}")
+        lines.append(f"openclaw_intent_emergency_stops_total {stats['emergency_stops']}")
+    except Exception:
+        pass
+
+    # EventBus 统计
+    try:
+        from .event_bus import get_bus
+        ebus = get_bus()
+        lines.append(f"# HELP openclaw_eventbus_subscribers Active event subscribers")
+        lines.append(f"# TYPE openclaw_eventbus_subscribers gauge")
+        lines.append(f"openclaw_eventbus_subscribers {ebus.subscriber_count}")
+        ps = ebus.get_persist_stats()
+        lines.append(f"openclaw_eventbus_persisted_total {ps['persisted_total']}")
+    except Exception:
+        pass
+
+    return Response(
+        content="\n".join(lines) + "\n",
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
 @app.middleware("http")
 async def pin_protection_middleware(request: Request, call_next):
     """敏感操作需要 PIN 验证"""
@@ -1471,6 +1550,21 @@ async def serve_js_module(filename: str):
         return Response(content="Not found", status_code=404)
     return FileResponse(str(fpath), media_type="application/javascript",
                         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
+
+
+@app.get("/i18n/{name:path}")
+async def serve_i18n_json(name: str):
+    """Serve locale bundles from src/client/i18n/ (P3 client i18n)."""
+    if not name.endswith(".json"):
+        return Response(content="Not found", status_code=404)
+    fpath = Path("src/client/i18n") / name
+    if not fpath.exists() or not fpath.is_file():
+        return Response(content="Not found", status_code=404)
+    return FileResponse(
+        str(fpath),
+        media_type="application/json",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 # ── Accessibility Config API ──
