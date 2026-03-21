@@ -102,6 +102,8 @@ Source: "config.ini";            DestDir: "{app}"; Flags: ignoreversion onlyifdo
 ; ── 源代码目录 ────────────────────────────────────────────────
 Source: "src\*";               DestDir: "{app}\src"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "skills\*";            DestDir: "{app}\skills"; Flags: ignoreversion recursesubdirs createallsubdirs
+; ── 离线依赖包（pip install 无需联网）──────────────────────
+Source: "offline_packages\*";  DestDir: "{app}\offline_packages"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ── 图标资源 ──────────────────────────────────────────────────
 Source: "assets\icon.ico";      DestDir: "{app}\assets"; Flags: ignoreversion
@@ -486,12 +488,13 @@ begin
     Page.SetProgress(20, 100);
     LogMsg('=== [Step 4] Install core dependencies ===');
 
+    // 优先离线安装（offline_packages 目录已打包在安装包中）
     ResultCode := RunPip(PythonExe,
-      'install --no-cache-dir --timeout 120 -r "' + AppDir + '\requirements.txt"', True);
+      'install --no-cache-dir --no-index --find-links="' + AppDir + '\offline_packages" -r "' + AppDir + '\requirements.txt"', True);
     if ResultCode <> 0 then
     begin
-      Page.SetText('依赖安装未完成，正在重试...', '');
-      LogMsg('Core deps first attempt failed, retrying...');
+      Page.SetText('离线安装未完成，尝试联网安装...', '');
+      LogMsg('Offline install failed, trying online...');
       ResultCode := RunPip(PythonExe,
         'install --no-cache-dir --timeout 180 -r "' + AppDir + '\requirements.txt"', True);
     end;
