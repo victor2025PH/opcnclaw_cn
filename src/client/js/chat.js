@@ -1391,4 +1391,29 @@ export function init() {
 
     showSetup();
   })();
+
+  // ── 团队完成自动通知（轮询 EventBus）──
+  let _teamNotifiedIds = new Set();
+  setInterval(async () => {
+    try {
+      const r = await fetch(getBaseUrl() + '/api/agents/teams');
+      const d = await r.json();
+      for (const team of (d.teams || [])) {
+        if (team.status === 'done' && !_teamNotifiedIds.has(team.team_id)) {
+          _teamNotifiedIds.add(team.team_id);
+          // 获取完整结果
+          const rr = await fetch(getBaseUrl() + '/api/agents/team/' + team.team_id + '/result');
+          const rd = await rr.json();
+          const result = rd.result || '(无结果)';
+          // 在聊天区追加团队结果卡片
+          hideWelcome();
+          appendMessage({
+            role: 'assistant',
+            content: `✅ **${team.name}完成！**\n\n${result}`,
+            desktop: false,
+          });
+        }
+      }
+    } catch (e) { /* silent */ }
+  }, 5000);
 }

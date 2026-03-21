@@ -953,10 +953,20 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
             tpl = get_template(template)
 
         # 创建团队（但不执行）
+        # AI 调用：根据 Agent 的 preferred_model 分散到不同平台
         async def _ai_call(messages, model=""):
             try:
                 from .main import backend as _b
-                if _b:
+                if _b and _b._router:
+                    # 通过路由器调用，自动分散到不同平台
+                    result = ""
+                    async for chunk, _ in _b._router.chat_stream(
+                        messages, max_tokens=600, temperature=0.7
+                    ):
+                        if chunk not in ("__SWITCH__", "__TOOL_CALLS__"):
+                            result += chunk
+                    return result
+                elif _b:
                     return await _b.chat_simple(messages)
                 return "AI 未就绪"
             except Exception as e:
@@ -990,7 +1000,7 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
             "agent_count": len(team.agents),
             "status": "awaiting_confirmation",
             "introductions": introductions,
-            "message": "请你把每个成员的自我介绍逐一展示给用户（用上面的 full_intro），展示完后问用户'团队已就位，是否开始执行？'",
+            "message": "请你把每个成员的自我介绍逐一展示给用户（用 full_intro 字段），一个一个展示。展示完后问用户'团队已就位，是否开始执行？'。用户确认后调用 confirm_team，team_id 是：" + team.team_id,
         }
     except Exception as e:
         return {"error": f"团队部署失败: {e}"}
