@@ -1,108 +1,113 @@
-# Claude Code 开发任务清单 v3
+# Claude Code 开发任务清单 v4
 
 > **负责范围：** 后端 Python、数据库、微信引擎、AI 路由、API 端点、测试、性能
-> **不碰范围：** 前端 HTML/CSS/JS 页面样式、QR 控制台页面、admin.html UI（Cursor 负责）
-> **当前版本：** v4.0.0 (2026-03-21)
-> **目标版本：** v4.1.0
+> **不碰范围：** 前端 HTML/CSS/JS 页面样式（Cursor 负责）
+> **当前版本：** v4.1.0 (2026-03-21)
+> **目标版本：** v4.2.0
 > **上次更新：** 2026-03-21
 
 ---
 
-## 已完成 (v3.5.2 → v4.0.0)
+## 已完成 (v3.5.2 → v4.1.0)
 
-### 基础设施
-- [x] 数据库合并（13 SQLite → 2: main.db + wechat.db）
-- [x] 双 FTS5 索引（unicode61 + jieba 中文分词）
-- [x] 微信对话历史持久化（wechat_conversations 表）
-- [x] Swagger UI (/docs) + ReDoc (/redoc) 自动 API 文档
-- [x] 凌晨 3 点自动清理过期数据
-- [x] 启动时间 13s→8s 优化
-- [x] FastAPI lifespan 迁移（on_event → asynccontextmanager）
-
-### 微信 4.x
-- [x] 无障碍钩子（SetWinEventHook）激活 UI 树
-- [x] mmui:: 控件完整读写（会话/消息/输入/发送）
-- [x] 自动回复（私聊+群聊@me）
-- [x] 朋友圈 Vision AI 缓存 + 自动点赞评论
-- [x] 多会话自动扫描 + 未读消息处理
-
-### 人机协作
-- [x] HumanDetector：鼠标/键盘空闲检测、前台窗口跟踪
-- [x] ActionJournal：AI 操作日志（前后截图、智能撤销）
-- [x] CoworkBus：协作调度（冲突检测、任务队列、后台执行器）
-
-### API（供 Cursor 前端消费）
-- [x] POST /api/system/restart
-- [x] POST /api/system/clear-cache
-- [x] GET /api/system/logs?lines=N
-- [x] GET /api/analytics/hourly
-- [x] GET /api/analytics/daily?days=N
-- [x] GET /api/analytics/top-contacts
-- [x] GET /api/analytics/sentiment-distribution
-- [x] GET /api/cowork/status
-- [x] GET /api/cowork/journal
-- [x] POST /api/cowork/undo / pause / resume / task
-- [x] GET /api/metrics（性能监控）
-
-### MCP & 安全
-- [x] MCP Server（5 工具, HTTP+stdio 双传输）
-- [x] PIN 码安全保护（敏感 API 需 token）
-- [x] 速率限制 + CORS 配置
-- [x] 配置热重载（watchdog + EventBus）
-
-### 测试
-- [x] test_db.py（24 tests）
-- [x] test_memory_search.py（22 tests）
-- [x] test_cowork.py（19 tests）
-- [x] 全量: 185 passed, 0 failed
+完整记录见 CHANGELOG.md。核心：
+- [x] 数据库合并 13→2、FTS5 双索引、对话持久化
+- [x] 微信 4.x 全适配（无障碍钩子 + UIA + 13种消息类型 + 精确@检测）
+- [x] 人机协作（HumanDetector + ActionJournal + CoworkBus）
+- [x] MCP Server（5工具, HTTP+stdio）
+- [x] 意图融合引擎（4通道 + 去抖 + 跨模态增强 + 自动桌面执行）
+- [x] A2A 协议（Google 标准兼容 + 5技能 + Webhook + 60s超时）
+- [x] 原生 Function Calling（智谱+DeepSeek，20个工具）
+- [x] 6个桌面操作工具（截屏/OCR/点击/输入/快捷键/打开应用）
+- [x] Prometheus metrics + OCR 预加载 + 线程安全修复
+- [x] 340 passed 全量回归
 
 ---
 
-## v4.1.0 任务
+## v4.2.0 任务
 
-### P0. 意图融合引擎（5 天）
-- [ ] 新建 `src/server/intent_fusion.py`
-- [ ] 四通道信号融合（手势+表情+语音+触控）
-- [ ] 融合规则矩阵：紧急停止 > 语音指令 > 手势动作 > 情感上下文
-- [ ] 500ms 时间窗口内信号合并
-- [ ] WebSocket 信号协议（type: "signal"）
-- [ ] API: `POST /api/intent/signal` 接收信号
-- [ ] API: `GET /api/intent/state` 当前融合状态
-- [ ] 测试: `tests/test_intent_fusion.py`
+### P0. 声纹识别 + 多用户隔离（5天）
+- [ ] 新建 `src/server/speaker_id.py`
+  - 声纹特征提取（resemblyzer 或 speechbrain）
+  - 用户注册：3句话 → 平均 embedding → 存储
+  - 实时识别：每次说话前 0.5s 提取 → 余弦相似度匹配
+  - 阈值：相似度 > 0.75 = 匹配成功
+- [ ] 新建 `src/server/user_manager.py`
+  - 多用户数据模型：User {id, name, avatar, voice_embedding, preferences}
+  - 用户隔离：每人独立 conversation_history + profiles + 偏好
+  - 存储：main.db 新增 `users` 表 + `user_preferences` 表
+- [ ] API 端点：
+  - `GET /api/users` — 用户列表
+  - `POST /api/users/register` — 注册（接收 3 段音频 base64）
+  - `GET /api/users/current` — 当前声纹识别到的用户
+  - `POST /api/users/switch` — 手动切换
+  - `PUT /api/users/{id}` — 更新用户偏好
+  - `DELETE /api/users/{id}` — 删除用户
+- [ ] 集成到 voice.py WebSocket：每次 stop_listening 时自动识别说话人
+- [ ] 集成到 backend.py：根据当前用户加载对应的 system_prompt 和 history
+- [ ] 测试：`tests/test_speaker_id.py`
 
-### P1. A2A 协议支持（3 天）
-- [ ] 新建 `src/server/a2a.py`
-- [ ] Agent-to-Agent 通信：任务委派、状态同步、结果汇报
-- [ ] Agent Card 发现协议（/.well-known/agent.json）
-- [ ] 与代码 Agent（Claude Desktop / Cursor）协作场景
-- [ ] API: `POST /api/a2a/task` 接收外部 Agent 任务
-- [ ] API: `GET /api/a2a/card` Agent 能力描述
-- [ ] 测试: `tests/test_a2a.py`
+### P1. 全离线模式（3天）
+- [ ] 新建 `src/server/offline_manager.py`
+  - 网络状态检测：定期心跳（每 30s ping 一次 AI 平台）
+  - 自动切换：有网→云端，断网→本地 Ollama
+  - Ollama 模型自动下载：首次联网时 `ollama pull qwen2.5:7b`
+- [ ] 修改 `src/router/router.py`
+  - 新增 `offline_mode` 状态
+  - 所有平台不可用时自动降级到 Ollama
+  - 网络恢复时自动切回云端
+- [ ] 离线 TTS 降级：Edge TTS → pyttsx3（Windows 内置）
+- [ ] API：`GET /api/system/network-status` → `{online, mode, local_model}`
+- [ ] 测试：`tests/test_offline.py`
 
-### P2. 自动更新检测（1 天）
-- [ ] 启动时检查 GitHub Release
-- [ ] API: `GET /api/system/update-check` → {has_update, latest_version, download_url}
-- [ ] 通过 EventBus 发布 `update_available` 事件
-- [ ] Cursor 可在 QR 页面显示更新通知
+### P2. 定时工作流引擎（5天）
+- [ ] 扩展 `src/server/workflow.py`（已有节点框架）
+  - 新增 CronTrigger 节点（APScheduler 或自实现 cron 解析）
+  - 新增 EventTrigger 节点（监听 EventBus 事件）
+  - 新增 AI 节点（调用 chat_simple 生成内容）
+  - 工作流序列化：JSON 格式存入 main.db `workflows` 表
+  - 后台调度器：定时检查并执行到期的工作流
+- [ ] 预置模板：
+  - "每日早报"：8:00 → get_weather + AI 生成新闻 → TTS 播报
+  - "微信自动回复"：新消息 → 关键词匹配 → AI 回复
+  - "朋友圈定时发布"：12:00 → AI 生成文案 → publish_moment
+- [ ] API：
+  - `GET /api/workflows` — 列表
+  - `POST /api/workflows` — 创建
+  - `PUT /api/workflows/{id}` — 更新
+  - `POST /api/workflows/{id}/run` — 手动执行
+  - `DELETE /api/workflows/{id}` — 删除
+  - `GET /api/workflows/{id}/history` — 执行历史
+- [ ] 测试：`tests/test_workflow_cron.py`
 
-### P3. 微信引擎增强（3 天）
-- [ ] 朋友圈滚动+多页读取（当前只读首屏）
-- [ ] 评论链自动跟进（评论→等回复→再回复）
-- [ ] 群消息 @ 任意人检测（不仅限 @me）
-- [ ] 消息类型扩展：图片/语音/文件/链接识别
+### P3. 智能家居 IoT（3天）
+- [ ] 新建 `src/server/iot_bridge.py`
+  - HomeAssistant REST API 集成（设备发现/状态/控制）
+  - MQTT 直连（可选，灵活控制任意设备）
+  - 设备数据模型：Device {id, name, type, room, state}
+- [ ] 在 tools.py 添加 IoT 工具：
+  - `iot_list_devices()` — 列出设备
+  - `iot_control(device, action, value)` — 控制设备
+  - `iot_get_status(device)` — 查询状态
+- [ ] 集成到意图识别：语音"关灯"→ iot_control
+- [ ] API：
+  - `GET /api/iot/devices` — 设备列表
+  - `POST /api/iot/control` — 控制设备
+  - `POST /api/iot/config` — 保存 HomeAssistant 配置
+- [ ] 测试：`tests/test_iot.py`
 
-### P4. 测试补全（2 天）
-- [ ] tests/test_wechat_adapter.py — Mock UIA 测试
-- [ ] tests/test_intent_fusion.py — 多模态融合
-- [ ] tests/test_moments.py — Vision AI 结果解析
-- [ ] tests/test_a2a.py — Agent 通信
-- [ ] 全量回归保持 0 failed
-
-### P5. 性能优化（1 天）
-- [ ] Prometheus 格式 metrics 端点（/metrics）
-- [ ] FTS5 查询性能监控（慢查询日志）
-- [ ] WebSocket 连接池优化
-- [ ] AI 路由首包超时自适应调整
+### P4. Web Push 推送（2天）
+- [ ] 新建 `src/server/web_push.py`
+  - VAPID 密钥对生成和管理
+  - 推送订阅存储（main.db `push_subscriptions` 表）
+  - 推送发送（pywebpush 库）
+- [ ] 集成到 EventBus：微信新消息/系统事件 → 触发推送
+- [ ] 静默时段控制（23:00-07:00 不推送）
+- [ ] API：
+  - `POST /api/push/subscribe` — 提交订阅
+  - `GET /api/push/status` — 查询状态
+  - `POST /api/push/test` — 测试推送
+- [ ] 测试：`tests/test_push.py`
 
 ---
 
@@ -112,18 +117,17 @@
 - 异步优先（async/await）
 - 中文注释
 - 每个模块配套 pytest 测试
-- API 端点在 `routers/` 目录，业务逻辑在 `server/` 目录
-- 新端点加 Swagger docstring
+- API 端点加 Swagger docstring
 - 不修改前端 HTML/CSS/JS 文件（Cursor 负责）
-- 文件不重叠：只改 src/server/、tests/、src/mcp/
 
 ---
 
-## Cursor 依赖我提供的新 API
+## Cursor 依赖我提供的 API（按批次）
 
-| API | 优先级 | Cursor 用途 |
-|-----|--------|------------|
-| `POST /api/intent/signal` | **高** | 多模态信号发送 |
-| `GET /api/intent/state` | **高** | 融合状态显示 |
-| `GET /api/system/update-check` | 中 | QR 页面更新通知 |
-| `GET /api/a2a/card` | 低 | Agent 发现页面 |
+| 批次 | API | Cursor 用途 | 预计完成 |
+|------|-----|------------|---------|
+| 第1批 | users 系列 4个端点 | P0 多用户 UI | 2-3天后 |
+| 第2批 | network-status | P1 离线 UI | 第1周末 |
+| 第3批 | workflows 系列 6个端点 | P2 编辑器 | 第2周初 |
+| 第4批 | iot 系列 3个端点 | P3 控制面板 | 第2周中 |
+| 第5批 | push 系列 3个端点 | P4 推送 UI | 第2周末 |
