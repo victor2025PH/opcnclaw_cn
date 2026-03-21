@@ -88,6 +88,7 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 ; ── Tauri 桌面客户端（可选，需 npx tauri build 编译）───────
 Source: "dist\十三香小龙虾.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 ; ── 项目文件 ────────────────────────────────────────────────
+Source: "start.bat";             DestDir: "{app}"; Flags: ignoreversion
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt";           DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt";      DestDir: "{app}"; Flags: ignoreversion
@@ -124,14 +125,15 @@ Source: "assets\icon.ico";     DestDir: "{app}\ssl";    Flags: ignoreversion; Af
 
 [Icons]
 ; 桌面快捷方式（非U盘模式）
-Name: "{autodesktop}\十三香小龙虾";       Filename: "{app}\十三香小龙虾.exe"; \
+; 优先 Tauri exe，不存在则用 start.bat
+Name: "{autodesktop}\十三香小龙虾";       Filename: "{app}\start.bat"; \
   WorkingDir: "{app}"; \
   IconFilename: "{app}\assets\icon.ico"; IconIndex: 0; \
-  Comment: "十三香小龙虾 — 全双工 AI 语音助手"; \
+  Comment: "十三香小龙虾 AI — 52个AI员工一键上岗"; \
   Tasks: desktopicon; Check: IsNotUSBMode
 
 ; 开始菜单（非U盘模式）
-Name: "{group}\十三香小龙虾";             Filename: "{app}\十三香小龙虾.exe"; \
+Name: "{group}\十三香小龙虾";             Filename: "{app}\start.bat"; \
   WorkingDir: "{app}"; \
   IconFilename: "{app}\assets\icon.ico"; IconIndex: 0; \
   Tasks: startmenu; Check: IsNotUSBMode
