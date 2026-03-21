@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a0a14">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
 <link rel="manifest" href="/manifest.json">
-<title>十三香小龙虾</title>
+<title>十三香 AI 工作队 — 52个AI帮你干活</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
 <script>
 (function(){
@@ -242,6 +242,10 @@ body{
 .ws-reconnect-bar.visible{transform:translateY(0)}
 .header-title{font-size:16px;font-weight:600}
 .header-right{display:flex;align-items:center;gap:4px;justify-self:end;position:relative;min-width:0;flex-wrap:nowrap}
+/* 精简顶栏：只显示核心按钮，其余收进更多菜单 */
+#desktop-toggle,#camera-toggle,#wechat-autoreply-toggle,#moments-panel-toggle,
+#model-panel-toggle,#mcp-panel-toggle,#perf-toggle,#vcmd-toggle,
+#skills-center-toggle,#summary-btn,#export-toggle,#bookmark-toggle{display:none!important}
 .icon-btn{
   width:40px;height:40px;display:flex;align-items:center;justify-content:center;
   border:none;background:transparent;color:var(--text-secondary);
@@ -260,7 +264,9 @@ body{
 .messages-area::-webkit-scrollbar-track{background:transparent}
 .messages-area::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
 
-.welcome{text-align:center;padding:60px 20px}
+.welcome{text-align:center;padding:40px 20px}
+.team-btn{background:linear-gradient(135deg,var(--accent),#8b5cf6)!important;color:#fff!important;border-color:transparent!important;font-weight:600!important}
+.team-btn:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(108,99,255,.3)!important}
 .welcome-icon{font-size:64px;margin-bottom:16px}
 .welcome h2{font-size:24px;font-weight:700;margin-bottom:8px}
 .welcome p{color:var(--text-secondary);margin-bottom:28px}
@@ -1823,10 +1829,10 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 .skill-bar::-webkit-scrollbar{display:none}
 .skill-bar.hidden{display:none}
 .skill-btn{
-  display:flex;align-items:center;gap:4px;padding:6px 12px;
+  display:flex;align-items:center;gap:6px;padding:8px 16px;
   border-radius:20px;border:1px solid var(--border);
   background:var(--bg-primary);color:var(--text-primary);
-  font-size:13px;white-space:nowrap;cursor:pointer;
+  font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;
   transition:all .2s;flex-shrink:0;
 }
 .skill-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -2751,15 +2757,25 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <div class="messages-area" id="messages-area">
     <div class="welcome" id="welcome-screen">
       <div class="welcome-icon">🦞</div>
-      <h2 data-i18n="welcome.hello">你好！</h2>
-      <p data-i18n="welcome.subtitle">今天我能帮你做什么？</p>
+      <h2>十三香 AI 工作队</h2>
+      <p style="color:var(--text-secondary);margin-bottom:20px">说一句话，52个AI帮你干活</p>
+
+      <!-- AI 团队快捷任务 -->
+      <div class="suggestions" style="margin-bottom:16px">
+        <button class="suggestion team-btn" data-msg="帮我写一个营销推广方案">📣 写营销方案</button>
+        <button class="suggestion team-btn" data-msg="帮我做一份竞品分析报告">🔬 竞品分析</button>
+        <button class="suggestion team-btn" data-msg="帮我上架一款新产品，包含文案和推广计划">🛍️ 上架新品</button>
+        <button class="suggestion team-btn" data-msg="帮我写一个APP开发的技术方案">💻 技术方案</button>
+        <button class="suggestion team-btn" data-msg="帮我制定一个30天内容发布日历">📝 内容日历</button>
+        <button class="suggestion team-btn" data-msg="帮我做一份商业计划书">💼 商业计划</button>
+      </div>
+
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">💡 快捷操作</p>
       <div class="suggestions">
-        <button class="suggestion" data-i18n="welcome.s1" data-i18n-msg="welcome.s1" data-msg="你能做什么？有哪些功能？">你能做什么？</button>
-        <button class="suggestion" data-i18n="welcome.s2" data-i18n-msg="welcome.s2" data-msg="帮我打开微信">打开微信</button>
-        <button class="suggestion" data-i18n="welcome.s3" data-i18n-msg="welcome.s3" data-msg="帮我截个屏保存下来">截图保存</button>
-        <button class="suggestion" data-i18n="welcome.s4" data-i18n-msg="welcome.s4" data-msg="今天天气怎么样？">今天天气</button>
-        <button class="suggestion" data-msg="帮我写一封邮件">写邮件</button>
-        <button class="suggestion" data-msg="给我讲个笑话吧">讲笑话</button>
+        <button class="suggestion" data-msg="现在几点了">⏰ 时间</button>
+        <button class="suggestion" data-msg="今天天气怎么样">🌤 天气</button>
+        <button class="suggestion" data-msg="帮我截个屏看看">📷 截屏</button>
+        <button class="suggestion" data-msg="帮我打开微信">💬 微信</button>
       </div>
       <!-- 常用技能推荐区（动态加载） -->
       <div id="skill-recommend-area" style="margin-top:20px;width:100%;max-width:400px;display:none">
@@ -2857,7 +2873,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         </div>
       </div>
       <div class="input-wrapper">
-        <textarea id="msg-input" rows="1" data-i18n="input.placeholder" data-i18n-attr="placeholder" placeholder="输入消息..." autocomplete="off"></textarea>
+        <textarea id="msg-input" rows="1" data-i18n="input.placeholder" data-i18n-attr="placeholder" placeholder="告诉AI团队你想做什么..." autocomplete="off"></textarea>
         <div class="send-btn-wrap">
           <button class="send-btn" id="send-btn" disabled>
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.01a.75.75 0 000-1.36L3.478 2.405z"/></svg>
