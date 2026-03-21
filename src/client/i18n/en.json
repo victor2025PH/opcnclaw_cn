@@ -90,5 +90,19 @@
   "user.recording": "Recording...",
   "user.record_done": "Voiceprint captured!",
   "user.finish": "Finish",
-  "user.current": "Current"
+  "user.current": "Current",
+  "offline.online": "Online",
+  "offline.local": "Local mode",
+  "offline.offline": "Offline",
+  "offline.local_banner": "Using local AI model, some features limited",
+  "offline.restored": "Cloud connection restored",
+  "iot.title": "Smart Home",
+  "iot.config_prompt": "Configure HomeAssistant",
+  "iot.save": "Save & Connect",
+  "iot.refresh": "Refresh devices",
+  "iot.no_devices": "No devices found",
+  "push.enable": "Enable notifications",
+  "push.enabled": "Notifications on",
+  "push.test": "Send test",
+  "push.denied": "Notification permission denied"
 }

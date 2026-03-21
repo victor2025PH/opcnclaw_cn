@@ -90,5 +90,19 @@
   "user.recording": "录音中...",
   "user.record_done": "声纹采集完成！",
   "user.finish": "完成注册",
-  "user.current": "当前"
+  "user.current": "当前",
+  "offline.online": "在线",
+  "offline.local": "本地模式",
+  "offline.offline": "离线",
+  "offline.local_banner": "当前使用本地 AI 模型，部分功能受限",
+  "offline.restored": "已恢复云端连接",
+  "iot.title": "智能家居",
+  "iot.config_prompt": "请配置 HomeAssistant 连接",
+  "iot.save": "保存并连接",
+  "iot.refresh": "刷新设备",
+  "iot.no_devices": "未发现设备",
+  "push.enable": "开启通知",
+  "push.enabled": "通知已开启",
+  "push.test": "发送测试",
+  "push.denied": "通知权限被拒绝"
 }
