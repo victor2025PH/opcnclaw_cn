@@ -78,5 +78,17 @@
   "intent.dev_tests": "开发测试",
   "intent.test_nod": "模拟点头",
   "intent.test_voice": "模拟语音",
-  "intent.test_touch": "模拟触控"
+  "intent.test_touch": "模拟触控",
+  "user.panel_title": "用户切换",
+  "user.add_new": "添加新用户",
+  "user.register_title": "注册新用户",
+  "user.nickname": "昵称",
+  "user.avatar": "头像",
+  "user.next_step": "下一步",
+  "user.record_prompt": "请说 3 句话以采集声纹",
+  "user.start_record": "开始录音",
+  "user.recording": "录音中...",
+  "user.record_done": "声纹采集完成！",
+  "user.finish": "完成注册",
+  "user.current": "当前"
 }

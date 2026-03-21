@@ -406,6 +406,7 @@ from .routers.models import router as models_router
 from .routers.mcp import router as mcp_router
 from .routers.intent import router as intent_router
 from .routers.a2a import router as a2a_router
+from .routers.users import router as users_router
 
 app.include_router(voice_router)
 app.include_router(desktop_router)
@@ -416,6 +417,7 @@ app.include_router(models_router)
 app.include_router(mcp_router)
 app.include_router(intent_router)
 app.include_router(a2a_router)
+app.include_router(users_router)
 
 
 # ═══════════════════════════════════════════════════════════════════

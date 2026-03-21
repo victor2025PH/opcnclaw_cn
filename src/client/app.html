@@ -11,6 +11,25 @@
 <link rel="manifest" href="/manifest.json">
 <title>十三香小龙虾</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
+<script>
+(function(){
+  var _errQ=[], _MAX=20;
+  function _log(type,msg,src,line){
+    if(_errQ.length>=_MAX) return;
+    _errQ.push({t:type,m:String(msg).slice(0,300),s:src||'',l:line||0,ts:Date.now()});
+    try{sessionStorage.setItem('oc-errors',JSON.stringify(_errQ))}catch(e){}
+  }
+  window.onerror=function(msg,src,line,col,err){
+    _log('error',err?err.stack||msg:msg,src,line);
+    return false;
+  };
+  window.addEventListener('unhandledrejection',function(e){
+    var reason=e.reason;
+    _log('rejection',reason instanceof Error?reason.stack||reason.message:String(reason));
+  });
+  window.__ocErrors=_errQ;
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -3603,19 +3622,18 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 </div>
 
 <!-- ═══ 朋友圈管理面板 ═══ -->
-<div id="moments-panel" class="hidden" style="position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--bg-primary,#0b0b16);border-left:1px solid rgba(255,255,255,.08);z-index:200;overflow-y:auto;display:none;flex-direction:column;padding:16px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <button class="icon-btn" id="mp-back" onclick="closeMomentsPanel()" style="font-size:18px">←</button>
-      <span style="font-size:16px;font-weight:600">🌅 朋友圈管理</span>
+<div id="moments-panel" class="hidden mp-container">
+  <div class="mp-header">
+    <div class="mp-header-left">
+      <button class="icon-btn" id="moments-back" onclick="closeMomentsPanel()">←</button>
+      <span>🌅 朋友圈管理</span>
     </div>
   </div>
 
-  <!-- 统计卡片 -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-    <div class="wxp-stat-card"><div id="mp-stat-likes" style="font-size:18px;font-weight:700;color:#f472b6">0</div><div style="font-size:10px;color:#8a9bb0">今日点赞</div></div>
-    <div class="wxp-stat-card"><div id="mp-stat-comments" style="font-size:18px;font-weight:700;color:#7c6aef">0</div><div style="font-size:10px;color:#8a9bb0">今日评论</div></div>
-    <div class="wxp-stat-card"><div id="mp-stat-publishes" style="font-size:18px;font-weight:700;color:#4ade80">0</div><div style="font-size:10px;color:#8a9bb0">今日发布</div></div>
+  <div class="mp-stats-grid">
+    <div class="wxp-stat-card"><div id="mp-stat-likes" class="mp-stat-val" style="color:#f472b6">0</div><div class="mp-stat-label">今日点赞</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-comments" class="mp-stat-val" style="color:#7c6aef">0</div><div class="mp-stat-label">今日评论</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-publishes" class="mp-stat-val" style="color:#4ade80">0</div><div class="mp-stat-label">今日发布</div></div>
   </div>
 
   <!-- 浏览朋友圈 -->
@@ -3627,7 +3645,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <input type="checkbox" id="mp-auto-interact" checked> 自动互动
       </label>
     </div>
-    <div id="mp-browse-result" style="font-size:12px;max-height:300px;overflow-y:auto"></div>
+    <div id="mp-browse-result" class="mp-scroll-area"></div>
   </div>
 
   <!-- 发布朋友圈 -->
@@ -3641,7 +3659,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       </div>
     </div>
     <div id="mp-gen-result" style="font-size:12px"></div>
-    <textarea id="mp-pub-text" placeholder="朋友圈文案（可手写或 AI 生成）" style="width:100%;height:60px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e8f0fe;padding:8px;font-size:12px;resize:vertical;margin-top:6px"></textarea>
+    <textarea id="mp-pub-text" placeholder="朋友圈文案（可手写或 AI 生成）" class="mp-textarea"></textarea>
   </div>
 
   <!-- 30 天日历 -->
@@ -3651,7 +3669,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="wxp-btn-secondary" onclick="mpCalendarLoad()" style="flex:1;padding:6px;font-size:12px">查看日历</button>
       <button class="wxp-btn-primary" onclick="mpCalendarGen()" style="flex:1;padding:6px;font-size:12px">🤖 生成 30 天计划</button>
     </div>
-    <div id="mp-calendar" style="font-size:12px;max-height:250px;overflow-y:auto"></div>
+    <div id="mp-calendar" class="mp-scroll-area" style="max-height:250px"></div>
   </div>
 
   <!-- 数据分析 -->
@@ -3663,7 +3681,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="wxp-btn-secondary" onclick="mpAnalytics('best-times')" style="padding:4px 10px;font-size:11px">最佳时段</button>
       <button class="wxp-btn-secondary" onclick="mpAnalytics('strategy-report')" style="padding:4px 10px;font-size:11px">🤖 AI 策略</button>
     </div>
-    <div id="mp-analytics" style="font-size:12px;max-height:250px;overflow-y:auto"></div>
+    <div id="mp-analytics" class="mp-scroll-area" style="max-height:250px"></div>
   </div>
 
   <!-- 风控状态 -->
@@ -3674,6 +3692,23 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 </div>
 
 <style>
+/* moments-panel extracted from inline styles */
+.mp-container {
+  position:fixed;top:0;right:0;width:420px;max-width:100vw;height:100vh;
+  background:var(--bg-primary,#0b0b16);border-left:1px solid rgba(255,255,255,.08);
+  z-index:200;overflow-y:auto;display:none;flex-direction:column;padding:16px;
+}
+.mp-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:14px; }
+.mp-header-left { display:flex;align-items:center;gap:10px; }
+.mp-header-left .icon-btn { font-size:18px; }
+.mp-header-left span { font-size:16px;font-weight:600; }
+.mp-stats-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px; }
+.mp-stat-val { font-size:18px;font-weight:700; }
+.mp-stat-label { font-size:10px;color:#8a9bb0; }
+.mp-scroll-area { font-size:12px;max-height:300px;overflow-y:auto; }
+.mp-textarea { width:100%;height:60px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e8f0fe;padding:8px;font-size:12px;resize:vertical;margin-top:6px; }
+@media(max-width:480px){ .mp-container { width:100vw; } }
+
 .wxp-section {
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.07);
@@ -4104,7 +4139,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 </script>
 
 <!-- External libs -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script type="module">
 const _v = '?v=' + Date.now();
@@ -4119,6 +4154,7 @@ const { init: initSkills } = await import('/js/skills.js' + _v);
 const { init: initProfile } = await import('/js/profile.js' + _v);
 const { init: initSettings } = await import('/js/settings.js' + _v);
 const { init: initMoments } = await import('/js/settings-moments.js' + _v);
+const { initUserPanel } = await import('/js/user-panel.js' + _v);
 
 const steps = [
   ['state', initState],
@@ -4130,6 +4166,7 @@ const steps = [
   ['skills', initSkills],
   ['profile', initProfile],
   ['moments', initMoments],
+  ['user-panel', initUserPanel],
 ];
 let failedAt = null;
 for (const [name, fn] of steps) {

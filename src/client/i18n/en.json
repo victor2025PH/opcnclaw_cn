@@ -78,5 +78,17 @@
   "intent.dev_tests": "Dev tests",
   "intent.test_nod": "Simulate nod",
   "intent.test_voice": "Simulate voice",
-  "intent.test_touch": "Simulate touch"
+  "intent.test_touch": "Simulate touch",
+  "user.panel_title": "Switch user",
+  "user.add_new": "Add new user",
+  "user.register_title": "Register user",
+  "user.nickname": "Nickname",
+  "user.avatar": "Avatar",
+  "user.next_step": "Next",
+  "user.record_prompt": "Say 3 sentences to capture voiceprint",
+  "user.start_record": "Start recording",
+  "user.recording": "Recording...",
+  "user.record_done": "Voiceprint captured!",
+  "user.finish": "Finish",
+  "user.current": "Current"
 }
