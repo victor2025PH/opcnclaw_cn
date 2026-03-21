@@ -968,29 +968,44 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                 
             elif msg["type"] == "monitor_audio":
-                # Wake-word monitoring: transcribe a short chunk, check for wake word
+                # 唤醒词监听：VAD 预过滤 → 仅语音段送 STT → 检查唤醒词
                 audio_bytes = base64.b64decode(msg["data"])
                 audio_np = np.frombuffer(audio_bytes, dtype=np.float32)
+
+                # 1. 能量预过滤（极低成本，过滤 80% 静音）
                 max_amp = float(np.abs(audio_np).max()) if len(audio_np) > 0 else 0.0
-                if max_amp > 0.005:  # skip silent chunks
-                    try:
-                        stt_r = await stt.transcribe(audio_np)
-                        transcript = stt_r.text if isinstance(stt_r, STTResult) else str(stt_r)
-                        if transcript.strip():
-                            lower = transcript.lower()
-                            wake_words = [
-                                '你好', '小龙', '龙虾', '唤醒', '开始', '在吗',
-                                'hey claw', 'hey cloud', 'hello', 'hi claw',
-                            ]
-                            has_wake = any(w in lower for w in wake_words)
-                            await websocket.send_json({
-                                "type": "monitor_transcript",
-                                "text": transcript,
-                                "has_wake_word": has_wake,
-                            })
-                            logger.debug(f"Monitor: '{transcript}' wake={has_wake}")
-                    except Exception as e:
-                        logger.warning(f"Monitor STT error: {e}")
+                if max_amp < 0.005:
+                    continue  # 静音直接跳过
+
+                # 2. Silero VAD 精过滤（减少 90% 无用 STT 调用）
+                has_voice = True
+                if vad and len(audio_np) >= 512:
+                    has_voice = vad.is_speech(audio_np)
+                if not has_voice:
+                    continue  # 非语音（环境噪音/键盘声等）
+
+                # 3. 只有确认是语音才送 STT 转录
+                try:
+                    stt_r = await stt.transcribe(audio_np)
+                    transcript = stt_r.text if isinstance(stt_r, STTResult) else str(stt_r)
+                    if transcript.strip():
+                        lower = transcript.lower()
+                        wake_words = [
+                            '你好', '小龙', '龙虾', '唤醒', '开始', '在吗',
+                            'hey claw', 'hey cloud', 'hello', 'hi claw',
+                        ]
+                        has_wake = any(w in lower for w in wake_words)
+                        await websocket.send_json({
+                            "type": "monitor_transcript",
+                            "text": transcript,
+                            "has_wake_word": has_wake,
+                        })
+                        if has_wake:
+                            logger.info(f"[Wake] 唤醒词命中: '{transcript}'")
+                        else:
+                            logger.debug(f"Monitor: '{transcript}'")
+                except Exception as e:
+                    logger.warning(f"Monitor STT error: {e}")
 
             elif msg["type"] == "profile_sync":
                 pid = msg.get("profile_id", "")

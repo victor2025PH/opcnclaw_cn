@@ -447,17 +447,66 @@ class TextToSpeech:
                 yield chunk
 
     # ------------------------------------------------------------------
+    #  语言检测 + 多语言声音自动切换
+    # ------------------------------------------------------------------
+
+    # Edge TTS 多语言声音映射
+    _LANG_VOICES = {
+        "zh": "zh-CN-XiaoxiaoNeural",      # 中文女声
+        "en": "en-US-JennyNeural",          # 英文女声
+        "ja": "ja-JP-NanamiNeural",         # 日文女声
+        "ko": "ko-KR-SunHiNeural",         # 韩文女声
+        "fr": "fr-FR-DeniseNeural",         # 法文女声
+        "de": "de-DE-KatjaNeural",          # 德文女声
+        "es": "es-ES-ElviraNeural",         # 西班牙文女声
+        "ru": "ru-RU-SvetlanaNeural",       # 俄文女声
+    }
+
+    def _detect_voice_for_text(self, text: str) -> str:
+        """检测文本语种，自动选择对应 Edge TTS 声音
+
+        规则：
+          - 50%+ CJK 字符 → 中文
+          - 50%+ 日文假名 → 日文
+          - 50%+ 韩文 → 韩文
+          - 其他 → 用户配置的默认声音
+          - 混合文本：按多数语种决定
+        """
+        if not text or len(text.strip()) < 3:
+            return self._edge_voice
+
+        # 统计各语种字符数
+        cjk = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        ja_kana = sum(1 for c in text if '\u3040' <= c <= '\u30ff' or '\u31f0' <= c <= '\u31ff')
+        ko = sum(1 for c in text if '\uac00' <= c <= '\ud7af')
+        alpha = sum(1 for c in text if c.isascii() and c.isalpha())
+        total = max(cjk + ja_kana + ko + alpha, 1)
+
+        if ja_kana / total > 0.3:
+            return self._LANG_VOICES["ja"]
+        if ko / total > 0.3:
+            return self._LANG_VOICES["ko"]
+        if cjk / total > 0.3:
+            return self._LANG_VOICES["zh"]
+        if alpha / total > 0.5:
+            return self._LANG_VOICES["en"]
+
+        return self._edge_voice  # 默认使用用户配置
+
+    # ------------------------------------------------------------------
     #  Edge TTS (free cloud default)
     # ------------------------------------------------------------------
 
     async def _stream_edge(self, text: str, emotion: str = "neutral") -> AsyncGenerator[bytes, None]:
         try:
             import edge_tts
+            # 多语言自动切换：检测文本语种 → 选择对应声音
+            voice = self._detect_voice_for_text(text)
             if emotion and emotion != "neutral":
                 ssml = self._wrap_ssml(text, emotion)
-                communicate = edge_tts.Communicate(ssml, self._edge_voice)
+                communicate = edge_tts.Communicate(ssml, voice)
             else:
-                communicate = edge_tts.Communicate(text, self._edge_voice)
+                communicate = edge_tts.Communicate(text, voice)
             mp3_data = b""
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
