@@ -2775,6 +2775,12 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <button class="suggestion" data-msg="帮我截个屏看看">📷 截屏</button>
         <button class="suggestion" data-msg="帮我打开微信">💬 微信</button>
       </div>
+
+      <p style="font-size:12px;color:var(--text-muted);margin:16px 0 8px">📂 工作空间</p>
+      <div class="suggestions">
+        <button class="suggestion" onclick="window.open('/project','_blank')" style="background:var(--bg-surface);border-color:var(--accent)">📂 查看项目文件</button>
+        <button class="suggestion" onclick="window.open('/remote','_blank')">🖥️ 远程桌面</button>
+      </div>
       <!-- 常用技能推荐区（动态加载） -->
       <div id="skill-recommend-area" style="margin-top:20px;width:100%;max-width:400px;display:none">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;text-align:left;padding:0 4px">

@@ -130,6 +130,10 @@ class Agent:
             self._history.append({"task": task.description, "result": result[:500]})
 
             logger.info(f"[Agent:{self.role.name}] 完成: {task.description[:30]}")
+
+            # 根据角色类型执行实际操作
+            await self._post_execute(task, result)
+
             return result
 
         except Exception as e:
@@ -140,6 +144,47 @@ class Agent:
             self.status = AgentStatus.DONE
             logger.warning(f"[Agent:{self.role.name}] 降级完成: {e}")
             return task.result
+
+    async def _post_execute(self, task: SubTask, result: str):
+        """根据角色执行额外操作（真干活）"""
+        try:
+            role_id = self.role.id
+
+            # 运营/社群：尝试发朋友圈
+            if role_id in ("marketer", "community") and "发朋友圈" in task.description:
+                try:
+                    from .tools import call_tool
+                    import json
+                    # 提取文案（取结果前 100 字）
+                    text = result[:100].replace("#", "").replace("*", "").strip()
+                    if text and len(text) > 10:
+                        r = await call_tool("publish_moment", {"text": text[:200]})
+                        logger.info(f"[Agent:{self.role.name}] 自动发朋友圈: {text[:30]}")
+                except Exception as e:
+                    logger.debug(f"[Agent:{self.role.name}] 发朋友圈跳过: {e}")
+
+            # 程序员/前端：如果结果包含代码块，提取保存为代码文件
+            if role_id in ("coder", "backend", "frontend") and "```" in result:
+                try:
+                    import re
+                    # 提取代码块
+                    blocks = re.findall(r'```(\w*)\n(.*?)```', result, re.DOTALL)
+                    for lang, code in blocks[:3]:
+                        ext = {"python": "py", "javascript": "js", "html": "html",
+                               "css": "css", "sql": "sql", "json": "json",
+                               "bash": "sh", "typescript": "ts"}.get(lang, "txt")
+                        # 通知外部保存（如果有项目空间）
+                        task._code_files = getattr(task, '_code_files', [])
+                        task._code_files.append({"lang": lang or "txt", "ext": ext, "code": code.strip()})
+                except Exception:
+                    pass
+
+            # 数据分析：如果结果包含表格数据，标记为 CSV
+            if role_id in ("data_analyst", "analyst", "finance") and "|" in result:
+                task._has_table = True
+
+        except Exception as e:
+            logger.debug(f"[Agent:{self.role.name}] post_execute: {e}")
 
     def _build_prompt(self, task: SubTask, context: dict) -> str:
         parts = [f"## 你的任务\n{task.description}"]
@@ -380,6 +425,7 @@ class AgentTeam:
                 # Agent 完成后保存文件到项目空间
                 if hasattr(self, '_project') and self._project and task.result:
                     try:
+                        # 保存主文档
                         self._project.save_artifact(
                             agent_name=agent.role.name,
                             agent_avatar=agent.role.avatar,
@@ -387,6 +433,15 @@ class AgentTeam:
                             content=task.result,
                             file_type="md",
                         )
+                        # 如果有代码文件，额外保存
+                        for cf in getattr(task, '_code_files', []):
+                            self._project.save_artifact(
+                                agent_name=agent.role.name,
+                                agent_avatar=agent.role.avatar,
+                                filename=f"代码_{cf['lang']}",
+                                content=cf['code'],
+                                file_type=cf['ext'],
+                            )
                     except Exception:
                         pass
             except asyncio.TimeoutError:

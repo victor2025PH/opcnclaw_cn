@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>项目工作空间 — 十三香 AI 工作队</title>
+<style>
+:root{--bg:#0b0d14;--bg2:#1a1a2e;--bg3:#252542;--text:#eee;--dim:#888;--accent:#6c63ff;--green:#22c55e;--border:#333}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh}
+
+.top-bar{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.top-bar h1{font-size:16px;flex:1}
+.top-bar a{color:var(--accent);text-decoration:none;font-size:13px}
+
+.layout{display:flex;height:calc(100vh - 50px)}
+
+/* 左侧：项目列表 */
+.sidebar{width:260px;border-right:1px solid var(--border);overflow-y:auto;background:var(--bg2);flex-shrink:0}
+.sidebar-title{padding:12px 16px;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:0.05em}
+.project-item{padding:10px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s}
+.project-item:hover{background:var(--bg3)}
+.project-item.active{background:rgba(108,99,255,0.12);border-left:3px solid var(--accent)}
+.pi-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.pi-meta{font-size:10px;color:var(--dim)}
+.pi-status{display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600}
+.pi-status.completed{background:rgba(34,197,94,0.15);color:var(--green)}
+.pi-status.in_progress{background:rgba(245,158,11,0.15);color:#f59e0b}
+
+/* 右侧：项目详情 */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.project-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.ph-info{flex:1}
+.ph-name{font-size:18px;font-weight:600}
+.ph-task{font-size:12px;color:var(--dim);margin-top:4px}
+.ph-actions{display:flex;gap:8px}
+.ph-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;cursor:pointer;transition:all 0.15s}
+.ph-btn:hover{border-color:var(--accent);background:rgba(108,99,255,0.1)}
+.ph-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.content{flex:1;display:flex;overflow:hidden}
+
+/* 文件列表 */
+.file-list{width:240px;border-right:1px solid var(--border);overflow-y:auto;padding:8px}
+.fl-title{padding:8px;font-size:11px;color:var(--dim);text-transform:uppercase}
+.file-item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;font-size:12px;transition:background 0.15s}
+.file-item:hover{background:var(--bg3)}
+.file-item.active{background:rgba(108,99,255,0.12)}
+.fi-icon{font-size:16px}
+.fi-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi-size{font-size:10px;color:var(--dim)}
+
+/* 文件预览 */
+.preview{flex:1;overflow-y:auto;padding:20px;background:var(--bg)}
+.preview-empty{text-align:center;padding:60px;color:var(--dim)}
+.preview pre{background:var(--bg2);padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.preview h1,.preview h2,.preview h3{margin:16px 0 8px;color:var(--text)}
+.preview p{margin:8px 0;line-height:1.6;color:#ccc}
+.preview ul,.preview ol{margin:8px 0 8px 20px;color:#ccc}
+.preview li{margin:4px 0}
+
+/* 空状态 */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--dim)}
+.empty-state .icon{font-size:48px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <h1>📂 项目工作空间</h1>
+  <a href="/app">← 返回聊天</a>
+  <a href="/admin">管理面板</a>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-title">最近项目</div>
+    <div id="projectList">
+      <div class="empty-state" style="padding:40px"><div class="icon">📂</div><p>暂无项目</p><p style="font-size:11px">在聊天中让 AI 团队执行任务后<br>产出文件会出现在这里</p></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="project-header" id="projectHeader" style="display:none">
+      <div class="ph-info">
+        <div class="ph-name" id="phName"></div>
+        <div class="ph-task" id="phTask"></div>
+      </div>
+      <div class="ph-actions">
+        <button class="ph-btn" onclick="refreshProject()">🔄 刷新</button>
+        <button class="ph-btn primary" id="downloadBtn" onclick="downloadProject()">📥 下载 ZIP</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="file-list" id="fileList" style="display:none">
+        <div class="fl-title">📄 项目文件</div>
+      </div>
+      <div class="preview" id="preview">
+        <div class="preview-empty">
+          <div style="font-size:48px;margin-bottom:16px">🦞</div>
+          <p>选择左侧项目查看详情</p>
+          <p style="font-size:12px;color:var(--dim);margin-top:8px">每个 Agent 的产出都是真实文件<br>点击文件即可预览内容</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentProjectId = null;
+
+// 加载项目列表
+async function loadProjects() {
+  try {
+    var r = await fetch('/api/projects');
+    var d = await r.json();
+    var list = document.getElementById('projectList');
+    var projects = d.projects || [];
+    if (!projects.length) return;
+
+    list.innerHTML = projects.map(function(p) {
+      var date = new Date(p.created_at * 1000);
+      var timeStr = date.getMonth()+1 + '/' + date.getDate() + ' ' + date.getHours() + ':' + String(date.getMinutes()).padStart(2,'0');
+      return '<div class="project-item" onclick="selectProject(\'' + p.project_id + '\')">' +
+        '<div class="pi-name">' + p.name + '</div>' +
+        '<div class="pi-meta">' +
+          '<span class="pi-status ' + p.status + '">' + (p.status === 'completed' ? '✅ 完成' : '🔄 进行中') + '</span> · ' +
+          p.file_count + ' 个文件 · ' + p.team_name + ' · ' + timeStr +
+        '</div></div>';
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+// 选择项目
+async function selectProject(pid) {
+  currentProjectId = pid;
+  // 高亮
+  document.querySelectorAll('.project-item').forEach(function(el, i) { el.classList.remove('active'); });
+  event.currentTarget.classList.add('active');
+
+  try {
+    var r = await fetch('/api/projects/' + pid);
+    var d = await r.json();
+    var p = d.project;
+    var files = d.files || [];
+
+    // 显示头部
+    document.getElementById('projectHeader').style.display = 'flex';
+    document.getElementById('phName').textContent = p.name;
+    document.getElementById('phTask').textContent = p.task + ' · ' + p.team_name + ' · ' + p.agent_count + '人';
+
+    // 显示文件列表
+    var fl = document.getElementById('fileList');
+    fl.style.display = 'block';
+    var icons = {md:'📝',html:'🌐',css:'🎨',js:'⚙️',csv:'📊',json:'📋',py:'🐍',txt:'📄'};
+    fl.innerHTML = '<div class="fl-title">📄 项目文件 (' + files.length + ')</div>' +
+      files.map(function(f) {
+        var ext = f.filename.split('.').pop();
+        var icon = icons[ext] || '📄';
+        var kb = (f.size / 1024).toFixed(1);
+        return '<div class="file-item" onclick="previewFile(\'' + f.filename + '\')">' +
+          '<span class="fi-icon">' + icon + '</span>' +
+          '<span class="fi-name">' + f.filename + '</span>' +
+          '<span class="fi-size">' + kb + 'KB</span></div>';
+      }).join('');
+
+    // 自动预览 README
+    if (files.some(function(f) { return f.filename === 'README.md'; })) {
+      previewFile('README.md');
+    } else if (files.length) {
+      previewFile(files[0].filename);
+    }
+  } catch(e) { console.error(e); }
+}
+
+// 预览文件
+async function previewFile(filename) {
+  // 高亮
+  document.querySelectorAll('.file-item').forEach(function(el) { el.classList.remove('active'); });
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+  try {
+    var r = await fetch('/api/projects/' + currentProjectId + '/files/' + filename);
+    var text = await r.text();
+    var preview = document.getElementById('preview');
+
+    // 简单 Markdown 渲染
+    var html = text
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      .replace(/^\- (.*$)/gm, '<li>$1</li>')
+      .replace(/^\d+\. (.*$)/gm, '<li>$1</li>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+
+    preview.innerHTML = '<p>' + html + '</p>';
+  } catch(e) {
+    document.getElementById('preview').innerHTML = '<div class="preview-empty">加载失败</div>';
+  }
+}
+
+function downloadProject() {
+  if (currentProjectId) {
+    window.location.href = '/api/projects/' + currentProjectId + '/download';
+  }
+}
+
+function refreshProject() {
+  if (currentProjectId) selectProject(currentProjectId);
+}
+
+// 初始化
+loadProjects();
+// 每 10 秒刷新项目列表
+setInterval(loadProjects, 10000);
+</script>
+</body></html>

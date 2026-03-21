@@ -1865,6 +1865,13 @@ async def call_mcp_desktop_tool(request: Request):
     return result
 
 
+@app.get("/project")
+@app.get("/project/")
+@app.get("/projects")
+async def project_page():
+    return FileResponse("src/client/project.html")
+
+
 @app.get("/remote")
 @app.get("/remote/")
 async def remote_page():
