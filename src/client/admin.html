@@ -220,9 +220,23 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
   #page-dashboard > div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr!important; }
 }
 @media(max-width:480px) {
-  .sidebar { width:0; overflow:hidden; }
+  .sidebar { width:0; overflow:hidden; transition:width .25s ease, opacity .25s; opacity:0; }
+  .sidebar.open { width:260px; overflow:auto; opacity:1; box-shadow:4px 0 24px rgba(0,0,0,.5); }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:99; }
+  .sidebar.open ~ .sidebar-overlay { display:block; }
   .main { margin-left:0; }
   .stat-cards { grid-template-columns:1fr 1fr; gap:8px; }
+  .sidebar .nav-item span:not(.icon), .sidebar-logo span, .sidebar-footer { display:flex; }
+}
+.hamburger-btn {
+  display:none; position:fixed; top:10px; left:10px; z-index:101;
+  width:40px; height:40px; border-radius:10px;
+  background:var(--bg2); border:1px solid var(--border); color:var(--text);
+  font-size:20px; cursor:pointer; align-items:center; justify-content:center;
+}
+@media(max-width:480px) {
+  .hamburger-btn { display:inline-flex; }
+  .main { padding-top:56px; }
 }
 
 /* ── Scrollbar ──────────────────────────────────────── */
@@ -234,42 +248,45 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
 </head>
 <body>
 
+<!-- Hamburger (480px) -->
+<button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle menu">☰</button>
+
 <!-- Sidebar -->
-<div class="sidebar">
+<div class="sidebar" id="adminSidebar">
   <div class="sidebar-logo">⚡ <span>十三香小龙虾</span></div>
   <nav class="sidebar-nav">
-    <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span><span>仪表盘</span></div>
-    <div class="nav-item" data-page="workflows"><span class="icon">🔄</span><span>工作流</span></div>
-    <div class="nav-item" data-page="history"><span class="icon">📜</span><span>执行历史</span></div>
-    <div class="nav-item" data-page="moments"><span class="icon">👀</span><span>朋友圈</span></div>
-    <div class="nav-item" data-page="analytics"><span class="icon">📈</span><span>数据分析</span></div>
-    <div class="nav-item" data-page="broadcast"><span class="icon">📣</span><span>群发消息</span></div>
-    <div class="nav-item" data-page="media"><span class="icon">🖼</span><span>素材库</span></div>
-    <div class="nav-item" data-page="contacts"><span class="icon">👥</span><span>联系人画像</span></div>
-    <div class="nav-item" data-page="ollama"><span class="icon">🦙</span><span>本地模型</span></div>
-    <div class="nav-item" data-page="msg-rules"><span class="icon">🔀</span><span>消息路由</span></div>
-    <div class="nav-item" data-page="calendar"><span class="icon">📅</span><span>任务日历</span></div>
-    <div class="nav-item" data-page="accounts"><span class="icon">👤</span><span>多账号管理</span></div>
-    <div class="nav-item" data-page="inbox"><span class="icon">📬</span><span>统一收件箱</span></div>
-    <div class="nav-item" data-page="forward"><span class="icon">🔀</span><span>消息转发</span></div>
-    <div class="nav-item" data-page="moments-coop"><span class="icon">🤝</span><span>朋友圈协作</span></div>
-    <div class="nav-item" data-page="health"><span class="icon">🩺</span><span>账号健康</span></div>
-    <div class="nav-item" data-page="contact-fusion"><span class="icon">🔗</span><span>联系人融合</span></div>
-    <div class="nav-item" data-page="templates"><span class="icon">📦</span><span>模板商店</span></div>
-    <div class="nav-item" data-page="knowledge"><span class="icon">📚</span><span>知识库</span></div>
-    <div class="nav-item" data-page="daily-report"><span class="icon">📊</span><span>智能日报</span></div>
-    <div class="nav-item" data-page="bigscreen"><span class="icon">🖥️</span><span>数据大屏</span></div>
-    <div class="nav-item" data-page="sentiment"><span class="icon">💭</span><span>情感分析</span></div>
-    <div class="nav-item" data-page="group-mgr"><span class="icon">👥</span><span>群聊管理</span></div>
-    <div class="nav-item" data-page="wf-editor"><span class="icon">🎨</span><span>流程编辑</span></div>
-    <div class="nav-item" data-page="plugins"><span class="icon">🧩</span><span>插件市场</span></div>
-    <div class="nav-item" data-page="monitor"><span class="icon">💓</span><span>性能监控</span></div>
-    <div class="nav-item" data-page="nodes"><span class="icon">🧩</span><span>节点类型</span></div>
-    <div class="nav-item" data-page="mem-search"><span class="icon">🔍</span><span>记忆搜索</span></div>
-    <div class="nav-item" data-page="msg-export"><span class="icon">📥</span><span>消息导出</span></div>
-    <div class="nav-item" data-page="sys-health"><span class="icon">🩻</span><span>系统自检</span></div>
-    <div class="nav-item" data-page="audit"><span class="icon">📋</span><span>审计日志</span></div>
-    <a class="nav-item" href="/qr" style="text-decoration:none;color:inherit"><span class="icon">📡</span><span>控制台/QR</span></a>
+    <div class="nav-item active" data-page="dashboard" title="仪表盘" aria-label="仪表盘"><span class="icon">📊</span><span>仪表盘</span></div>
+    <div class="nav-item" data-page="workflows" title="工作流" aria-label="工作流"><span class="icon">🔄</span><span>工作流</span></div>
+    <div class="nav-item" data-page="history" title="执行历史" aria-label="执行历史"><span class="icon">📜</span><span>执行历史</span></div>
+    <div class="nav-item" data-page="moments" title="朋友圈" aria-label="朋友圈"><span class="icon">👀</span><span>朋友圈</span></div>
+    <div class="nav-item" data-page="analytics" title="数据分析" aria-label="数据分析"><span class="icon">📈</span><span>数据分析</span></div>
+    <div class="nav-item" data-page="broadcast" title="群发消息" aria-label="群发消息"><span class="icon">📣</span><span>群发消息</span></div>
+    <div class="nav-item" data-page="media" title="素材库" aria-label="素材库"><span class="icon">🖼</span><span>素材库</span></div>
+    <div class="nav-item" data-page="contacts" title="联系人画像" aria-label="联系人画像"><span class="icon">👥</span><span>联系人画像</span></div>
+    <div class="nav-item" data-page="ollama" title="本地模型" aria-label="本地模型"><span class="icon">🦙</span><span>本地模型</span></div>
+    <div class="nav-item" data-page="msg-rules" title="消息路由" aria-label="消息路由"><span class="icon">🔀</span><span>消息路由</span></div>
+    <div class="nav-item" data-page="calendar" title="任务日历" aria-label="任务日历"><span class="icon">📅</span><span>任务日历</span></div>
+    <div class="nav-item" data-page="accounts" title="多账号管理" aria-label="多账号管理"><span class="icon">👤</span><span>多账号管理</span></div>
+    <div class="nav-item" data-page="inbox" title="统一收件箱" aria-label="统一收件箱"><span class="icon">📬</span><span>统一收件箱</span></div>
+    <div class="nav-item" data-page="forward" title="消息转发" aria-label="消息转发"><span class="icon">🔀</span><span>消息转发</span></div>
+    <div class="nav-item" data-page="moments-coop" title="朋友圈协作" aria-label="朋友圈协作"><span class="icon">🤝</span><span>朋友圈协作</span></div>
+    <div class="nav-item" data-page="health" title="账号健康" aria-label="账号健康"><span class="icon">🩺</span><span>账号健康</span></div>
+    <div class="nav-item" data-page="contact-fusion" title="联系人融合" aria-label="联系人融合"><span class="icon">🔗</span><span>联系人融合</span></div>
+    <div class="nav-item" data-page="templates" title="模板商店" aria-label="模板商店"><span class="icon">📦</span><span>模板商店</span></div>
+    <div class="nav-item" data-page="knowledge" title="知识库" aria-label="知识库"><span class="icon">📚</span><span>知识库</span></div>
+    <div class="nav-item" data-page="daily-report" title="智能日报" aria-label="智能日报"><span class="icon">📊</span><span>智能日报</span></div>
+    <div class="nav-item" data-page="bigscreen" title="数据大屏" aria-label="数据大屏"><span class="icon">🖥️</span><span>数据大屏</span></div>
+    <div class="nav-item" data-page="sentiment" title="情感分析" aria-label="情感分析"><span class="icon">💭</span><span>情感分析</span></div>
+    <div class="nav-item" data-page="group-mgr" title="群聊管理" aria-label="群聊管理"><span class="icon">👥</span><span>群聊管理</span></div>
+    <div class="nav-item" data-page="wf-editor" title="流程编辑" aria-label="流程编辑"><span class="icon">🎨</span><span>流程编辑</span></div>
+    <div class="nav-item" data-page="plugins" title="插件市场" aria-label="插件市场"><span class="icon">🧩</span><span>插件市场</span></div>
+    <div class="nav-item" data-page="monitor" title="性能监控" aria-label="性能监控"><span class="icon">💓</span><span>性能监控</span></div>
+    <div class="nav-item" data-page="nodes" title="节点类型" aria-label="节点类型"><span class="icon">🧩</span><span>节点类型</span></div>
+    <div class="nav-item" data-page="mem-search" title="记忆搜索" aria-label="记忆搜索"><span class="icon">🔍</span><span>记忆搜索</span></div>
+    <div class="nav-item" data-page="msg-export" title="消息导出" aria-label="消息导出"><span class="icon">📥</span><span>消息导出</span></div>
+    <div class="nav-item" data-page="sys-health" title="系统自检" aria-label="系统自检"><span class="icon">🩻</span><span>系统自检</span></div>
+    <div class="nav-item" data-page="audit" title="审计日志" aria-label="审计日志"><span class="icon">📋</span><span>审计日志</span></div>
+    <a class="nav-item" href="/qr" title="控制台/QR" aria-label="控制台/QR" style="text-decoration:none;color:inherit"><span class="icon">📡</span><span>控制台/QR</span></a>
   </nav>
   <div class="sidebar-footer">
     <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
@@ -283,6 +300,7 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
     <a href="/app">← 返回主界面</a>
   </div>
 </div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- Main Content -->
 <div class="main">
@@ -1039,6 +1057,17 @@ let editingWf = null;
 let editingNodes = [];
 let editingNodeIdx = -1;
 let historyOffset = 0;
+
+// ── Sidebar hamburger (mobile 480px) ────────────────────────────
+(function(){
+  var sb = document.getElementById('adminSidebar');
+  var ov = document.getElementById('sidebarOverlay');
+  var hb = document.getElementById('hamburgerBtn');
+  function closeSidebar(){ sb.classList.remove('open'); }
+  if(hb) hb.addEventListener('click',function(){ sb.classList.toggle('open'); });
+  if(ov) ov.addEventListener('click', closeSidebar);
+  sb.addEventListener('click',function(e){ if(e.target.closest('.nav-item')) closeSidebar(); });
+})();
 
 // ── Navigation ──────────────────────────────────────────────────
 
@@ -3356,7 +3385,18 @@ async function switchLang(lang) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/admin-sw.js').catch(()=>{});
   }
+
+  window.addEventListener('beforeunload', function() {
+    if (_monitorTimer) { clearInterval(_monitorTimer); _monitorTimer = null; }
+    if (_wsEvents) { try { _wsEvents.close(); } catch(_){} _wsEvents = null; }
+    if (_sse) { try { _sse.close(); } catch(_){} _sse = null; }
+    _stopDashPolling();
+  });
 })();
+</script>
+<script type="module">
+import { initWorkflowEditor } from '/js/workflow-editor.js';
+try { initWorkflowEditor(); } catch(e) { console.debug('workflow-editor:', e); }
 </script>
 </body>
 </html>
