@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from loguru import logger
 
-MCP_DIR = Path("data/mcp_servers")
+MCP_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "mcp_servers"
 MCP_DIR.mkdir(parents=True, exist_ok=True)
 
 

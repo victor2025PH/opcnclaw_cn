@@ -545,6 +545,16 @@ class WeChatAutoReply:
             )
             if followup:
                 logger.info(f"[CommentChain] 评论链跟进 → {msg.contact}: {followup[:30]}")
+                # 发布事件通知前端 / 其他模块处理
+                try:
+                    from .event_bus import publish
+                    publish("comment_chain:followup", {
+                        "contact": msg.contact,
+                        "followup_text": followup,
+                        "original_notification": msg.content[:100],
+                    })
+                except Exception:
+                    pass
         except Exception as e:
             logger.debug(f"[CommentChain] 检测失败: {e}")
 
