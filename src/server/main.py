@@ -858,6 +858,16 @@ async def app_page(request: Request):
                         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
+@app.get("/pet")
+@app.get("/pet/")
+async def pet_page():
+    """Tauri 桌宠窗口：动画 + 字幕/状态（与主界面 BroadcastChannel 联动）"""
+    return FileResponse(
+        "src/client/pet.html",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
+
+
 @app.get("/setup")
 @app.get("/setup/")
 async def setup_page():
@@ -2174,6 +2184,51 @@ async def clipboard_sync(request: Request):
             return {"ok": True, "text": text[:10000]}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+
+# ── 集群 API ─────────────────────────────────────────────────
+
+@app.get("/api/cluster/nodes")
+async def cluster_nodes():
+    """集群节点列表"""
+    from .cluster import get_cluster
+    return {"nodes": get_cluster().get_nodes()}
+
+@app.post("/api/cluster/nodes/add")
+async def cluster_add_node(request: Request):
+    """添加集群节点"""
+    from .cluster import get_cluster
+    body = await request.json()
+    node = get_cluster().add_node(body.get("host", ""), body.get("port", 8766), body.get("name", ""))
+    return {"ok": True, "node": node.to_dict()}
+
+@app.get("/api/cluster/status")
+async def cluster_status():
+    """集群状态"""
+    from .cluster import get_cluster
+    return get_cluster().get_status()
+
+@app.post("/api/cluster/discover")
+async def cluster_discover():
+    """启动局域网自动发现"""
+    from .cluster import get_cluster
+    get_cluster().start_discovery()
+    return {"ok": True, "message": "局域网发现已启动"}
+
+@app.post("/api/cluster/task")
+async def cluster_receive_task(request: Request):
+    """Worker：接收 Master 分发的任务"""
+    from .agent_team import Agent, AgentRole, SubTask
+    body = await request.json()
+    rd = body.get("agent_role", {})
+    role = AgentRole(id=rd.get("id","w"), name=rd.get("name","Worker"),
+                     avatar="🤖", description="", system_prompt=rd.get("system_prompt","你是AI助手。"))
+    agent = Agent(role)
+    task = SubTask(agent_id=role.id, description=body.get("task_description",""))
+    async def _ai(messages, model=""):
+        return await backend.chat_simple(messages) if backend else "AI未就绪"
+    result = await agent.execute(task, body.get("context",{}), _ai)
+    return {"ok": True, "result": result, "status": task.status}
 
 
 @app.get("/api/remote/status")

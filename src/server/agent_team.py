@@ -247,6 +247,8 @@ class AgentTeam:
             for a in self.agents.values() if a.role.id != "ceo"
         )
 
+        max_tasks = min(len(self.agents) - 1, 10)  # 动态上限
+
         plan_prompt = f"""你是团队 CEO。用户需求如下：
 
 {request}
@@ -254,18 +256,20 @@ class AgentTeam:
 你的团队成员：
 {agent_list}
 
-请将需求拆解为子任务，每个子任务分配给一个成员。
+请将需求拆解为子任务（DAG 依赖图），每个子任务分配给一个成员。
 输出 JSON 数组格式（不要多余文字）：
 [
-  {{"agent": "成员ID", "task": "具体任务描述"}},
+  {{"agent": "成员ID", "task": "具体任务描述", "depends_on": []}},
+  {{"agent": "成员ID", "task": "具体任务描述", "depends_on": ["上一步的agent ID"]}},
   ...
 ]
 
 规则：
-- 每个成员最多 1 个任务
+- depends_on 为空 = 第一批执行（无依赖）
+- depends_on 含某个 agent = 等它完成后才开始
+- 无依赖的任务会并行执行
 - 任务描述要具体可执行
-- 按依赖顺序排列（先做的在前）
-- 最多 5 个子任务"""
+- 最多 {max_tasks} 个子任务"""
 
         messages = [
             {"role": "system", "content": ceo.role.system_prompt},
@@ -282,28 +286,35 @@ class AgentTeam:
             match = re.search(r'\[.*\]', plan_text, re.DOTALL)
             if match:
                 items = json.loads(match.group())
-                for item in items[:5]:
+                max_tasks = min(len(self.agents) - 1, 10)
+                for item in items[:max_tasks]:
                     agent_id = item.get("agent", "")
                     if agent_id in self.agents:
+                        # 解析依赖关系
+                        deps = item.get("depends_on", [])
+                        if isinstance(deps, str):
+                            deps = [deps] if deps else []
                         task = SubTask(
                             agent_id=agent_id,
                             description=item.get("task", ""),
+                            depends_on=deps,
                         )
                         self.tasks.append(task)
                         self._add_message("ceo", agent_id, "task", item.get("task", ""))
         except Exception as e:
             logger.warning(f"[Team] CEO 任务拆解解析失败: {e}")
-            # 降级：所有人做同一任务
             for aid, agent in self.agents.items():
                 if aid != "ceo":
                     task = SubTask(agent_id=aid, description=request)
                     self.tasks.append(task)
-                    break  # 至少分配一个
+                    break
 
+        logger.info(f"[Team:{self.name}] 拆解为 {len(self.tasks)} 个子任务")
         return plan_text
 
     async def _execute_tasks(self):
-        """并行执行子任务"""
+        """DAG 分层并行执行：无依赖的先跑，依赖完成的再跑"""
+
         async def _run(task: SubTask):
             agent = self.agents.get(task.agent_id)
             if not agent:
@@ -311,16 +322,50 @@ class AgentTeam:
                 task.result = f"Agent {task.agent_id} 不存在"
                 return
             try:
+                # 将前序任务结果注入 context
+                enriched_ctx = dict(self.context)
+                for dep_id in task.depends_on:
+                    dep_task = next((t for t in self.tasks if t.agent_id == dep_id), None)
+                    if dep_task and dep_task.result:
+                        enriched_ctx[f"{dep_id}_result"] = dep_task.result[:500]
+
                 await asyncio.wait_for(
-                    agent.execute(task, self.context, self._ai_call),
+                    agent.execute(task, enriched_ctx, self._ai_call),
                     timeout=self.TASK_TIMEOUT,
                 )
             except asyncio.TimeoutError:
                 task.status = "error"
                 task.result = "超时"
 
-        # 并行执行所有任务
-        await asyncio.gather(*[_run(t) for t in self.tasks], return_exceptions=True)
+        # DAG 分层执行：每层的无依赖/已满足依赖的任务并行
+        completed_agents = set()
+        max_waves = 10  # 防无限循环
+
+        for wave in range(max_waves):
+            # 找出本层可执行的任务
+            ready = [
+                t for t in self.tasks
+                if t.status == "pending"
+                and all(dep in completed_agents for dep in t.depends_on)
+            ]
+
+            if not ready:
+                # 检查是否还有未完成任务
+                pending = [t for t in self.tasks if t.status == "pending"]
+                if pending:
+                    # 有 pending 但无 ready = 依赖死锁，强制执行
+                    logger.warning(f"[Team] 第{wave+1}层：依赖死锁，强制执行 {len(pending)} 个任务")
+                    ready = pending
+                else:
+                    break
+
+            logger.info(f"[Team:{self.name}] 第{wave+1}层执行: {[t.agent_id for t in ready]}")
+            await asyncio.gather(*[_run(t) for t in ready], return_exceptions=True)
+
+            # 记录完成的 agent
+            for t in ready:
+                if t.status == "done":
+                    completed_agents.add(t.agent_id)
 
     async def _ceo_summarize(self, ceo: Agent) -> str:
         """CEO 汇总所有结果"""
