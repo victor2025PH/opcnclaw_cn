@@ -6,13 +6,15 @@
 ; 前置步骤（仅首次编译前执行一次）:
 ;   cd installer && python build_embedded_python.py
 ;
-; 编译命令（CMD）:
-;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+; 编译安装包前必须先完成 Tauri 构建（否则 ISCC 会报错，避免静默跳过桌面端）:
+;   1) 项目根目录: npx tauri build
+;      或一键: build_installer.bat（含 tauri build + 复制到 dist + ISCC）
+;   2) "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 ;
-; 生成文件: dist\installer\十三香小龙虾-v4.1.0-Setup.exe
+; 生成文件: dist\十三香小龙虾-v5.x.x-Setup.exe（版本见下方 #define AppVersion）
 
 #define AppName       "十三香小龙虾"
-#define AppVersion    "5.1.0"
+#define AppVersion    "5.2.0"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
 #define AppExeName    "十三香小龙虾.exe"
@@ -85,8 +87,9 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 
 [Files]
 ; ── 核心应用文件 ──────────────────────────────────────────────
-; ── Tauri 桌面客户端（可选，需 npx tauri build 编译）───────
-Source: "dist\十三香小龙虾.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Tauri 桌面端：从 Cargo 实际产物安装（包名 shisanxiang）→ 用户可见文件名 十三香小龙虾.exe
+; 不再使用 dist\ 下的副本 + skipifsourcedoesntexist，否则未编译 tauri 时会静默不打进 exe。
+Source: "src-tauri\target\release\shisanxiang.exe"; DestDir: "{app}"; DestName: "十三香小龙虾.exe"; Flags: ignoreversion
 ; ── 项目文件 ────────────────────────────────────────────────
 Source: "start.bat";             DestDir: "{app}"; Flags: ignoreversion
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion
