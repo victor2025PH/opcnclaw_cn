@@ -1,5 +1,39 @@
 # Changelog
 
+## v4.2.0 (2026-03-21)
+
+### 声纹识别 + 多用户系统
+- resemblyzer d-vector 声纹编码器（256维，CPU 可运行）
+- 用户注册：3句话采集 → 平均 embedding → 余弦相似度匹配（阈值 0.75）
+- 多用户隔离：每人独立记忆/偏好/人设
+- 前端：用户头像按钮 + 下拉切换 + 注册向导（录音+波形动画）
+- API: GET /api/users, POST /api/users/register, GET /api/users/current
+
+### 离线模式
+- 30s 心跳网络检测，3级状态（online/local/offline）
+- 断网自动切换 Ollama 本地模型（优先 qwen2.5）
+- EventBus 发布 network_mode_change 事件
+- API: GET /api/system/network-status
+
+### 工作流 RESTful API
+- 完整 CRUD 别名：GET/POST /api/workflows, PUT /api/workflows/{id}
+- 手动执行：POST /api/workflows/{id}/run
+- 执行历史：GET /api/workflows/{id}/history
+
+### IoT 智能家居
+- HomeAssistant REST API 桥接（设备发现/状态/控制）
+- 按名称模糊查找设备
+- iot_control 工具集成（AI说"关灯"即可执行）
+- API: GET /api/iot/devices, POST /api/iot/control, POST /api/iot/config
+
+### Web Push 推送
+- 订阅管理 + 测试推送
+- API: POST /api/push/subscribe, GET /api/push/status, POST /api/push/test
+
+### 测试
+- 新增 test_speaker_id.py（18 tests）+ test_offline.py（4 tests）
+- 工具总数: 20→21 (新增 iot_control)
+
 ## v4.1.0 (2026-03-21)
 
 ### 意图融合引擎（多模态信号融合）
