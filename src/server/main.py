@@ -1971,6 +1971,13 @@ async def system_update_check_alias():
     return await check_update()
 
 
+@app.get("/api/system/network-status")
+async def network_status():
+    """网络状态（在线/本地/离线）"""
+    from .offline_manager import get_offline_manager
+    return get_offline_manager().get_status()
+
+
 @app.post("/api/update/apply")
 async def apply_update():
     try:
