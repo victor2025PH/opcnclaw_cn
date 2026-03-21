@@ -572,6 +572,26 @@ function _safeContent(c) {
   return { text: typeof c === 'string' ? c : String(c ?? ''), imgs: [] };
 }
 
+const LONG_MSG_CHARS = 720;
+
+function setupLongMessageCollapse(msgEl) {
+  const textEl = msgEl.querySelector('.msg-text');
+  if (!textEl) return;
+  const plain = textEl.textContent || '';
+  if (plain.length < LONG_MSG_CHARS) return;
+  textEl.classList.add('msg-text--collapsed');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'msg-expand-btn';
+  btn.textContent = t('ui.expand');
+  btn.addEventListener('click', () => {
+    const collapsed = textEl.classList.toggle('msg-text--collapsed');
+    btn.textContent = collapsed ? t('ui.expand') : t('ui.collapse');
+  });
+  const body = msgEl.querySelector('.msg-body');
+  if (body) body.appendChild(btn);
+}
+
 function appendMessage(msg, streaming = false) {
   const div = document.createElement('div');
   div.className = `msg ${msg.role === 'user' ? 'user' : 'ai'}`;
@@ -602,6 +622,7 @@ function appendMessage(msg, streaming = false) {
     </div>`;
 
   dom.messages.appendChild(div);
+  if (!streaming) setupLongMessageCollapse(div);
   scrollToBottom();
   return div;
 }
@@ -615,6 +636,7 @@ function updateStreamingEl(el, text) {
 function finalizeStreamingEl(el, text) {
   const textEl = el.querySelector('.msg-text');
   if (textEl) textEl.innerHTML = renderMarkdown(text);
+  setupLongMessageCollapse(el);
 }
 
 function scrollToBottom() {

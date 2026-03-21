@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#6366f1">
+<title>十三香小龙虾 AI — 在线体验</title>
+<style>
+:root{
+  --bg:#0b0d14;--card:#12151f;--border:#2a2f42;--text:#e8eaf0;--muted:#8b92a8;
+  --accent:#6c63ff;--accent2:#22d3ee;--ok:#22c55e;--radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.g1{position:absolute;width:420px;height:420px;background:var(--accent);filter:blur(120px);opacity:.12;top:-120px;left:-80px}
+.g2{position:absolute;width:300px;height:300px;background:var(--accent2);filter:blur(100px);opacity:.1;bottom:-60px;right:-40px}
+.wrap{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:32px 20px 60px}
+.hero{text-align:center;padding:28px 0 36px}
+.hero h1{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.5px}
+.hero h1 span{background:linear-gradient(135deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{margin-top:12px;color:var(--muted);font-size:15px;line-height:1.6;max-width:640px;margin-left:auto;margin-right:auto}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.cta a{
+  display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;
+  font-weight:600;font-size:14px;text-decoration:none;transition:.2s;
+}
+.cta .primary{background:linear-gradient(135deg,var(--accent),#5b52d8);color:#fff;box-shadow:0 8px 28px rgba(108,99,255,.35)}
+.cta .primary:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.cta .ghost{border:1px solid var(--border);color:var(--text);background:rgba(255,255,255,.03)}
+.cta .ghost:hover{border-color:var(--accent);color:var(--accent2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:36px}
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;transition:.2s;
+}
+.card:hover{border-color:rgba(108,99,255,.4)}
+.card h3{font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.card p{font-size:12px;color:var(--muted);line-height:1.55}
+.section{margin-top:44px}
+.section h2{font-size:18px;margin-bottom:14px}
+.chat-demo{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;min-height:220px;display:flex;flex-direction:column;gap:10px;
+}
+.msg{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45}
+.msg .av{width:32px;height:32px;border-radius:10px;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.msg.user .av{background:rgba(34,211,238,.15)}
+.bubble{flex:1;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--border)}
+.row{display:flex;gap:8px;margin-top:8px}
+.row input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0a0c12;color:var(--text);font-size:13px;outline:none}
+.row input:focus{border-color:var(--accent)}
+.row button{padding:10px 16px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:13px}
+.row button:disabled{opacity:.5;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:rgba(34,197,94,.15);color:#86efac}
+.badge.warn{background:rgba(245,158,11,.15);color:#fcd34d}
+footer{text-align:center;margin-top:48px;font-size:11px;color:var(--muted)}
+footer a{color:var(--accent2)}
+@media(max-width:600px){
+  .hero{padding-top:12px}
+}
+</style>
+</head>
+<body>
+<div class="bg"><div class="g1"></div><div class="g2"></div></div>
+<div class="wrap">
+  <div class="hero">
+    <h1><span>十三香小龙虾 AI</span></h1>
+    <p>本地优先的语音 · 微信 · 桌面控制一体化助手。以下为<strong>纯前端演示</strong>，不连接真实后端。</p>
+    <div class="cta">
+      <a class="primary" href="/app">打开全功能版</a>
+      <a class="ghost" href="/setup">配置向导</a>
+      <a class="ghost" href="https://github.com/victor2025PH/opcnclaw_cn" target="_blank" rel="noopener">GitHub ⭐</a>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>🎙️ 语音对话</h3><p>流式对话、唤醒词、连续模式，与多 STT/TTS 后端对接。</p></div>
+    <div class="card"><h3>💬 微信自动回复</h3><p>白名单、静默时段、人工审核与操作日志。</p></div>
+    <div class="card"><h3>🖥️ 远程桌面</h3><p>手势与语音指令驱动桌面自动化，人机协作 CoworkBus。</p></div>
+    <div class="card"><h3>🧠 意图融合</h3><p>多通道信号时间窗融合，紧急停止与置信度决策。</p></div>
+  </div>
+
+  <div class="section">
+    <h2>交互式模拟聊天</h2>
+    <div class="chat-demo" id="chatDemo">
+      <div class="msg"><div class="av">🦞</div><div class="bubble">你好！我是演示模式。输入任意文字，我会用本地规则回复（无需网络）。</div></div>
+      <div class="msg user"><div class="av">👤</div><div class="bubble" id="demoUserEcho" style="display:none"></div></div>
+      <div class="msg" id="demoAiRow" style="display:none"><div class="av">🦞</div><div class="bubble" id="demoAiReply"></div></div>
+      <div class="row">
+        <input id="demoInput" type="text" placeholder="试试：你好 / 功能 / 笑话" maxlength="200" autocomplete="off">
+        <button type="button" id="demoSend">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>功能对比（示意）</h2>
+    <table>
+      <thead><tr><th>能力</th><th>本方案</th><th>纯云端助手</th><th>单一自动化</th></tr></thead>
+      <tbody>
+        <tr><td>本地数据与隐私</td><td><span class="badge">优先本地</span></td><td>依赖云端</td><td>视工具而定</td></tr>
+        <tr><td>微信深度集成</td><td><span class="badge">支持</span></td><td class="badge warn">通常无</td><td>部分</td></tr>
+        <tr><td>桌面 / 多模态</td><td><span class="badge">融合意图</span></td><td>有限</td><td>脚本级</td></tr>
+        <tr><td>离线控制台 (PWA)</td><td><span class="badge">QR 缓存</span></td><td>否</td><td>否</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px">* 对比为产品向示意，不代表第三方商标或具体产品。</p>
+  </div>
+
+  <footer>
+    <a href="/qr">控制台</a> · <a href="/admin">管理后台</a> · <a href="/chat">简洁聊天</a>
+    <div style="margin-top:8px">© 十三香小龙虾 AI 演示页</div>
+  </footer>
+</div>
+<script>
+(function(){
+  const inp=document.getElementById('demoInput');
+  const btn=document.getElementById('demoSend');
+  const uRow=document.getElementById('demoUserEcho');
+  const aiRow=document.getElementById('demoAiRow');
+  const ai=document.getElementById('demoAiReply');
+  function reply(text){
+    const t=text.trim().toLowerCase();
+    if(/你好|hello|hi/.test(t)) return '你好！演示模式：可去「全功能版」体验语音与摄像头。';
+    if(/功能|能做什么/.test(t)) return '支持聊天、微信自动回复、远程桌面、意图融合、MCP 工具等模块（需连接本机服务）。';
+    if(/笑话|段子/.test(t)) return '演示笑话：为什么程序员爱黑暗模式？因为 Bug 怕光。';
+    return '（演示）已收到：「'+text.slice(0,80)+'」。连接主机后可使用真实 AI 回复。';
+  }
+  function go(){
+    const v=inp.value.trim();
+    if(!v)return;
+    uRow.style.display='';
+    uRow.textContent=v;
+    aiRow.style.display='';
+    ai.textContent='思考中…';
+    inp.value='';
+    btn.disabled=true;
+    setTimeout(function(){
+      ai.textContent=reply(v);
+      btn.disabled=false;
+      inp.focus();
+    },320+Math.random()*400);
+  }
+  btn.addEventListener('click',go);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')go()});
+})();
+</script>
+</body>
+</html>

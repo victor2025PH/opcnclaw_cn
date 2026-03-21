@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/qr-manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
 <title>十三香小龙虾 AI — 控制台</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -68,6 +74,8 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
 .qr-url:hover{background:rgba(34,211,238,.1)}
 
 .nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+/* 第 5 个入口独占一行，避免窄屏下错位 */
+.nav-grid .nav-btn:nth-child(5){grid-column:1 / -1;justify-content:center}
 .nav-btn{
   display:flex;align-items:center;gap:6px;padding:9px 11px;
   border-radius:10px;text-decoration:none;font-size:12px;font-weight:600;
@@ -305,12 +313,44 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
   .nav-grid{gap:4px}
   .nav-btn{padding:8px 9px;font-size:11.5px}
 }
+#pwa-install-bar{
+  display:flex;align-items:center;gap:8px;padding:10px 16px;
+  background:linear-gradient(135deg,#6366f1 0%,#818cf8 100%);color:#fff;
+  font-size:13px;font-weight:500;border-radius:0 0 12px 12px;
+  position:fixed;top:0;left:0;right:0;z-index:10000;
+  box-shadow:0 4px 16px rgba(99,102,241,.3);
+}
+#pwa-install-bar span{flex:1}
+#pwa-install-btn{
+  background:#fff;color:#6366f1;border:none;padding:6px 16px;border-radius:8px;
+  font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.offline-banner{
+  position:fixed;top:0;left:0;right:0;z-index:10001;
+  padding:8px 14px;text-align:center;font-size:12px;
+  background:linear-gradient(90deg,#d97706,#f59e0b);color:#fff;
+  font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.update-banner{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:10002;
+  padding:10px 16px;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  background:linear-gradient(90deg,#059669,#10b981);color:#fff;
+  font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(16,185,129,.35);
+}
+.update-banner a{color:#fff;text-decoration:underline;font-weight:700}
+.update-banner .ub-dismiss{
+  background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 12px;border-radius:8px;
+  cursor:pointer;font-size:12px;font-weight:600;
+}
+.update-banner .ub-dismiss:hover{background:rgba(255,255,255,.3)}
 </style>
 </head>
 <body>
 
 <div class="bg-glow"><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div></div>
 <div class="toast-container" id="toasts"></div>
+<div id="offlineBanner" class="offline-banner" style="display:none" data-i18n="qr.offline_banner">当前离线，显示上次缓存的状态与活动</div>
+<div id="updateBanner" class="update-banner"></div>
 <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题"></button>
 
 <div class="page">
@@ -319,7 +359,7 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
 <!-- ═══ LEFT ═══ -->
 <div class="left">
   <div class="qr-card">
-    <div class="qr-badge"><span class="dot"></span> 手机扫码 即刻使用</div>
+    <div class="qr-badge"><span class="dot"></span> <span data-i18n="qr.badge_scan">手机扫码 即刻使用</span></div>
     <div class="qr-frame">
       <img id="qrImg" src="" alt="QR">
       <div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div>
@@ -328,17 +368,18 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
   </div>
 
   <div class="nav-grid">
-    <a class="nav-btn primary" href="/app"><span class="ico">🦞</span>全功能版</a>
-    <a class="nav-btn" href="/chat"><span class="ico">💬</span>文字聊天</a>
-    <a class="nav-btn" href="/setup"><span class="ico">⚙️</span>初始设置</a>
-    <a class="nav-btn" href="/admin"><span class="ico">📊</span>管理面板</a>
+    <a class="nav-btn primary" href="/app"><span class="ico">🦞</span><span data-i18n="qr.nav_full">全功能版</span></a>
+    <a class="nav-btn" href="/chat"><span class="ico">💬</span><span data-i18n="qr.nav_chat">文字聊天</span></a>
+    <a class="nav-btn" href="/setup"><span class="ico">⚙️</span><span data-i18n="qr.nav_setup">初始设置</span></a>
+    <a class="nav-btn" href="/admin"><span class="ico">📊</span><span data-i18n="qr.nav_admin">管理面板</span></a>
+    <a class="nav-btn" href="/demo"><span class="ico">✨</span><span data-i18n="qr.nav_demo">在线体验</span></a>
   </div>
 
   <div class="status-bar">
     <span class="sse-dot" id="sseDot" title="实时连接"></span>
     <span id="timerText">30s</span>
     <div class="progress-track"><div class="progress-fill" id="rfill"></div></div>
-    <span class="auto-toggle" id="autoToggle" onclick="toggleAuto()">自动</span>
+    <span class="auto-toggle" id="autoToggle" onclick="toggleAuto()" data-i18n="qr.status_auto">自动</span>
   </div>
 </div>
 
@@ -348,8 +389,8 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
   <div class="brand">
     <div class="brand-logo">🦞</div>
     <div class="brand-text">
-      <div class="name">十三香小龙虾 AI</div>
-      <div class="tagline">语音 · 微信 · 桌面 · 智能家居 — 本地全能 AI 助手</div>
+      <div class="name" data-i18n="qr.brand_name">十三香小龙虾 AI</div>
+      <div class="tagline" data-i18n="qr.brand_tagline">语音 · 微信 · 桌面 · 智能家居 — 本地全能 AI 助手</div>
     </div>
   </div>
 
@@ -363,67 +404,67 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
   </div>
 
   <div class="features">
-    <div class="feat"><div class="feat-icon">💬</div><div class="feat-body"><strong>AI 智能对话</strong><span>文字+语音，流式响应，多平台免费</span></div></div>
-    <div class="feat"><div class="feat-icon">📱</div><div class="feat-body"><strong>微信自动回复</strong><span>智能回复，白名单，人工审核</span></div></div>
-    <div class="feat"><div class="feat-icon">🖥️</div><div class="feat-body"><strong>桌面远程控制</strong><span>手势操控电脑，语音命令</span></div></div>
-    <div class="feat"><div class="feat-icon">🏠</div><div class="feat-body"><strong>智能家居</strong><span>语音控制灯光、空调等</span></div></div>
-    <div class="feat"><div class="feat-icon">📷</div><div class="feat-body"><strong>视觉识别</strong><span>摄像头分析，手势，人脸</span></div></div>
-    <div class="feat"><div class="feat-icon">🔊</div><div class="feat-body"><strong>实时语音</strong><span>唤醒词，连续对话模式</span></div></div>
+    <div class="feat"><div class="feat-icon">💬</div><div class="feat-body"><strong data-i18n="qr.feat_chat_t">AI 智能对话</strong><span data-i18n="qr.feat_chat_d">文字+语音，流式响应，多平台免费</span></div></div>
+    <div class="feat"><div class="feat-icon">📱</div><div class="feat-body"><strong data-i18n="qr.feat_wx_t">微信自动回复</strong><span data-i18n="qr.feat_wx_d">智能回复，白名单，人工审核</span></div></div>
+    <div class="feat"><div class="feat-icon">🖥️</div><div class="feat-body"><strong data-i18n="qr.feat_desk_t">桌面远程控制</strong><span data-i18n="qr.feat_desk_d">手势操控电脑，语音命令</span></div></div>
+    <div class="feat"><div class="feat-icon">🏠</div><div class="feat-body"><strong data-i18n="qr.feat_home_t">智能家居</strong><span data-i18n="qr.feat_home_d">语音控制灯光、空调等</span></div></div>
+    <div class="feat"><div class="feat-icon">📷</div><div class="feat-body"><strong data-i18n="qr.feat_vision_t">视觉识别</strong><span data-i18n="qr.feat_vision_d">摄像头分析，手势，人脸</span></div></div>
+    <div class="feat"><div class="feat-icon">🔊</div><div class="feat-body"><strong data-i18n="qr.feat_voice_t">实时语音</strong><span data-i18n="qr.feat_voice_d">唤醒词，连续对话模式</span></div></div>
   </div>
 
   <!-- System Status -->
   <div>
-    <div class="section-label">系统状态</div>
+    <div class="section-label" data-i18n="qr.section_system">系统状态</div>
     <div class="metrics">
-      <div class="metric" id="mUp"><span class="m-icon">⏱️</span><span class="m-val">--</span><span class="m-label">运行</span></div>
+      <div class="metric" id="mUp"><span class="m-icon">⏱️</span><span class="m-val">--</span><span class="m-label" data-i18n="qr.metric_uptime">运行</span></div>
       <div class="metric" id="mCpu"><span class="m-icon">🧠</span><span class="m-val">--%</span><span class="m-label">CPU</span></div>
       <div class="metric" id="mMem"><span class="m-icon">💾</span><span class="m-val">--%</span><span class="m-label">内存</span></div>
       <div class="metric" id="mGpu"><span class="m-icon">🎮</span><span class="m-val">--</span><span class="m-label">GPU</span></div>
     </div>
     <div class="diag-row" id="diagRow">
-      <div class="diag-item" data-key="ai"><span class="d-dot"></span><span class="d-name">AI</span><span class="d-status"></span></div>
-      <div class="diag-item" data-key="stt"><span class="d-dot"></span><span class="d-name">语音识别</span><span class="d-status"></span></div>
-      <div class="diag-item" data-key="tts"><span class="d-dot"></span><span class="d-name">语音合成</span><span class="d-status"></span></div>
-      <div class="diag-item" data-key="wechat"><span class="d-dot"></span><span class="d-name">微信</span><span class="d-status"></span></div>
-      <div class="diag-item" data-key="network"><span class="d-dot"></span><span class="d-name">局域网</span><span class="d-status"></span></div>
-      <button class="diag-btn" id="diagBtn" onclick="runDiagnose()">🔍 诊断</button>
+      <div class="diag-item" data-key="ai"><span class="d-dot"></span><span class="d-name" data-i18n="qr.diag_ai">AI</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="stt"><span class="d-dot"></span><span class="d-name" data-i18n="qr.diag_stt">语音识别</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="tts"><span class="d-dot"></span><span class="d-name" data-i18n="qr.diag_tts">语音合成</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="wechat"><span class="d-dot"></span><span class="d-name" data-i18n="qr.diag_wechat">微信</span><span class="d-status"></span></div>
+      <div class="diag-item" data-key="network"><span class="d-dot"></span><span class="d-name" data-i18n="qr.diag_lan">局域网</span><span class="d-status"></span></div>
+      <button class="diag-btn" id="diagBtn" onclick="runDiagnose()" data-i18n="qr.diag_run">🔍 诊断</button>
     </div>
   </div>
 
   <!-- IP -->
   <div>
-    <div class="section-label">访问地址</div>
+    <div class="section-label" data-i18n="qr.section_access">访问地址</div>
     <div class="ip-list" id="ips"><div class="ip-row"><span class="label">获取中...</span></div></div>
   </div>
 
   <!-- Activity (auto-populated via SSE) -->
   <div class="collapse" id="activitySection">
     <div class="collapse-hd" id="actHd" onclick="toggleActivity()">
-      📋 最近活动 <span class="act-count" id="actCount" style="font-size:10px;color:var(--accent);margin-left:4px"></span><span class="arr">▼</span>
+      <span data-i18n="qr.activity_title">📋 最近活动</span> <span class="act-count" id="actCount" style="font-size:10px;color:var(--accent);margin-left:4px"></span><span class="arr">▼</span>
     </div>
     <div class="collapse-bd" id="actBd">
-      <div class="activity-list" id="actList"><div class="act-empty">等待事件...</div></div>
+      <div class="activity-list" id="actList"><div class="act-empty" data-i18n="qr.activity_empty">等待事件...</div></div>
     </div>
   </div>
 
   <!-- Quick Operations -->
   <div class="collapse" id="quickOpsSection">
     <div class="collapse-hd" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
-      ⚡ 快捷操作 <span class="arr">▼</span>
+      <span data-i18n="qr.quick_ops">⚡ 快捷操作</span> <span class="arr">▼</span>
     </div>
     <div class="collapse-bd">
       <div class="qops-grid" id="qopsGrid">
         <button class="qops-btn" onclick="qopRestart()" title="优雅重启所有服务">
-          <span class="qops-ico">🔄</span><span class="qops-label">重启服务</span>
+          <span class="qops-ico">🔄</span><span class="qops-label" data-i18n="qr.qop_restart">重启服务</span>
         </button>
         <button class="qops-btn" onclick="qopClearCache()" title="清除OCR/FTS/TTS缓存">
-          <span class="qops-ico">🗑️</span><span class="qops-label">清除缓存</span>
+          <span class="qops-ico">🗑️</span><span class="qops-label" data-i18n="qr.qop_cache">清除缓存</span>
         </button>
         <button class="qops-btn" onclick="location.href='/setup'" title="切换AI平台配置">
-          <span class="qops-ico">🤖</span><span class="qops-label">AI 配置</span>
+          <span class="qops-ico">🤖</span><span class="qops-label" data-i18n="qr.qop_ai">AI 配置</span>
         </button>
         <button class="qops-btn" onclick="qopShowLogs()" title="查看最近30行后端日志">
-          <span class="qops-ico">📄</span><span class="qops-label">查看日志</span>
+          <span class="qops-ico">📄</span><span class="qops-label" data-i18n="qr.qop_logs">查看日志</span>
         </button>
       </div>
       <div class="qops-log-area" id="qopsLogArea" style="display:none">
@@ -439,13 +480,13 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
   <!-- Quick Start -->
   <div class="collapse">
     <div class="collapse-hd" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
-      📖 手机使用步骤 <span class="arr">▼</span>
+      <span data-i18n="qr.steps_title">📖 手机使用步骤</span> <span class="arr">▼</span>
     </div>
     <div class="collapse-bd">
-      <div class="step"><div class="step-num">1</div>确保手机与电脑在同一 WiFi</div>
-      <div class="step"><div class="step-num">2</div>手机相机扫描左侧二维码</div>
-      <div class="step"><div class="step-num">3</div>在浏览器中打开链接</div>
-      <div class="step"><div class="step-num">4</div>允许麦克风权限（可选），开始对话</div>
+      <div class="step"><div class="step-num">1</div><span data-i18n="qr.step1">确保手机与电脑在同一 WiFi</span></div>
+      <div class="step"><div class="step-num">2</div><span data-i18n="qr.step2">手机相机扫描左侧二维码</span></div>
+      <div class="step"><div class="step-num">3</div><span data-i18n="qr.step3">在浏览器中打开链接</span></div>
+      <div class="step"><div class="step-num">4</div><span data-i18n="qr.step4">允许麦克风权限（可选），开始对话</span></div>
     </div>
   </div>
 
@@ -453,8 +494,9 @@ html,body{min-height:100vh;background:var(--bg);color:var(--text);
     <span>十三香小龙虾 AI</span>·<span id="verText">v3.6.0</span>·<span id="providerBadge">...</span>·
     <label class="auto-open-toggle" title="服务启动时是否自动打开此页面">
       <input type="checkbox" id="autoOpenCb" onchange="setAutoOpen(this.checked)">
-      <span>启动时打开</span>
+      <span data-i18n="qr.footer_autoopen">启动时打开</span>
     </label>
+    <button type="button" onclick="toggleQrLang()" style="margin-left:8px;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:9px;cursor:pointer" id="qrLangBtn">EN</button>
   </div>
 
 </div>
@@ -466,6 +508,67 @@ const $=id=>document.getElementById(id);
 let chatUrl='',autoRefresh=true,countdown=30,_sse=null,_sseRetry=0;
 const _actEvents=[];
 const MAX_ACT=30;
+const ACT_STORAGE_KEY='oc-qr-activity-v1';
+
+function persistActivity(){
+  try{localStorage.setItem(ACT_STORAGE_KEY,JSON.stringify(_actEvents.slice(0,MAX_ACT)))}catch(_){}
+}
+function restoreActivity(){
+  try{
+    const raw=localStorage.getItem(ACT_STORAGE_KEY);
+    if(!raw)return;
+    const arr=JSON.parse(raw);
+    if(Array.isArray(arr)&&arr.length){
+      _actEvents.length=0;
+      arr.forEach(e=>_actEvents.push(e));
+      const c=$('actCount');if(c)c.textContent=_actEvents.length;
+      renderActivity();
+    }
+  }catch(_){}
+}
+function updateOfflineBanner(){
+  const b=$('offlineBanner');
+  if(!b)return;
+  b.style.display=navigator.onLine?'none':'';
+}
+window.addEventListener('online',updateOfflineBanner);
+window.addEventListener('offline',updateOfflineBanner);
+
+function toggleQrLang(){
+  const cur=localStorage.getItem('oc-lang')||localStorage.getItem('oc_lang')||'zh';
+  const next=cur==='zh'?'en':'zh';
+  localStorage.setItem('oc-lang',next);
+  localStorage.setItem('oc_lang',next);
+  location.reload();
+}
+
+const OC_UPDATE_DISMISS='oc-update-dismiss';
+async function checkAppUpdate(){
+  if(!navigator.onLine)return;
+  let d=null;
+  try{
+    let r=await fetch('/api/update/check');
+    if(!r.ok) r=await fetch('/api/system/update-check');
+    if(r.ok) d=await r.json();
+  }catch(_){}
+  if(!d||!d.has_update)return;
+  const latest=String(d.latest_version||'').trim();
+  if(!latest)return;
+  if(localStorage.getItem(OC_UPDATE_DISMISS)===latest)return;
+  const bar=$('updateBanner');
+  if(!bar)return;
+  const link='https://github.com/victor2025PH/opcnclaw_cn/releases';
+  const cg=d.changelog?String(d.changelog).slice(0,140).replace(/</g,'&lt;'):'';
+  bar.style.display='flex';
+  bar.innerHTML='<span>发现新版本 <strong>'+latest.replace(/</g,'&lt;')+'</strong></span>'+
+    (cg?'<span style="font-size:11px;opacity:.92;max-width:min(520px,92vw)">'+cg+'</span>':'')+
+    '<a href="'+link+'" target="_blank" rel="noopener">前往下载</a>'+
+    '<button type="button" class="ub-dismiss">忽略此版本</button>';
+  bar.querySelector('.ub-dismiss').onclick=function(){
+    localStorage.setItem(OC_UPDATE_DISMISS,latest);
+    bar.style.display='none';
+  };
+}
 
 /* ── Utilities ── */
 function pickLanIp(ips){
@@ -609,7 +712,7 @@ function actMsg(e){
 
 function renderActivity(){
   const list=$('actList');
-  if(!_actEvents.length){list.innerHTML='<div class="act-empty">等待事件...</div>';return}
+  if(!_actEvents.length){list.innerHTML='<div class="act-empty" data-i18n="qr.activity_empty">等待事件...</div>';return}
   list.innerHTML=_actEvents.map((e,i)=>
     `<div class="act-item${i===0?' act-new':''}"><span class="act-time">${fmtTs(e.timestamp)}</span>${actBadge(e.type)}<span class="act-msg">${actMsg(e)}</span></div>`
   ).join('');
@@ -621,6 +724,7 @@ function pushActivity(event){
   if(_actEvents.length>MAX_ACT)_actEvents.pop();
   $('actCount').textContent=_actEvents.length;
   renderActivity();
+  persistActivity();
 }
 
 function toggleActivity(){
@@ -632,10 +736,12 @@ async function loadInitialActivity(){
   try{
     const r=await fetch('/api/events?limit=15'),d=await r.json();
     const events=d.events||[];
+    _actEvents.length=0;
     events.forEach(e=>{_actEvents.push(e)});
     if(_actEvents.length>MAX_ACT)_actEvents.splice(MAX_ACT);
     $('actCount').textContent=_actEvents.length||'';
     renderActivity();
+    persistActivity();
   }catch(_){}
 }
 
@@ -751,8 +857,41 @@ window.matchMedia('(prefers-color-scheme:light)').addEventListener('change',e=>{
   if(!localStorage.getItem('oc-qr-theme'))applyTheme(e.matches?'light':'dark');
 });
 
+/* ── PWA Service Worker ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/qr-sw.js').catch(()=>{});
+}
+let _deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  const bar = document.createElement('div');
+  bar.id = 'pwa-install-bar';
+  bar.innerHTML = `<span>📲 添加到主屏幕，快速访问控制台</span><button id="pwa-install-btn">安装</button><button id="pwa-dismiss" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:0 4px">✕</button>`;
+  document.body.prepend(bar);
+  document.getElementById('pwa-install-btn').onclick = async () => {
+    bar.remove();
+    _deferredPrompt.prompt();
+    await _deferredPrompt.userChoice;
+    _deferredPrompt = null;
+  };
+  document.getElementById('pwa-dismiss').onclick = () => bar.remove();
+});
+
 /* ── Init ── */
-loadInfo();loadHealth();loadAiStatus();loadAutoOpen();loadInitialActivity();connectSSE();
+restoreActivity();loadInfo();loadHealth();loadAiStatus();loadAutoOpen();loadInitialActivity();connectSSE();
+updateOfflineBanner();
+checkAppUpdate();
+(function(){
+  const cur=localStorage.getItem('oc-lang')||localStorage.getItem('oc_lang')||'zh';
+  const btn=$('qrLangBtn');
+  if(btn)btn.textContent=cur==='zh'?'EN':'中文';
+})();
+</script>
+<script type="module">
+import { initI18nBundles, applyDataI18n } from '/js/i18n.js';
+await initI18nBundles();
+applyDataI18n(document);
 </script>
 </body>
 </html>

@@ -283,6 +283,18 @@ body{
 .msg-text ul,.msg-text ol{padding-left:20px;margin-bottom:8px}
 .msg-text li{margin-bottom:4px}
 .msg-text blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--text-secondary);margin:8px 0}
+.msg-text.msg-text--collapsed{max-height:220px;overflow:hidden;position:relative}
+.msg-text.msg-text--collapsed::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:40px;
+  pointer-events:none;
+}
+.msg.user .msg-text.msg-text--collapsed::after{background:linear-gradient(transparent,var(--user-bg))}
+.msg.ai .msg-text.msg-text--collapsed::after{background:linear-gradient(transparent,var(--bg-surface))}
+.msg-expand-btn{
+  display:block;margin-top:6px;padding:4px 0;font-size:11px;color:var(--accent);
+  background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;
+}
+.msg-expand-btn:hover{text-decoration:underline}
 
 .msg-attachments{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .msg-img{max-width:200px;max-height:200px;border-radius:var(--radius-sm);cursor:pointer;object-fit:cover}
@@ -2227,6 +2239,63 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 }
 
 /* ═══════════════════════════════════════════════════
+   Intent fusion panel (P0)
+   ═══════════════════════════════════════════════════ */
+.ip-badge{position:relative}
+.ip-badge.active{background:var(--bg-surface-hover);border-radius:var(--radius-sm)}
+.ip-panel{
+  position:absolute;top:calc(100% + 6px);right:8px;z-index:41;
+  width:min(360px,calc(100vw - 20px));max-height:78vh;overflow-y:auto;
+  background:var(--bg-secondary);border:1px solid var(--border-strong);
+  border-radius:var(--radius-md);box-shadow:0 12px 40px rgba(0,0,0,.35);
+  display:none;flex-direction:column;gap:0;padding:0;
+}
+.ip-panel.open{display:flex}
+.ip-header{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-bottom:1px solid var(--border);font-size:13px;font-weight:600;
+}
+.ip-header-title{flex:1}
+.ip-engine-status{font-size:10px;color:var(--text-muted)}
+.ip-engine-status.ok{color:var(--success)}
+.ip-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px}
+.ip-fusion-slot{padding:10px 12px;border-bottom:1px solid var(--border)}
+.ip-fusion-empty{font-size:12px;color:var(--text-muted)}
+.ip-fusion-intent{font-size:16px;font-weight:700;color:var(--accent)}
+.ip-fusion-meta{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.ip-fusion-bar{height:6px;background:var(--bg-surface);border-radius:4px;margin-top:8px;overflow:hidden}
+.ip-fusion-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a78bfa);border-radius:4px;transition:width .25s}
+.ip-channels{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px}
+.ip-ch-item{
+  display:flex;gap:8px;align-items:flex-start;padding:8px;
+  background:var(--bg-surface);border-radius:8px;border:1px solid var(--border);
+}
+.ip-ch-ico{font-size:16px;line-height:1}
+.ip-ch-label{font-size:10px;color:var(--text-muted)}
+.ip-ch-val{font-size:11px;color:var(--text-primary);word-break:break-all}
+.ip-timeline-wrap{padding:0 12px 8px}
+.ip-timeline-label{font-size:10px;color:var(--text-muted);margin-bottom:4px}
+.ip-stats{padding:0 12px 8px;font-size:10px;color:var(--text-muted)}
+.ip-actions{padding:0 12px 10px;display:flex;gap:8px}
+.ip-btn{
+  flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+  background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);
+}
+.ip-btn-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:var(--error)}
+.ip-btn-danger:hover{filter:brightness(1.08)}
+.ip-dev{padding:0 12px 10px;font-size:11px;color:var(--text-secondary)}
+.ip-dev summary{cursor:pointer;color:var(--accent)}
+.ip-dev-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ip-dev-btns button{
+  padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);
+  background:var(--bg-surface);color:var(--text-primary);cursor:pointer;
+}
+:root[data-theme="light"] .ip-panel{background:#fff;border-color:rgba(0,0,0,.1);box-shadow:0 8px 32px rgba(0,0,0,.12)}
+@media(max-width:480px){
+  .ip-panel{right:4px;width:calc(100vw - 16px)}
+}
+
+/* ═══════════════════════════════════════════════════
    Gesture Bindings Editor (B2)
    ═══════════════════════════════════════════════════ */
 .gb-container{margin-top:4px}
@@ -3416,9 +3485,15 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
     <!-- 统计卡片 -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-      <div class="wxp-stat-card"><div id="wxp-stat-today" class="wxp-stat-num">0</div><div class="wxp-stat-label">今日回复</div></div>
-      <div class="wxp-stat-card"><div id="wxp-stat-pending" class="wxp-stat-num">0</div><div class="wxp-stat-label">待审核</div></div>
-      <div class="wxp-stat-card"><div id="wxp-stat-total" class="wxp-stat-num">0</div><div class="wxp-stat-label">累计回复</div></div>
+      <div class="wxp-stat-card"><div id="wxp-stat-today" class="wxp-stat-num">0</div><div class="wxp-stat-label" data-i18n="wx.stat_today">今日回复</div></div>
+      <div class="wxp-stat-card"><div id="wxp-stat-pending" class="wxp-stat-num">0</div><div class="wxp-stat-label" data-i18n="wx.stat_pending">待审核</div></div>
+      <div class="wxp-stat-card"><div id="wxp-stat-total" class="wxp-stat-num">0</div><div class="wxp-stat-label" data-i18n="wx.stat_total">累计回复</div></div>
+    </div>
+    <div class="wxp-spark-wrap" style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:10px;color:#8a9bb0;margin-bottom:6px" data-i18n="wx.spark_label">回复增量趋势</div>
+      <svg id="wxp-reply-spark" width="100%" height="36" viewBox="0 0 240 36" preserveAspectRatio="none" aria-hidden="true">
+        <polyline id="wxp-spark-line" fill="none" stroke="#63b3ed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="0,18 240,18"/>
+      </svg>
     </div>
 
     <!-- 安全设置 -->
@@ -4033,6 +4108,8 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
 <script type="module">
 const _v = '?v=' + Date.now();
+const { initI18nBundles } = await import('/js/i18n.js' + _v);
+await initI18nBundles();
 const { init: initState, bus: _bus } = await import('/js/state.js' + _v);
 const { init: initWsManager } = await import('/js/ws-manager.js' + _v);
 const { init: initChat } = await import('/js/chat.js' + _v);
@@ -4311,6 +4388,11 @@ if (window.__appLoadingDone) window.__appLoadingDone();
   </div>
 </div>
 
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+</script>
 </body>
 </html>
 

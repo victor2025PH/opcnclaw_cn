@@ -221,6 +221,25 @@ export const I18N = {
     'onboard.step3':'更多功能','onboard.step3Desc':'点击这里查看摄像头、技能中心、模型管理等高级功能',
     'onboard.skip':'跳过','onboard.next':'下一步','onboard.done':'开始使用',
     'mode.simple':'简洁模式','mode.pro':'专业模式',
+    'ui.expand':'展开全文','ui.collapse':'收起',
+    'intent.title':'意图融合',
+    'intent.badge_title':'意图融合状态',
+    'intent.ch_gaze':'注视',
+    'intent.ch_expr':'表情',
+    'intent.ch_voice':'语音',
+    'intent.ch_touch':'触控',
+    'intent.ch_desktop':'桌面',
+    'intent.fusion_none':'暂无融合结果',
+    'intent.boosted':'跨模态增强',
+    'intent.stats':'信号 / 融合 / 紧急',
+    'intent.engine_on':'引擎运行中',
+    'intent.engine_off':'引擎未运行',
+    'intent.timeline':'500ms 窗口信号',
+    'intent.emergency':'紧急停止',
+    'intent.dev_tests':'开发 · 测试信号',
+    'intent.test_nod':'点头',
+    'intent.test_voice':'语音确认',
+    'intent.test_touch':'触控点击',
   },
   en: {
     'setup.title':'十三香小龙虾','setup.subtitle':'Scan QR code to connect to your host',
@@ -408,10 +427,29 @@ export const I18N = {
     'onboard.step3':'More Features','onboard.step3Desc':'Tap here for camera, skill center, model management and more',
     'onboard.skip':'Skip','onboard.next':'Next','onboard.done':'Get Started',
     'mode.simple':'Simple','mode.pro':'Pro',
+    'ui.expand':'Show more','ui.collapse':'Show less',
+    'intent.title':'Intent fusion',
+    'intent.badge_title':'Intent fusion',
+    'intent.ch_gaze':'Gaze',
+    'intent.ch_expr':'Expression',
+    'intent.ch_voice':'Voice',
+    'intent.ch_touch':'Touch',
+    'intent.ch_desktop':'Desktop',
+    'intent.fusion_none':'No fused intent yet',
+    'intent.boosted':'Boosted',
+    'intent.stats':'Signals / Fusions / Emergency',
+    'intent.engine_on':'Engine running',
+    'intent.engine_off':'Engine off',
+    'intent.timeline':'500ms window',
+    'intent.emergency':'Emergency stop',
+    'intent.dev_tests':'Dev · test signals',
+    'intent.test_nod':'Nod',
+    'intent.test_voice':'Voice confirm',
+    'intent.test_touch':'Touch tap',
   }
 };
 
-export let currentLang = localStorage.getItem('oc_lang') || 'zh';
+export let currentLang = localStorage.getItem('oc-lang') || localStorage.getItem('oc_lang') || 'zh';
 
 export function t(key, vars) {
   let text = I18N[currentLang]?.[key] || I18N['en']?.[key] || key;
@@ -437,8 +475,15 @@ export function applyLang() {
   });
 }
 
+export function mergeI18nBundles(zhPatch, enPatch) {
+  if (zhPatch && typeof zhPatch === 'object') Object.assign(I18N.zh, zhPatch);
+  if (enPatch && typeof enPatch === 'object') Object.assign(I18N.en, enPatch);
+  applyLang();
+}
+
 export function setLang(lang) {
   currentLang = lang;
+  localStorage.setItem('oc-lang', lang);
   localStorage.setItem('oc_lang', lang);
   S.SYSTEM_PROMPT = t('systemPrompt');
   applyLang();

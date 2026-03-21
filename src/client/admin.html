@@ -187,8 +187,22 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
 
 /* ── Empty ──────────────────────────────────────────── */
 .empty { text-align:center; padding:48px 20px; color:var(--text2); }
-.empty .icon { font-size:48px; margin-bottom:12px; }
-.empty .text { font-size:14px; }
+.empty .icon { font-size:56px; margin-bottom:12px; line-height:1; filter:drop-shadow(0 4px 12px rgba(108,99,255,.2)); }
+.empty .text { font-size:14px; max-width:280px; margin:0 auto; line-height:1.5; }
+.empty .sub { font-size:12px; color:var(--text2); opacity:.75; margin-top:8px; }
+@keyframes skel-shimmer {
+  0%{ background-position:200% 0; }
+  100%{ background-position:-200% 0; }
+}
+.stat-cards.skeleton-loading > .stat-card,
+.skeleton-loading.table-wrap {
+  position:relative; overflow:hidden;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+  background: linear-gradient(110deg, var(--bg3) 0%, var(--bg4) 40%, var(--bg3) 80%);
+  background-size: 200% 100%;
+}
+.stat-cards.skeleton-loading > .stat-card .value,
+.stat-cards.skeleton-loading > .stat-card .sub { color: transparent !important; }
 
 /* ── Responsive ─────────────────────────────────────── */
 @media(max-width:768px) {
@@ -1226,12 +1240,21 @@ function _stopDashPolling() {
 }
 
 async function refreshDashboard() {
-  const [status, execs] = await Promise.all([
-    api('/api/workflow/status'),
-    api('/api/workflow/executions?limit=10'),
-  ]);
-
   const cards = document.getElementById('stat-cards');
+  if (cards) cards.classList.add('skeleton-loading');
+
+  let status, execs;
+  try {
+    [status, execs] = await Promise.all([
+      api('/api/workflow/status'),
+      api('/api/workflow/executions?limit=10'),
+    ]);
+  } finally {
+    if (cards) cards.classList.remove('skeleton-loading');
+  }
+
+  if (!status) return;
+
   if (status.available === false) {
     cards.innerHTML = '<div class="empty"><div class="icon">⚠️</div><div class="text">工作流引擎不可用</div></div>';
   } else {
@@ -1258,7 +1281,7 @@ async function loadWorkflows(category = '') {
 function renderWorkflowTable(wfs) {
   const el = document.getElementById('workflow-list');
   if (!wfs.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">📭</div><div class="text">暂无工作流</div></div>';
+    el.innerHTML = '<div class="empty"><div class="icon">📭</div><div class="text">暂无工作流</div><div class="sub">创建或导入工作流以开始自动化</div></div>';
     return;
   }
 
@@ -1564,7 +1587,7 @@ async function loadMoreHistory() {
 
 function renderExecList(container, execs) {
   if (!execs.length) {
-    container.innerHTML = '<div class="empty"><div class="icon">📭</div><div class="text">暂无执行记录</div></div>';
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><div class="text">暂无执行记录</div><div class="sub">运行工作流后将在此显示时间线</div></div>';
     return;
   }
   container.innerHTML = execs.map(renderExecItem).join('');
@@ -3291,8 +3314,18 @@ function setTheme(theme) {
 
 let _i18nCache = {};
 async function loadI18n(lang) {
-  const data = await api(`/api/i18n/translations${lang ? '?lang='+lang : ''}`);
-  _i18nCache = data.translations || {};
+  const L = lang || localStorage.getItem('oc-lang') || localStorage.getItem('oc_lang') || 'zh';
+  let local = {};
+  try {
+    const r = await fetch('/i18n/' + L + '.json');
+    if (r.ok) local = await r.json();
+  } catch (_) { /* offline */ }
+  let remote = {};
+  try {
+    const data = await api(`/api/i18n/translations?lang=${encodeURIComponent(L)}`);
+    remote = data.translations || {};
+  } catch (_) { /* API optional */ }
+  _i18nCache = { ...local, ...remote };
   document.querySelectorAll('.i18n[data-key]').forEach(el => {
     const key = el.dataset.key;
     if (_i18nCache[key]) el.textContent = _i18nCache[key];
@@ -3300,7 +3333,11 @@ async function loadI18n(lang) {
 }
 function i18n(key) { return _i18nCache[key] || key; }
 async function switchLang(lang) {
-  await api('/api/i18n/language', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lang})});
+  localStorage.setItem('oc-lang', lang);
+  localStorage.setItem('oc_lang', lang);
+  try {
+    await api('/api/i18n/language', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lang})});
+  } catch (_) { /* optional */ }
   await loadI18n(lang);
   showToast(lang === 'zh' ? '已切换到中文' : 'Switched to English', 'success');
 }

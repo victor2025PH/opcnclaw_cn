@@ -3,6 +3,7 @@ import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, bus } from '/js/state.js'
 import { initWechatPanel } from '/js/settings-wechat.js';
 import { initModelPanel, initMcpPanel, initModelDepGraph } from '/js/settings-models.js';
 import { initMessageSearch, initBookmarks, initReactions, initTranslate, initMessageExport, initMessageEdit, initPinnedMessages, initSummary } from '/js/settings-chat.js';
+import { initIntentPanel } from '/js/intent-panel.js';
 import { initCoworkPanel } from '/js/cowork-panel.js';
 import { initGestureBindings } from '/js/gesture-bindings.js';
 import { initActionTimeline } from '/js/action-timeline.js';
@@ -2408,6 +2409,7 @@ export function init() {
   initTranslate();
   initKeymapPanel();
   initOnboarding();
+  initIntentPanel();
   initCoworkPanel();
   initGestureBindings();
   initActionTimeline();

@@ -31,55 +31,48 @@
 
 ## v4.1.0 任务
 
-### P0. 意图融合面板 UI（2 天）— 依赖 Claude API
-> 等 Claude 完成 `POST /api/intent/signal` 和 `GET /api/intent/state` 后开始
+### P0. 意图融合面板 UI（2 天）— ✅ 已完成
+- [x] 新建 `src/client/js/intent-panel.js`（ES Module）
+- [x] app.html 头部 `🧠` 按钮 + 下拉面板（样式对齐 CoworkBus）
+- [x] 五通道展示（注视 gaze / 表情 expression / 语音 voice / 触控 touch / 桌面 desktop）+ 各通道最近信号
+- [x] 当前融合结果：`current_intent` + 置信度进度条 + 跨模态增强提示
+- [x] 500ms 窗口 SVG 时间线（各通道圆点）
+- [x] 紧急停止：`POST /api/intent/emergency`
+- [x] `GET /api/intent/state` 每 2 秒轮询；开发区折叠：`POST /api/intent/signal` 测试（点头/语音/触控）
+- [x] `settings.js` 中 `initIntentPanel()`；溢出菜单入口
 
-- [ ] 新建 `src/client/js/intent-panel.js`（ES Module）
-- [ ] app.html 添加意图融合可视化面板
-- [ ] 四通道信号实时显示（手势🖐️ / 表情😊 / 语音🎤 / 触控👆）
-- [ ] 当前融合结果高亮（最终识别的意图 + 置信度进度条）
-- [ ] 信号时间线（500ms 窗口内各通道信号时序图）
-- [ ] 紧急停止大按钮（🛑 优先级最高）
-- [ ] 数据来源: `GET /api/intent/state`（2秒轮询）
-- [ ] 发送测试信号: `POST /api/intent/signal`
-- [ ] CSS: 沿用 CoworkBus 面板风格
+### P1. 更新通知 UI（0.5 天）— ✅ 已完成
+- [x] QR 启动：`GET /api/update/check`，失败回退 `GET /api/system/update-check`（后端已加别名路由）
+- [x] 有更新时顶部绿色横幅：版本号 + changelog 摘要 + GitHub Releases
+- [x] 「忽略此版本」→ `localStorage` `oc-update-dismiss`
+- [x] 仅在线时检查；与离线横幅分层（z-index）
 
-### P1. 更新通知 UI（0.5 天）— 依赖 Claude API
-> 等 Claude 完成 `GET /api/system/update-check` 后开始
+### P2. 移动端 PWA 增强（1 天）— ✅ 已完成
+- [x] QR 页面注册 Service Worker（`qr-sw.js`，缓存版本 `oc-qr-v2`）
+- [x] `qr-manifest.json`（图标 + 主题色 + standalone + shortcuts）
+- [x] 离线：`/api/events` 等 API 网络优先+缓存回退；活动列表 `localStorage` 持久化 + 离线横幅
+- [x] `beforeinstallprompt` 添加到主屏幕提示条（已有）
+- [x] SW 预缓存 `/i18n/*.json` 供离线文案
 
-- [ ] QR 页面启动时检查更新: `GET /api/system/update-check`
-- [ ] 有更新时显示顶部横幅（版本号 + 下载链接 + 关闭按钮）
-- [ ] 更新横幅 CSS（渐变背景、圆角、响应式）
-- [ ] 忽略此版本功能（localStorage 记录 dismissed 版本）
+### P3. 国际化 (i18n) 架构（2 天）— ✅ 已完成
+- [x] `src/client/js/i18n.js`：`initI18nBundles`、`applyDataI18n`、`formatDate`/`formatNumber`（Intl）
+- [x] `src/client/i18n/zh.json`、`en.json`（QR 主文案 + Admin nav 键 + wx 统计标签等）
+- [x] App：`initI18nBundles()` 在 `initState` 之前执行，合并进 `state.js` 的 `I18N`
+- [x] QR：`data-i18n` + 底部 EN/中文 切换（`oc-lang` / `oc_lang` 双写）
+- [x] Admin：`loadI18n` 先拉本地 JSON，再合并后端 `/api/i18n/translations`（可选）
+- [x] `state.js`：`mergeI18nBundles`、`currentLang` 读取 `oc-lang`
 
-### P2. 移动端 PWA 增强（1 天）
-- [ ] QR 页面注册 Service Worker
-- [ ] manifest.json（图标 + 主题色 + 名称）
-- [ ] 离线可查看历史状态和活动
-- [ ] 添加到主屏幕支持
-- [ ] iOS/Android 兼容测试
+### P4. 在线体验 Demo 页（3 天）— ✅ 已完成（MVP）
+- [x] `src/client/demo.html`：Hero + 功能卡片 + 纯前端模拟聊天 + 对比表 + CTA
+- [x] `GET /demo`、`GET /demo/` → `FileResponse`（`main.py`）
+- [x] QR 导航增加「在线体验」→ `/demo`；GitHub Star 外链
+- [ ] 后续可选：嵌入 GIF/视频、多语言、与 `version.txt` 联动下载链接
 
-### P3. 国际化 (i18n) 架构（2 天）
-- [ ] 新建 `src/client/js/i18n.js`（ES Module）
-- [ ] 中文/英文 JSON 语言包（`src/client/i18n/zh.json`, `en.json`）
-- [ ] QR + Admin + App 三页面文案替换
-- [ ] 语言切换 UI（admin 已有按钮框架）
-- [ ] localStorage 持久化 `oc-lang`
-- [ ] 日期/数字格式本地化
-
-### P4. 在线体验 Demo 页（3 天）
-- [ ] 新建 `src/client/demo.html`
-- [ ] 录屏 GIF/视频展示核心功能（语音交互/微信/桌面控制/人机协作）
-- [ ] 交互式模拟聊天界面（纯前端演示）
-- [ ] 功能对比表（vs 其他同类产品）
-- [ ] 下载按钮 + GitHub Star 按钮
-- [ ] 响应式（移动端可看）
-
-### P5. UI 细节打磨（1 天）
-- [ ] app.html 聊天界面长消息折叠/展开
-- [ ] 微信面板回复速度图表（sparkline）
-- [ ] Admin 页面加载骨架屏（skeleton loading）
-- [ ] 所有面板空状态插图
+### P5. UI 细节打磨（1 天）— ✅ 已完成
+- [x] `chat.js`：长消息（≥720 字）折叠 +「展开全文/收起」
+- [x] 微信面板：`#wxp-reply-spark` SVG 折线（今日回复增量趋势，轮询采样）
+- [x] Admin：`refreshDashboard` 请求期 `stat-cards.skeleton-loading` 骨架闪烁动画
+- [x] 空状态：`.empty` 增强（更大 emoji、副标题 `sub`）；工作流/执行记录等补充说明文案
 
 ---
 
@@ -99,9 +92,11 @@
 
 | API | 用途 | 我方消费位置 | 状态 |
 |-----|------|-------------|------|
-| `POST /api/intent/signal` | 发送多模态信号 | P0 意图面板 | ⏳ Claude 开发中 |
-| `GET /api/intent/state` | 融合状态查询 | P0 意图面板 | ⏳ Claude 开发中 |
-| `GET /api/system/update-check` | 检查更新 | P1 更新通知 | ⏳ Claude 开发中 |
+| `POST /api/intent/signal` | 发送多模态信号 | P0 意图面板 | ✅ |
+| `GET /api/intent/state` | 融合状态查询 | P0 意图面板 | ✅ |
+| `POST /api/intent/emergency` | 紧急停止 | P0 意图面板 | ✅ |
+| `GET /api/update/check` | 检查更新（主） | P1 QR 横幅 | ✅ |
+| `GET /api/system/update-check` | 检查更新（别名） | P1 回退 | ✅ |
 
 ## 已有可直接用的 API（无需等待）
 

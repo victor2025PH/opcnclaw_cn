@@ -28,6 +28,38 @@ export function initWechatPanel() {
   }
 
   let _lastReplyCount = -1;
+  let _wxpLastToday = null;
+  const _wxpSparkDeltas = [];
+
+  function wxpDrawSparkline() {
+    const line = document.getElementById('wxp-spark-line');
+    if (!line || _wxpSparkDeltas.length < 2) {
+      if (line) line.setAttribute('points', '4,18 236,18');
+      return;
+    }
+    const w = 240;
+    const h = 36;
+    const pad = 4;
+    const max = Math.max(0.01, ..._wxpSparkDeltas);
+    const n = _wxpSparkDeltas.length;
+    const pts = _wxpSparkDeltas.map((v, i) => {
+      const x = pad + (n === 1 ? (w - pad * 2) / 2 : (i / (n - 1)) * (w - pad * 2));
+      const y = h - pad - (v / max) * (h - pad * 2);
+      return `${x},${y}`;
+    }).join(' ');
+    line.setAttribute('points', pts);
+  }
+
+  function wxpPushSparkSample(todayVal) {
+    const t = Number(todayVal) || 0;
+    if (_wxpLastToday !== null) {
+      const delta = Math.max(0, t - _wxpLastToday);
+      _wxpSparkDeltas.push(delta);
+      if (_wxpSparkDeltas.length > 48) _wxpSparkDeltas.shift();
+      wxpDrawSparkline();
+    }
+    _wxpLastToday = t;
+  }
 
   async function wxpRefresh() {
     try {
@@ -69,6 +101,7 @@ export function initWechatPanel() {
     document.getElementById('wxp-stat-today').textContent = d.today_replied ?? 0;
     document.getElementById('wxp-stat-pending').textContent = d.pending_count ?? 0;
     document.getElementById('wxp-stat-total').textContent = d.total_replied ?? 0;
+    wxpPushSparkSample(d.today_replied ?? 0);
 
     wxpRenderContacts(d.contacts || {});
     wxpRenderLogs(d.logs || []);
