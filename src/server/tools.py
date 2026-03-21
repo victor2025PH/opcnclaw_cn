@@ -748,10 +748,11 @@ async def desktop_screenshot() -> Dict[str, Any]:
         from .routers.desktop import desktop
         if not desktop:
             return {"error": "桌面控制不可用"}
-        content = desktop.get_screen_content()
+        items = desktop.ocr_screen(force=True)
+        text = " | ".join(i["text"] for i in items[:50])
         return {
-            "text": content.get("text", "")[:2000],
-            "elements_count": len(content.get("elements", [])),
+            "text": text[:2000],
+            "elements_count": len(items),
             "screen_size": f"{desktop.screen_w}x{desktop.screen_h}",
         }
     except Exception as e:

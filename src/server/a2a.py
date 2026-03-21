@@ -491,19 +491,26 @@ def _register_builtin_skills(server: A2AServer):
     async def _screenshot(task: A2ATask) -> dict:
         """截屏"""
         try:
-            from .desktop import get_screen_content
-            content = get_screen_content()
-            task.add_artifact("screenshot", "image", content.get("screenshot_base64", ""))
-            return {"ocr_text": content.get("text", ""), "elements_count": len(content.get("elements", []))}
+            from .routers.desktop import desktop
+            if not desktop:
+                return {"error": "桌面控制不可用"}
+            b64 = desktop.capture_screenshot_b64()
+            task.add_artifact("screenshot", "image", b64[:100] + "...")
+            items = desktop.ocr_screen()
+            text = " | ".join(i["text"] for i in items[:30])
+            return {"ocr_text": text[:1000], "elements_count": len(items)}
         except Exception as e:
             return {"error": str(e)}
 
     async def _ocr(task: A2ATask) -> dict:
         """OCR 识别"""
         try:
-            from .desktop import get_screen_content
-            content = get_screen_content()
-            return {"text": content.get("text", ""), "elements": content.get("elements", [])}
+            from .routers.desktop import desktop
+            if not desktop:
+                return {"error": "桌面控制不可用"}
+            items = desktop.ocr_screen(force=True)
+            return {"text": " | ".join(i["text"] for i in items[:50]),
+                    "elements": items[:30]}
         except Exception as e:
             return {"error": str(e)}
 
