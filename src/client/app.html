@@ -252,7 +252,7 @@ body{
 
 /* Messages */
 .messages-area{
-  flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px;
   scroll-behavior:smooth;overscroll-behavior:contain;
 }
 .messages-area::-webkit-scrollbar{width:4px}
@@ -338,8 +338,9 @@ body{
 
 /* Input Area */
 .input-area{
-  flex-shrink:0;padding:8px 12px;padding-bottom:calc(8px + var(--safe-bottom));
+  flex-shrink:0;min-height:56px;padding:8px 12px;padding-bottom:calc(8px + var(--safe-bottom));
   background:var(--bg-secondary);border-top:1px solid var(--border);
+  position:sticky;bottom:0;z-index:10;
 }
 .preview-bar{display:flex;gap:8px;padding:8px 4px;overflow-x:auto}
 .preview-bar:empty{display:none}
@@ -3072,6 +3073,27 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <option value="waveform" data-i18n="settings.vizWave">波形</option>
           <option value="bars" data-i18n="settings.vizBars">频谱条</option>
         </select>
+      </div>
+      <div class="settings-group" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <h3 data-i18n="settings.petDesktop">🎨 桌宠</h3>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.45" data-i18n="settings.petHint">调节桌宠球体随麦克风/朗读音量缩放的程度（仅影响桌宠窗口）</p>
+        <div class="settings-row" style="align-items:center;gap:10px">
+          <span class="settings-label" style="min-width:100px" data-i18n="settings.petMicGain">麦克风灵敏度</span>
+          <input type="range" id="pet-mic-gain" min="0.25" max="2.5" step="0.05" value="1" style="flex:1;min-width:0">
+          <span id="pet-mic-gain-val" style="font-size:12px;color:var(--text-secondary);width:40px;text-align:right;font-variant-numeric:tabular-nums">1.00</span>
+        </div>
+        <div class="settings-row" style="align-items:center;gap:10px;margin-top:8px">
+          <span class="settings-label" style="min-width:100px" data-i18n="settings.petPlaybackGain">朗读灵敏度</span>
+          <input type="range" id="pet-playback-gain" min="0.25" max="2.5" step="0.05" value="1" style="flex:1;min-width:0">
+          <span id="pet-playback-gain-val" style="font-size:12px;color:var(--text-secondary);width:40px;text-align:right;font-variant-numeric:tabular-nums">1.00</span>
+        </div>
+        <div class="settings-row" style="align-items:center;gap:10px;margin-top:10px">
+          <span class="settings-label" style="min-width:100px" data-i18n="settings.petLevelMode">电平合并</span>
+          <select id="pet-level-mode" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0">
+            <option value="sum" data-i18n="settings.petLevelSum">相加（默认）</option>
+            <option value="max" data-i18n="settings.petLevelMax">取较大</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="settings-group">

@@ -1,4 +1,5 @@
 import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, setLang, currentLang } from '/js/state.js';
+import { petSetVisualState, petSetSubtitle } from '/js/pet-bridge.js';
 
 // ═══════════════════════════════════════════════════
 // CONNECTION & SETUP
@@ -140,6 +141,25 @@ function stopQrScanner() {
 }
 
 // ═══════════════════════════════════════════════════
+// RETRY HELPER — retries failed fetch (network / 5xx) up to N times
+// ═══════════════════════════════════════════════════
+
+async function _fetchRetry(url, opts, retries = 2, delay = 800) {
+  let lastResp;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      lastResp = await fetch(url, opts);
+      if (lastResp.ok || lastResp.status < 500) return lastResp;
+      if (i < retries) await new Promise(r => setTimeout(r, delay * (i + 1)));
+    } catch (err) {
+      if (i >= retries) throw err;
+      await new Promise(r => setTimeout(r, delay * (i + 1)));
+    }
+  }
+  return lastResp;
+}
+
+// ═══════════════════════════════════════════════════
 // TEXT CHAT
 // ═══════════════════════════════════════════════════
 
@@ -172,6 +192,8 @@ async function sendTextMessage(text) {
   S.isSending = true;
   dom.sendBtn.disabled = true;
   if (S.isPlayingAudio) fn.stopSpeaking();
+  petSetVisualState('thinking');
+  petSetSubtitle('');
   hideWelcome();
 
   const imageData = [];
@@ -201,7 +223,7 @@ async function sendTextMessage(text) {
 
   try {
     const body = { messages: buildMessages(), model: 'deepseek-chat', stream: true };
-    const resp = await fetch(`${getBaseUrl()}/api/chat`, {
+    const resp = await _fetchRetry(`${getBaseUrl()}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -234,6 +256,7 @@ async function sendTextMessage(text) {
           if (delta != null && delta !== '') {
             fullText += delta;
             updateStreamingEl(aiEl, fullText);
+            petSetSubtitle(fullText.slice(0, 160));
           }
         } catch {}
       }
@@ -243,10 +266,16 @@ async function sendTextMessage(text) {
     finalizeStreamingEl(aiEl, fullText);
 
     if (fullText.trim()) speakText(fullText);
+    else {
+      petSetVisualState('idle');
+      petSetSubtitle('');
+    }
   } catch (e) {
     console.error('Chat error:', e);
     aiMsg.content = t('error.prefix', {msg: e.message});
     finalizeStreamingEl(aiEl, aiMsg.content);
+    petSetVisualState('error');
+    petSetSubtitle(aiMsg.content.slice(0, 120));
   }
 
   S.isSending = false;
@@ -260,7 +289,11 @@ async function speakText(text) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.slice(0, 500) }),
     });
-    if (!resp.ok) return;
+    if (!resp.ok) {
+      petSetVisualState('idle');
+      petSetSubtitle('');
+      return;
+    }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -285,8 +318,13 @@ async function speakText(text) {
         } catch {}
       }
     }
+    if (!S.isPlayingAudio && (!S.audioQueue || S.audioQueue.length === 0)) {
+      petSetVisualState('idle');
+      petSetSubtitle('');
+    }
   } catch (e) {
     console.warn('TTS error:', e);
+    petSetVisualState('idle');
   }
 }
 
@@ -296,6 +334,8 @@ async function speakText(text) {
 
 async function sendTextMessageWithImage(text, image_b64) {
   if (S.isPlayingAudio) fn.stopSpeaking();
+  petSetVisualState('thinking');
+  petSetSubtitle('');
   hideWelcome();
   const userMsg = { role: 'user', content: text, imageData: [`data:image/jpeg;base64,${image_b64}`] };
   S.messages.push(userMsg);
@@ -306,7 +346,7 @@ async function sendTextMessageWithImage(text, image_b64) {
   const aiEl = appendMessage(aiMsg, true);
 
   try {
-    const resp = await fetch(`${getBaseUrl()}/api/vision`, {
+    const resp = await _fetchRetry(`${getBaseUrl()}/api/vision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, image_b64 }),
@@ -334,6 +374,7 @@ async function sendTextMessageWithImage(text, image_b64) {
           if (chunk) {
             fullText += chunk;
             updateStreamingEl(aiEl, fullText);
+            petSetSubtitle(fullText.slice(0, 160));
           }
         } catch {}
       }
@@ -341,10 +382,16 @@ async function sendTextMessageWithImage(text, image_b64) {
     aiMsg.content = fullText;
     finalizeStreamingEl(aiEl, fullText);
     if (fullText.trim()) speakText(fullText);
+    else {
+      petSetVisualState('idle');
+      petSetSubtitle('');
+    }
   } catch (e) {
     console.error('Vision chat error:', e);
     aiMsg.content = t('error.prefix', { msg: e.message });
     finalizeStreamingEl(aiEl, aiMsg.content);
+    petSetVisualState('error');
+    petSetSubtitle(aiMsg.content.slice(0, 120));
   }
 }
 
@@ -357,6 +404,8 @@ async function sendDesktopCommand(text) {
   S.isSending = true;
   dom.sendBtn.disabled = true;
   if (S.isPlayingAudio) fn.stopSpeaking();
+  petSetVisualState('thinking');
+  petSetSubtitle('');
   hideWelcome();
 
   const userMsg = { role: 'user', content: text.trim(), desktop: true };
@@ -422,6 +471,7 @@ async function sendDesktopCommand(text) {
             fullText += msg.text;
             const displayText = fullText.replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/g, '').trim();
             updateStreamingEl(aiEl, displayText);
+            petSetSubtitle(displayText.slice(0, 160));
           } else if (msg.type === 'executing') {
             const names = msg.actions.map(a => a.action === 'find_and_click' ? `${t('desktop.ai.clicking')} "${a.text}"` :
               a.action === 'type' ? `${t('desktop.ai.typing')} "${a.text?.slice(0,20)}"` :
@@ -455,11 +505,17 @@ async function sendDesktopCommand(text) {
     aiMsg.content = displayText;
     finalizeStreamingEl(aiEl, displayText);
     if (displayText.trim()) speakText(displayText);
+    else {
+      petSetVisualState('idle');
+      petSetSubtitle('');
+    }
 
   } catch (e) {
     console.error('Desktop cmd error:', e);
     aiMsg.content = t('error.prefix', {msg: e.message});
     finalizeStreamingEl(aiEl, aiMsg.content);
+    petSetVisualState('error');
+    petSetSubtitle(aiMsg.content.slice(0, 120));
   }
 
   if (statusEl) statusEl.remove();
@@ -580,19 +636,33 @@ function setupLongMessageCollapse(msgEl) {
   const plain = textEl.textContent || '';
   if (plain.length < LONG_MSG_CHARS) return;
   textEl.classList.add('msg-text--collapsed');
+  const textId = 'msg-text-' + Math.random().toString(36).slice(2, 9);
+  textEl.id = textId;
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'msg-expand-btn';
   btn.textContent = t('ui.expand');
+  btn.setAttribute('aria-expanded', 'false');
+  btn.setAttribute('aria-controls', textId);
+  btn.setAttribute('aria-label', t('ui.expand'));
   btn.addEventListener('click', () => {
     const collapsed = textEl.classList.toggle('msg-text--collapsed');
     btn.textContent = collapsed ? t('ui.expand') : t('ui.collapse');
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', collapsed ? t('ui.expand') : t('ui.collapse'));
   });
   const body = msgEl.querySelector('.msg-body');
   if (body) body.appendChild(btn);
 }
 
 function appendMessage(msg, streaming = false) {
+  // 安全检查：确保消息容器存在
+  if (!dom.messages || !dom.messages.parentNode) {
+    dom.messages = document.getElementById('messages');
+    dom.messagesArea = document.getElementById('messages-area');
+  }
+  if (!dom.messages) return null;
+
   const div = document.createElement('div');
   div.className = `msg ${msg.role === 'user' ? 'user' : 'ai'}`;
 

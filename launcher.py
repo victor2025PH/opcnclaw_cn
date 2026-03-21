@@ -503,6 +503,15 @@ def main():
             webbrowser.open(f"https://localhost:{cfg.https_port}/setup")
         else:
             webbrowser.open(f"https://localhost:{cfg.https_port}/app")
+            # 启动桌宠（小窗口）
+            try:
+                import threading
+                def _open_pet():
+                    import time as _t; _t.sleep(2)
+                    webbrowser.open(f"https://localhost:{cfg.https_port}/pet")
+                threading.Thread(target=_open_pet, daemon=True).start()
+            except Exception:
+                pass
 
     # 保持主线程运行
     logger.info(f"✅ 十三香小龙虾就绪！打开: https://localhost:{cfg.https_port}/app")
