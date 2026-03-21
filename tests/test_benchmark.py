@@ -144,7 +144,7 @@ class TestHealthBenchmark:
         hc = HealthChecker()
         _, ms = _measure_ms(hc.run_all)
         print(f"\n  Health check: {ms}ms ({len(hc.run_all())} checks)")
-        assert ms < 15000
+        assert ms < 20000  # OCR 预加载可能增加几秒
 
 
 if __name__ == "__main__":

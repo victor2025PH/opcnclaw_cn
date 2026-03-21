@@ -641,7 +641,16 @@ async def _startup_models_deferred(app: FastAPI):
             logger.debug(f"Ollama detection skipped: {e}")
             app.state.ollama_bridge = None
 
-    await asyncio.gather(_start_workflow(), _detect_ollama())
+    async def _preload_ocr():
+        """预加载 OCR 引擎（首次约 40s，之后 <1s）"""
+        try:
+            if desktop:
+                await asyncio.get_event_loop().run_in_executor(None, desktop._get_ocr)
+                logger.info("✅ OCR 引擎预加载完成")
+        except Exception as e:
+            logger.debug(f"OCR 预加载跳过: {e}")
+
+    await asyncio.gather(_start_workflow(), _detect_ollama(), _preload_ocr())
 
     # ── Mark startup complete ──
     _startup_progress["phase"] = "ready"

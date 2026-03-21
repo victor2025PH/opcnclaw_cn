@@ -161,10 +161,12 @@ class IntentFusionEngine:
     EMERGENCY_THRESHOLD = 0.6 # 紧急停止最低置信度
     MAX_HISTORY = 50          # 历史融合结果保留数
     SIGNAL_TTL = 2.0          # 信号过期时间（秒）
+    MAX_BUFFER = 200          # 信号缓冲区上限
+    MAX_LISTENERS = 20        # 监听器上限
 
     def __init__(self):
         self._buffer: List[Signal] = []
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # 保护 _buffer, _history, _current_intent, _stats
         self._last_fusion: float = 0.0
         self._current_intent: Optional[FusedIntent] = None
         self._history: List[FusedIntent] = []
@@ -201,7 +203,8 @@ class IntentFusionEngine:
 
         紧急停止信号立即处理，不等窗口。
         """
-        self._stats["signals_received"] += 1
+        with self._lock:
+            self._stats["signals_received"] += 1
 
         # 紧急停止：立即响应，不进入窗口
         if signal.intent == "stop" and signal.confidence >= self.EMERGENCY_THRESHOLD:
@@ -210,6 +213,9 @@ class IntentFusionEngine:
 
         with self._lock:
             self._buffer.append(signal)
+            # 防止缓冲区无限增长
+            if len(self._buffer) > self.MAX_BUFFER:
+                self._buffer = self._buffer[-self.MAX_BUFFER:]
 
     def push_raw(self, channel: str, name: str, confidence: float = 1.0,
                  params: dict = None, priority: int = 0):
@@ -224,7 +230,8 @@ class IntentFusionEngine:
 
     def on_intent(self, callback: Callable[[FusedIntent], None]):
         """注册融合结果监听器"""
-        self._listeners.append(callback)
+        if len(self._listeners) < self.MAX_LISTENERS:
+            self._listeners.append(callback)
 
     def on_emergency(self, callback: Callable):
         """注册紧急停止回调"""
@@ -302,22 +309,21 @@ class IntentFusionEngine:
         best = candidates[0]
 
         # 5. 去抖：与上次融合结果相同意图 + 间隔 < 1秒 → 跳过通知（防止 UI 闪烁）
-        if (self._current_intent
-                and self._current_intent.intent == best.intent
-                and (now - self._last_fusion) < 1.0
-                and abs(best.confidence - self._current_intent.confidence) < 0.15):
-            # 仅更新置信度，不重复通知
+        with self._lock:
+            if (self._current_intent
+                    and self._current_intent.intent == best.intent
+                    and (now - self._last_fusion) < 1.0
+                    and abs(best.confidence - self._current_intent.confidence) < 0.15):
+                self._current_intent = best
+                return
+
+            # 6. 更新状态（锁内保护 _current_intent + _history + _stats）
             self._current_intent = best
-            return
-
-        # 6. 更新状态
-        self._current_intent = best
-        self._history.append(best)
-        if len(self._history) > self.MAX_HISTORY:
-            self._history = self._history[-self.MAX_HISTORY:]
-
-        self._stats["fusions_performed"] += 1
-        self._last_fusion = now
+            self._history.append(best)
+            if len(self._history) > self.MAX_HISTORY:
+                self._history = self._history[-self.MAX_HISTORY:]
+            self._stats["fusions_performed"] += 1
+            self._last_fusion = now
 
         # 7. 通知监听器
         self._notify(best)

@@ -831,7 +831,7 @@ def init_wechat_v2(ai_backend=None, desktop=None):
     自动探测最优轨道（DB > wxauto > UIA > OCR），
     兼容旧版 API。
     """
-    global _adapter, _monitor, _engine, _engine
+    global _adapter, _monitor, _engine
 
     # 初始化新适配器
     try:
