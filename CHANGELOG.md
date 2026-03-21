@@ -1,5 +1,33 @@
 # Changelog
 
+## v5.0.0 (2026-03-21)
+
+### 一键 Agent 团队（核心创新）
+- 13 个 Agent 角色：CEO/研究员/写手/程序员/分析师/设计师/运营/客服/翻译/财务/法务/助理/导师
+- 7 个预置团队模板：创业/内容/技术/营销/学习/商务/全员
+- 每个 Agent 绑定不同 AI 平台（智谱/DeepSeek/百度）
+- CEO 自动拆解任务 → 并行分发 → 汇总审核
+- Agent 间消息总线 + 实时状态追踪
+- API: POST /api/agents/team/create, /execute, /status, /messages, /result
+
+### 文件双向传输（手机 ↔ 电脑）
+- 手机上传文件到电脑（自动保存到桌面）
+- 电脑推送文件到手机（下载链接）
+- 大文件上限 500MB，24h 自动清理
+- API: POST /api/files/upload, GET /api/files/list, GET /api/files/{id}/download
+
+### 手机远程控制电脑
+- remote.html: 全屏远程桌面页面
+- 触控映射：单击/长按右键/双指滚轮/三指切窗口
+- 虚拟键盘：快捷键栏(Ctrl+C/V/Z, Alt+Tab, Esc)
+- 剪贴板双向同步
+- 文件拖拽上传
+- API: POST /api/remote/clipboard, GET /api/remote/status
+
+### 测试
+- 新增 test_agent_team.py（24 tests）
+- 全量: 407 passed, 6 skipped
+
 ## v4.4.0 (2026-03-21)
 
 ### CI/CD 自动化

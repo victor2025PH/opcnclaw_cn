@@ -407,6 +407,7 @@ from .routers.mcp import router as mcp_router
 from .routers.intent import router as intent_router
 from .routers.a2a import router as a2a_router
 from .routers.users import router as users_router
+from .routers.agents import router as agents_router
 
 app.include_router(voice_router)
 app.include_router(desktop_router)
@@ -418,6 +419,7 @@ app.include_router(mcp_router)
 app.include_router(intent_router)
 app.include_router(a2a_router)
 app.include_router(users_router)
+app.include_router(agents_router)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1851,6 +1853,12 @@ async def call_mcp_desktop_tool(request: Request):
     return result
 
 
+@app.get("/remote")
+@app.get("/remote/")
+async def remote_page():
+    return FileResponse("src/client/remote.html")
+
+
 @app.get("/demo")
 @app.get("/demo/")
 async def demo_page():
@@ -2084,6 +2092,97 @@ async def push_test():
         except Exception as e:
             logger.debug(f"[Push] 发送失败 {cid}: {e}")
     return {"ok": True, "sent": sent, "total": len(_push_subscriptions)}
+
+
+# ── 文件传输 API ─────────────────────────────────────────────
+
+from fastapi import UploadFile, File as FastAPIFile
+
+@app.post("/api/files/upload")
+async def file_upload(file: UploadFile = FastAPIFile(...)):
+    """手机上传文件到电脑"""
+    from .file_transfer import get_transfer_manager
+    content = await file.read()
+    try:
+        record = get_transfer_manager().upload(file.filename or "unnamed", content)
+        return {"ok": True, "file": record.to_dict()}
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/files/list")
+async def file_list():
+    """文件传输历史"""
+    from .file_transfer import get_transfer_manager
+    return {"files": get_transfer_manager().list_records()}
+
+
+@app.get("/api/files/{file_id}/download")
+async def file_download(file_id: str):
+    """下载文件"""
+    from .file_transfer import get_transfer_manager
+    path = get_transfer_manager().get_file_path(file_id)
+    if not path:
+        return Response(content="文件不存在", status_code=404)
+    return FileResponse(str(path), filename=path.name)
+
+
+@app.post("/api/files/push")
+async def file_push(request: Request):
+    """电脑推送文件到手机"""
+    from .file_transfer import get_transfer_manager
+    body = await request.json()
+    source = body.get("path", "")
+    if not source:
+        return {"ok": False, "error": "缺少 path"}
+    record = get_transfer_manager().push(source)
+    if record:
+        return {"ok": True, "file": record.to_dict()}
+    return {"ok": False, "error": "文件不存在"}
+
+
+@app.delete("/api/files/{file_id}")
+async def file_delete(file_id: str):
+    """删除传输文件"""
+    from .file_transfer import get_transfer_manager
+    ok = get_transfer_manager().delete(file_id)
+    return {"ok": ok}
+
+
+# ── 远程剪贴板 API ───────────────────────────────────────────
+
+@app.post("/api/remote/clipboard")
+async def clipboard_sync(request: Request):
+    """剪贴板双向同步"""
+    body = await request.json()
+    action = body.get("action", "get")  # get / set
+
+    if action == "set":
+        # 手机 → 电脑剪贴板
+        text = body.get("text", "")
+        try:
+            import pyperclip
+            pyperclip.copy(text)
+            return {"ok": True, "action": "set"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    else:
+        # 电脑剪贴板 → 手机
+        try:
+            import pyperclip
+            text = pyperclip.paste()
+            return {"ok": True, "text": text[:10000]}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/remote/status")
+async def remote_status():
+    """远程连接状态"""
+    return {
+        "desktop_available": desktop is not None,
+        "screen_size": f"{desktop.screen_w}x{desktop.screen_h}" if desktop else "N/A",
+    }
 
 
 @app.post("/api/update/apply")

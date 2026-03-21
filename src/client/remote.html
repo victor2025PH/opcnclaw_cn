@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>十三香远程桌面</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; overflow: hidden; touch-action: none; }
+#screen { width: 100vw; height: 100vh; object-fit: contain; }
+#toolbar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,0.8); padding: 8px;
+  display: flex; gap: 8px; justify-content: center; z-index: 10;
+}
+.tb-btn {
+  padding: 8px 16px; border-radius: 8px; border: 1px solid #444;
+  background: #222; color: #fff; font-size: 13px; cursor: pointer;
+}
+.tb-btn.active { background: #6c63ff; border-color: #6c63ff; }
+#keyboard-bar {
+  position: fixed; bottom: 50px; left: 0; right: 0;
+  background: rgba(0,0,0,0.9); padding: 6px;
+  display: none; flex-wrap: wrap; gap: 4px; justify-content: center;
+}
+.kb-key {
+  padding: 6px 12px; border-radius: 6px; border: 1px solid #555;
+  background: #333; color: #fff; font-size: 12px; cursor: pointer;
+  min-width: 36px; text-align: center;
+}
+.kb-key:active { background: #6c63ff; }
+#status {
+  position: fixed; top: 8px; right: 8px; color: #0f0;
+  font-size: 11px; font-family: monospace; z-index: 10;
+}
+#file-input { display: none; }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div id="status">连接中...</div>
+
+<div id="keyboard-bar">
+  <button class="kb-key" onclick="sendKey('Escape')">Esc</button>
+  <button class="kb-key" onclick="sendKey('Tab')">Tab</button>
+  <button class="kb-key" onclick="sendHotkey(['ctrl','c'])">Ctrl+C</button>
+  <button class="kb-key" onclick="sendHotkey(['ctrl','v'])">Ctrl+V</button>
+  <button class="kb-key" onclick="sendHotkey(['ctrl','z'])">Ctrl+Z</button>
+  <button class="kb-key" onclick="sendHotkey(['ctrl','a'])">Ctrl+A</button>
+  <button class="kb-key" onclick="sendHotkey(['alt','tab'])">Alt+Tab</button>
+  <button class="kb-key" onclick="sendHotkey(['win','d'])">桌面</button>
+  <button class="kb-key" onclick="sendKey('Enter')">Enter</button>
+  <button class="kb-key" onclick="sendKey('Backspace')">⌫</button>
+  <button class="kb-key" onclick="sendKey('Delete')">Del</button>
+  <button class="kb-key" onclick="sendKey('space')">Space</button>
+</div>
+
+<div id="toolbar">
+  <button class="tb-btn" onclick="toggleKeyboard()">⌨️ 键盘</button>
+  <button class="tb-btn" onclick="uploadFile()">📁 上传文件</button>
+  <button class="tb-btn" onclick="syncClipboard()">📋 剪贴板</button>
+  <button class="tb-btn" onclick="sendHotkey(['win','d'])">🖥️ 桌面</button>
+  <button class="tb-btn" onclick="location.href='/app'">← 返回</button>
+</div>
+
+<input type="file" id="file-input" onchange="handleFileUpload(event)" multiple>
+
+<script>
+const BASE = location.origin;
+const canvas = document.getElementById('screen');
+const ctx = canvas.getContext('2d');
+const status = document.getElementById('status');
+let ws = null;
+let screenW = 1920, screenH = 1080;
+
+// ── WebSocket 连接 ──────────────────────────────
+function connect() {
+  const wsUrl = `ws://${location.hostname}:${location.port}/ws/desktop`;
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => { status.textContent = '已连接'; status.style.color = '#0f0'; };
+  ws.onclose = () => { status.textContent = '已断开'; status.style.color = '#f00'; setTimeout(connect, 3000); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'frame') {
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        screenW = img.width; screenH = img.height;
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = 'data:image/jpeg;base64,' + msg.data;
+    }
+  };
+}
+connect();
+
+// ── 触控映射 ─────────────────────────────────────
+let touchStart = null;
+let lastTap = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  touchStart = { x: t.clientX, y: t.clientY, time: Date.now(), touches: e.touches.length };
+});
+
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (!touchStart) return;
+  const dt = Date.now() - touchStart.time;
+  const rect = canvas.getBoundingClientRect();
+
+  if (touchStart.touches === 1 && dt < 300) {
+    // 单击
+    const nx = touchStart.x / rect.width;
+    const ny = touchStart.y / rect.height;
+    const now = Date.now();
+
+    if (now - lastTap < 300) {
+      // 双击
+      send({ type: 'mouse_dblclick', x: nx, y: ny });
+    } else {
+      send({ type: 'mouse_click', x: nx, y: ny, button: 'left' });
+    }
+    lastTap = now;
+  } else if (touchStart.touches === 1 && dt >= 500) {
+    // 长按 = 右键
+    const nx = touchStart.x / rect.width;
+    const ny = touchStart.y / rect.height;
+    send({ type: 'mouse_click', x: nx, y: ny, button: 'right' });
+  }
+  touchStart = null;
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (e.touches.length === 1 && touchStart) {
+    // 单指拖动 = 鼠标移动
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    send({ type: 'mouse_move', x: t.clientX / rect.width, y: t.clientY / rect.height });
+  } else if (e.touches.length === 2) {
+    // 双指滑动 = 滚轮
+    const dy = e.touches[0].clientY - touchStart.y;
+    if (Math.abs(dy) > 20) {
+      send({ type: 'mouse_scroll', dy: dy > 0 ? -3 : 3 });
+      touchStart.y = e.touches[0].clientY;
+    }
+  }
+});
+
+// 三指手势
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 3) {
+    e.preventDefault();
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now(), touches: 3 };
+  }
+});
+canvas.addEventListener('touchend', (e) => {
+  if (touchStart && touchStart.touches === 3) {
+    const dy = (e.changedTouches[0]?.clientY || 0) - touchStart.y;
+    if (dy < -50) sendHotkey(['alt', 'tab']);      // 三指上滑 = 切换窗口
+    else if (dy > 50) sendHotkey(['win', 'd']);     // 三指下滑 = 桌面
+  }
+});
+
+function send(msg) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+}
+
+function sendKey(key) { send({ type: 'key', key }); }
+function sendHotkey(keys) { send({ type: 'hotkey', keys }); }
+
+// ── 键盘 ─────────────────────────────────────────
+function toggleKeyboard() {
+  const kb = document.getElementById('keyboard-bar');
+  kb.style.display = kb.style.display === 'none' ? 'flex' : 'none';
+}
+
+// ── 文件上传 ─────────────────────────────────────
+function uploadFile() {
+  document.getElementById('file-input').click();
+}
+
+async function handleFileUpload(e) {
+  for (const file of e.target.files) {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const r = await fetch(`${BASE}/api/files/upload`, { method: 'POST', body: form });
+      const d = await r.json();
+      if (d.ok) {
+        status.textContent = `已上传: ${file.name}`;
+        setTimeout(() => { status.textContent = '已连接'; }, 3000);
+      }
+    } catch (err) {
+      status.textContent = `上传失败: ${err.message}`;
+    }
+  }
+  e.target.value = '';
+}
+
+// ── 剪贴板同步 ───────────────────────────────────
+async function syncClipboard() {
+  try {
+    // 读取电脑剪贴板
+    const r = await fetch(`${BASE}/api/remote/clipboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get' }),
+    });
+    const d = await r.json();
+    if (d.ok && d.text) {
+      await navigator.clipboard.writeText(d.text);
+      status.textContent = '剪贴板已同步到手机';
+      setTimeout(() => { status.textContent = '已连接'; }, 2000);
+    }
+  } catch (e) {
+    // 手机剪贴板 → 电脑
+    try {
+      const text = await navigator.clipboard.readText();
+      await fetch(`${BASE}/api/remote/clipboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set', text }),
+      });
+      status.textContent = '手机剪贴板已同步到电脑';
+    } catch (e2) {
+      status.textContent = '剪贴板同步失败';
+    }
+    setTimeout(() => { status.textContent = '已连接'; }, 2000);
+  }
+}
+</script>
+</body>
+</html>
