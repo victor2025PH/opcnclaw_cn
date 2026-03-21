@@ -17,7 +17,7 @@ import numpy as np
 
 from src.server.speaker_id import (
     SpeakerProfile, SpeakerManager, cosine_similarity,
-    EMBED_DIM, MATCH_THRESHOLD, USERS_DB_FILE,
+    EMBED_DIM, N_MFCC, MATCH_THRESHOLD, USERS_DB_FILE,
 )
 
 
@@ -34,24 +34,24 @@ def manager(tmp_path):
 
 class TestCosineSimilarity:
     def test_identical(self):
-        a = np.random.randn(256).astype(np.float32)
+        a = np.random.randn(EMBED_DIM).astype(np.float32)
         assert cosine_similarity(a, a) > 0.99
 
     def test_opposite(self):
-        a = np.ones(256, dtype=np.float32)
-        b = -np.ones(256, dtype=np.float32)
+        a = np.ones(EMBED_DIM, dtype=np.float32)
+        b = -np.ones(EMBED_DIM, dtype=np.float32)
         assert cosine_similarity(a, b) < -0.99
 
     def test_orthogonal(self):
-        a = np.zeros(256, dtype=np.float32)
+        a = np.zeros(EMBED_DIM, dtype=np.float32)
         a[0] = 1.0
-        b = np.zeros(256, dtype=np.float32)
+        b = np.zeros(EMBED_DIM, dtype=np.float32)
         b[1] = 1.0
         assert abs(cosine_similarity(a, b)) < 0.01
 
     def test_zero_vector(self):
-        a = np.zeros(256, dtype=np.float32)
-        b = np.ones(256, dtype=np.float32)
+        a = np.zeros(EMBED_DIM, dtype=np.float32)
+        b = np.ones(EMBED_DIM, dtype=np.float32)
         assert cosine_similarity(a, b) == 0.0
 
 
