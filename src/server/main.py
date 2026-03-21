@@ -1978,6 +1978,114 @@ async def network_status():
     return get_offline_manager().get_status()
 
 
+# ── IoT 智能家居 API ─────────────────────────────────────────
+
+@app.get("/api/iot/devices")
+async def iot_devices():
+    """IoT 设备列表"""
+    from .iot_bridge import get_iot_bridge
+    bridge = get_iot_bridge()
+    devices = await bridge.get_devices()
+    return {"devices": [d.to_dict() for d in devices], "configured": bridge.is_configured}
+
+
+@app.post("/api/iot/control")
+async def iot_control(request: Request):
+    """控制 IoT 设备"""
+    from .iot_bridge import get_iot_bridge
+    body = await request.json()
+    entity_id = body.get("entity_id", "")
+    action = body.get("action", "toggle")
+    value = body.get("value", {})
+
+    # 支持按名称查找
+    bridge = get_iot_bridge()
+    if not entity_id and body.get("name"):
+        dev = bridge.get_device_by_name(body["name"])
+        if dev:
+            entity_id = dev.id
+
+    if not entity_id:
+        return {"error": "请指定 entity_id 或 name"}
+    result = await bridge.control(entity_id, action, value)
+    return result
+
+
+@app.post("/api/iot/config")
+async def iot_config(request: Request):
+    """保存 HomeAssistant 配置"""
+    from .iot_bridge import get_iot_bridge
+    body = await request.json()
+    bridge = get_iot_bridge()
+    bridge.configure(body.get("url", ""), body.get("token", ""))
+    # 保存到 config.ini
+    try:
+        import configparser
+        cfg = configparser.ConfigParser()
+        cfg.read("config.ini", encoding="utf-8")
+        if not cfg.has_section("iot"):
+            cfg.add_section("iot")
+        cfg.set("iot", "homeassistant_url", body.get("url", ""))
+        cfg.set("iot", "homeassistant_token", body.get("token", ""))
+        with open("config.ini", "w", encoding="utf-8") as f:
+            cfg.write(f)
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+# ── Web Push API ─────────────────────────────────────────────
+
+_push_subscriptions: dict = {}  # client_id → subscription JSON
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(request: Request):
+    """注册 Web Push 订阅"""
+    body = await request.json()
+    sub = body.get("subscription")
+    if not sub:
+        return {"ok": False, "error": "缺少 subscription"}
+    # 用 endpoint 的 hash 作为 ID
+    import hashlib
+    endpoint = sub.get("endpoint", "")
+    client_id = hashlib.md5(endpoint.encode()).hexdigest()[:12]
+    _push_subscriptions[client_id] = {
+        "subscription": sub,
+        "created_at": time.time(),
+        "types": body.get("types", ["wechat", "system", "workflow"]),
+    }
+    logger.info(f"[Push] 新订阅: {client_id}")
+    return {"ok": True, "client_id": client_id}
+
+
+@app.get("/api/push/status")
+async def push_status():
+    """推送订阅状态"""
+    return {
+        "subscriptions": len(_push_subscriptions),
+        "clients": list(_push_subscriptions.keys()),
+    }
+
+
+@app.post("/api/push/test")
+async def push_test():
+    """发送测试推送"""
+    sent = 0
+    for cid, info in _push_subscriptions.items():
+        try:
+            from pywebpush import webpush
+            webpush(
+                subscription_info=info["subscription"],
+                data=json.dumps({"title": "十三香小龙虾", "body": "推送测试成功！", "icon": "/icon.png"}),
+                vapid_private_key="",  # 需要配置
+                vapid_claims={"sub": "mailto:admin@openclaw.ai"},
+            )
+            sent += 1
+        except Exception as e:
+            logger.debug(f"[Push] 发送失败 {cid}: {e}")
+    return {"ok": True, "sent": sent, "total": len(_push_subscriptions)}
+
+
 @app.post("/api/update/apply")
 async def apply_update():
     try:

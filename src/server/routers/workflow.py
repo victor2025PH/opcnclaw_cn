@@ -349,3 +349,41 @@ async def calendar_events(year: int = 0, month: int = 0):
         pass
 
     return {"ok": True, "year": y, "month": m, "events": events, "heatmap": heatmap}
+
+
+# ── RESTful 别名（供 Cursor 前端使用）─────────────────────────
+
+@router.get("/api/workflows")
+async def workflows_list_alias(category: str = ""):
+    """别名：GET /api/workflows → /api/workflow/list"""
+    return await workflow_list(category)
+
+
+@router.post("/api/workflows")
+async def workflows_create_alias(request: Request):
+    """别名：POST /api/workflows → /api/workflow/save"""
+    return await workflow_save(request)
+
+
+@router.put("/api/workflows/{wf_id}")
+async def workflows_update_alias(wf_id: str, request: Request):
+    """别名：PUT /api/workflows/{id} → /api/workflow/save (含ID)"""
+    return await workflow_save(request)
+
+
+@router.post("/api/workflows/{wf_id}/run")
+async def workflows_run_alias(wf_id: str, request: Request):
+    """别名：POST /api/workflows/{id}/run → /api/workflow/{id}/execute"""
+    return await workflow_execute(wf_id, request)
+
+
+@router.get("/api/workflows/{wf_id}/history")
+async def workflows_history_alias(wf_id: str, limit: int = 20):
+    """工作流执行历史"""
+    if not _WORKFLOW_AVAILABLE:
+        return {"history": []}
+    try:
+        execs = wf_store.list_executions(workflow_id=wf_id, limit=limit)
+        return {"history": [e.to_dict() for e in execs]}
+    except Exception as e:
+        return {"history": [], "error": str(e)}

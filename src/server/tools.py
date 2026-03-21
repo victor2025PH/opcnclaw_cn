@@ -312,6 +312,23 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    # ── IoT 工具 ──────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "iot_control",
+            "description": "控制智能家居设备。当用户说'关灯'、'开空调'、'调高温度'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "device_name": {"type": "string", "description": "设备名称，如'客厅灯'、'卧室空调'"},
+                    "action": {"type": "string", "description": "操作：on/off/toggle/set_temperature/set_brightness"},
+                    "value": {"type": "object", "description": "参数，如 {\"brightness\": 128} 或 {\"temperature\": 26}"},
+                },
+                "required": ["device_name", "action"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -862,6 +879,22 @@ async def read_wechat_messages(contact: str = "", count: int = 10) -> Dict[str, 
         return {"error": f"读取消息失败: {e}"}
 
 
+async def _iot_control_tool(device_name: str, action: str, value: dict = None) -> Dict[str, Any]:
+    """IoT 设备控制（工具接口）"""
+    try:
+        from .iot_bridge import get_iot_bridge
+        bridge = get_iot_bridge()
+        if not bridge.is_configured:
+            return {"error": "智能家居未配置，请在设置中配置 HomeAssistant"}
+        dev = bridge.get_device_by_name(device_name)
+        if not dev:
+            return {"error": f"未找到设备: {device_name}"}
+        result = await bridge.control(dev.id, action, value)
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
 async def call_tool(name: str, args: Dict[str, Any]) -> str:
     """Dispatch a tool call and return a JSON string result."""
     try:
@@ -906,6 +939,8 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
             result = await open_application(**args)
         elif name == "read_wechat_messages":
             result = await read_wechat_messages(**args)
+        elif name == "iot_control":
+            result = await _iot_control_tool(**args)
         else:
             result = {"error": f"未知工具: {name}"}
     except Exception as e:
