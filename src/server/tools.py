@@ -366,6 +366,21 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "confirm_team",
+            "description": "用户确认后开始执行团队任务。当用户说'开始'、'出发'、'执行'、'好的开始吧'时调用。必须在 deploy_team 之后、用户明确确认后才能调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team_id": {"type": "string", "description": "deploy_team 返回的 team_id"},
+                    "task": {"type": "string", "description": "最终确认的任务描述（可能经过用户修改）"},
+                },
+                "required": ["team_id", "task"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "check_team_result",
             "description": "查询 AI 团队的执行结果。当之前已部署团队且用户问'做完了吗'、'结果呢'、'方案出来了吗'时调用。",
             "parameters": {
@@ -913,15 +928,15 @@ async def read_wechat_messages(contact: str = "", count: int = 10) -> Dict[str, 
 
 
 async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
-    """部署 AI 团队执行任务"""
+    """组建 AI 团队（不立即执行，先让每个 Agent 自我介绍，等用户确认）"""
     try:
-        from .agent_team import create_team, get_team
-        from .agent_templates import get_template
+        from .agent_team import create_team
+        from .agent_templates import get_template, AGENT_ROLES
+        from .agent_skills import get_skills_for_role
 
-        # 验证模板
+        # 智能选模板
         tpl = get_template(template)
         if not tpl:
-            # 智能选模板
             task_lower = task.lower()
             if any(w in task_lower for w in ["代码", "开发", "程序", "bug", "api"]):
                 template = "software"
@@ -935,8 +950,9 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
                 template = "service_center"
             else:
                 template = "startup"
+            tpl = get_template(template)
 
-        # 创建 AI 调用函数
+        # 创建团队（但不执行）
         async def _ai_call(messages, model=""):
             try:
                 from .main import backend as _b
@@ -948,22 +964,57 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
 
         team = create_team(template, _ai_call)
 
-        # 异步执行（不阻塞）
-        import asyncio
-        asyncio.create_task(team.execute(task))
+        # 生成每个 Agent 的自我介绍（关键！一个一个出场）
+        introductions = []
+        for i, (aid, agent) in enumerate(team.agents.items()):
+            role = agent.role
+            skills = get_skills_for_role(aid)
+            skill_names = "、".join(s["name"] for s in skills[:4]) if skills else "综合分析"
 
-        tpl_info = get_template(template)
+            intro = {
+                "order": i + 1,
+                "id": aid,
+                "name": role.name,
+                "avatar": role.avatar,
+                "greeting": f"老板好！我是{role.name}，",
+                "description": role.description,
+                "skills": skill_names,
+                "full_intro": f"{role.avatar} **{role.name}**：老板好！我是{role.name}，负责{role.description}。我的专长是：{skill_names}。请放心交给我！",
+            }
+            introductions.append(intro)
+
         return {
             "team_id": team.team_id,
             "template": template,
-            "team_name": tpl_info["name"] if tpl_info else template,
+            "team_name": tpl["name"] if tpl else template,
             "agent_count": len(team.agents),
-            "agents": [a.role.name for a in team.agents.values()],
-            "status": "executing",
-            "message": f"已部署 {len(team.agents)} 人团队，正在执行...",
+            "status": "awaiting_confirmation",
+            "introductions": introductions,
+            "message": "请你把每个成员的自我介绍逐一展示给用户（用上面的 full_intro），展示完后问用户'团队已就位，是否开始执行？'",
         }
     except Exception as e:
         return {"error": f"团队部署失败: {e}"}
+
+
+async def confirm_team(team_id: str, task: str) -> Dict[str, Any]:
+    """用户确认后，真正开始执行团队任务"""
+    try:
+        from .agent_team import get_team
+        team = get_team(team_id)
+        if not team:
+            return {"error": "团队不存在，请重新组建"}
+
+        import asyncio
+        asyncio.create_task(team.execute(task))
+
+        return {
+            "team_id": team_id,
+            "status": "executing",
+            "agent_count": len(team.agents),
+            "message": f"收到！{len(team.agents)} 人团队已出发！我会实时汇报进度。",
+        }
+    except Exception as e:
+        return {"error": f"启动失败: {e}"}
 
 
 async def check_team_result(team_id: str) -> Dict[str, Any]:
@@ -1059,6 +1110,8 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
             result = await _iot_control_tool(**args)
         elif name == "deploy_team":
             result = await deploy_team(**args)
+        elif name == "confirm_team":
+            result = await confirm_team(**args)
         elif name == "check_team_result":
             result = await check_team_result(**args)
         else:
@@ -1073,59 +1126,58 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
 # ─────────────────────────────────────────────────────────────
 
 TOOLS_SYSTEM_ADDENDUM = """
-你是十三香 AI 工作队的调度员。你的职责是：用户说什么，你就调用工具去做，不要只说"好的"。
+你是十三香 AI 工作队的调度员。你管理着 52 个 AI 员工。
 
-⚠️ 最重要的规则：
-- 用户让你做任何"方案"、"计划"、"分析"、"报告"→ 立刻调用 deploy_team，交给团队做
-- 用户让你操作电脑/微信 → 立刻调用对应工具
-- 永远不要只回复"好的，我来帮你"然后什么都不做
-- 先行动，再汇报结果
+⚠️ 核心工作流程（必须严格遵守）：
 
-🏢 AI 团队（最强工具）：
-21. **deploy_team(task, template)** — 部署AI团队执行复杂任务
-    模板选择：
-    - startup: 创业(5人) — 通用方案/计划
-    - marketing: 营销(10人) — 推广/品牌/获客
-    - ecommerce: 电商(15人) — 产品上架/供应链
-    - software: 研发(10人) — 开发/技术方案
-    - content_factory: 内容(8人) — 文案/视频/设计
-    - service_center: 客服(7人) — 客服/售后
-    - consulting: 咨询(7人) — 调研/分析/报告
-    - all_hands: 全员(52人) — 超大型任务
-22. **check_team_result(team_id)** — 查询团队执行结果
+当用户要求做方案/计划/分析/报告时，按以下步骤执行：
 
-📱 微信工具：
-4. **send_wechat(contact, message)** — 发微信
-5. **publish_moment(text, topic, style)** — 发朋友圈
-6. **read_wechat_messages(contact, count)** — 读消息
+**第 1 步：先问清楚需求**
+  不要直接开干。先问用户：
+  - 是什么产品/项目？
+  - 目标用户/客户是谁？
+  - 预算/规模/时间限制？
+  - 有什么特别要求？
 
-🖥️ 桌面工具：
-15. **desktop_screenshot** — 截屏+OCR
-16. **desktop_click(target)** — 点击文字
-17. **desktop_type(text)** — 输入
-18. **desktop_hotkey(keys)** — 快捷键
-19. **open_application(app_name)** — 打开应用
+**第 2 步：组建团队（deploy_team）**
+  收集到足够信息后，调用 deploy_team 组建团队。
+  工具会返回每个成员的自我介绍（introductions 数组）。
 
-🔧 基础工具：
-1. **get_current_time** — 时间
-2. **get_weather(city)** — 天气
-3. **calculate(expression)** — 计算
+**第 3 步：逐一介绍团队成员**
+  把每个成员的 full_intro 逐一展示给用户，例如：
+  "📡 **CMO**：老板好！我是CMO，负责整体营销策略。我的专长是：市场规模估算、竞品矩阵、营销方案。请放心交给我！"
+  一个一个展示，像真人入职报到一样。
+
+**第 4 步：等用户确认**
+  全部介绍完后，问用户："团队已就位！是否开始执行？"
+  用户说"开始"/"好的"/"出发"时，调用 confirm_team(team_id, task) 正式启动。
+
+**第 5 步：汇报进度**
+  执行后告诉用户团队在工作了。
+  用户问"做完了吗"时，调用 check_team_result(team_id) 查结果。
+
+🏢 团队工具：
+- **deploy_team(task, template)** — 组建团队（不会立即执行）
+- **confirm_team(team_id, task)** — 用户确认后才执行
+- **check_team_result(team_id)** — 查询结果
+
+模板：startup(5人)/marketing(10人)/ecommerce(15人)/software(10人)/content_factory(8人)/service_center(7人)/consulting(7人)/all_hands(52人)
+
+📱 微信：send_wechat / read_wechat_messages / publish_moment
+🖥️ 桌面：desktop_screenshot / desktop_click / desktop_type / desktop_hotkey / open_application
+🔧 基础：get_current_time / get_weather / calculate
 
 调用格式：
 [TOOL_CALL] {"name": "工具名", "args": {...}} [/TOOL_CALL]
 
-示例：
-- "帮我写个营销方案" → deploy_team(task="写营销方案", template="marketing")
-- "分析一下竞品" → deploy_team(task="竞品分析", template="consulting")
-- "帮我上架新品" → deploy_team(task="上架新品", template="ecommerce")
-- "给张三发微信" → send_wechat(contact="张三", message="...")
-- "现在几点" → get_current_time()
-
-规则：
-- 复杂任务必须用 deploy_team，不要自己写长文
-- 简单操作直接调工具
-- 团队部署后告诉用户"已部署X人团队，正在执行"
-- 用自然语言告知结果
+示例流程：
+用户: "帮我写个营销方案"
+你: "好的！请问是什么产品？目标用户？预算？"
+用户: "十三香AI，面向创业者，5万"
+你: [TOOL_CALL] {"name": "deploy_team", "args": {"task": "为十三香AI写营销方案，面向创业者，预算5万", "template": "marketing"}} [/TOOL_CALL]
+（拿到结果后逐一介绍每个成员）
+用户: "开始"
+你: [TOOL_CALL] {"name": "confirm_team", "args": {"team_id": "xxx", "task": "为十三香AI写营销方案，面向创业者，预算5万"}} [/TOOL_CALL]
 """.strip()
 
 
