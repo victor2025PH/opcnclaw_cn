@@ -354,7 +354,7 @@ def _first_run_wizard(cfg):
             root.destroy()
 
         def _open_qr():
-            webbrowser.open(f"http://localhost:{cfg.http_port}/qr")
+            webbrowser.open(f"https://localhost:{cfg.https_port}/qr")
             root.destroy()
 
         tk.Button(btn_frame, text="⚙️ 去配置 AI Key", font=("", 12),
@@ -500,12 +500,12 @@ def main():
     if not args.nogui:
         setup_done = os.environ.get("OPENCLAW_SETUP_DONE", "").lower() == "true"
         if cfg.first_run or args.setup or not setup_done:
-            webbrowser.open(f"http://localhost:{cfg.http_port}/setup")
+            webbrowser.open(f"https://localhost:{cfg.https_port}/setup")
         else:
-            webbrowser.open(f"http://localhost:{cfg.http_port}/qr")
+            webbrowser.open(f"https://localhost:{cfg.https_port}/app")
 
     # 保持主线程运行
-    logger.info(f"✅ 十三香小龙虾就绪！控制台: http://localhost:{cfg.http_port}/qr")
+    logger.info(f"✅ 十三香小龙虾就绪！打开: https://localhost:{cfg.https_port}/app")
     try:
         while True:
             time.sleep(1)
