@@ -13,7 +13,7 @@ from src.server.agent_templates import (
 
 class TestAgentRole:
     def test_all_roles_defined(self):
-        assert len(AGENT_ROLES) == 13
+        assert len(AGENT_ROLES) == 52
 
     def test_role_has_required_fields(self):
         for rid, role in AGENT_ROLES.items():
@@ -27,13 +27,13 @@ class TestAgentRole:
 
     def test_list_roles(self):
         roles = list_roles()
-        assert len(roles) == 13
+        assert len(roles) == 52
         assert all("id" in r for r in roles)
 
 
 class TestTeamTemplates:
     def test_all_templates_defined(self):
-        assert len(TEAM_TEMPLATES) == 7
+        assert len(TEAM_TEMPLATES) == 15
 
     def test_template_roles_valid(self):
         for tid, tpl in TEAM_TEMPLATES.items():
@@ -41,11 +41,11 @@ class TestTeamTemplates:
                 assert rid in AGENT_ROLES, f"{tid}: 角色 {rid} 不存在"
 
     def test_all_hands_has_all(self):
-        assert len(TEAM_TEMPLATES["all_hands"]["roles"]) == 13
+        assert len(TEAM_TEMPLATES["all_hands"]["roles"]) == 52
 
     def test_list_templates(self):
         tpls = list_templates()
-        assert len(tpls) == 7
+        assert len(tpls) == 15
         assert all("agent_count" in t for t in tpls)
 
     def test_get_template(self):
@@ -59,7 +59,7 @@ class TestTeamTemplates:
 
 class TestBuildAgents:
     def test_build(self):
-        agents = build_agents(["ceo", "writer", "coder"])
+        agents = build_agents(["ceo", "writer", "backend"])
         assert len(agents) == 3
         assert agents[0].role.id == "ceo"
 
@@ -110,7 +110,7 @@ class TestAgentTeam:
         assert len(team.agents) == 2
 
     def test_team_status(self):
-        agents = build_agents(["ceo", "writer", "coder"])
+        agents = build_agents(["ceo", "writer", "backend"])
         team = AgentTeam(team_id="test2", name="测试", agents=agents)
         s = team.get_status()
         assert s["team_id"] == "test2"

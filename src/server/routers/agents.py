@@ -8,6 +8,7 @@ from typing import Optional
 
 from src.server.agent_team import create_team, get_team, list_teams
 from src.server.agent_templates import list_templates, list_roles
+from src.server.agent_skills import get_skills_for_role, list_all_skills, get_stats as skills_stats
 
 router = APIRouter(prefix="/api/agents", tags=["agent-team"])
 
@@ -105,6 +106,18 @@ async def stop_team(team_id: str):
         return {"ok": False}
     team.status = "error"
     return {"ok": True}
+
+
+@router.get("/skills")
+async def get_all_skills():
+    """所有专属技能列表"""
+    return {"skills": list_all_skills(), **skills_stats()}
+
+
+@router.get("/roles/{role_id}/skills")
+async def get_role_skills(role_id: str):
+    """角色专属技能"""
+    return {"role_id": role_id, "skills": get_skills_for_role(role_id)}
 
 
 @router.get("/teams")
