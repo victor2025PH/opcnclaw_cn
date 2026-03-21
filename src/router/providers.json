@@ -23,6 +23,7 @@
       "priority": 1,
       "supports_vision": true,
       "vision_model": "glm-4v-flash",
+      "supports_function_calling": true,
       "guide_steps": [
         {"step": 1, "title": "打开智谱AI注册页", "action": "open_url", "url": "https://open.bigmodel.cn/login", "tip": "支持手机号验证码注册，也可微信扫码"},
         {"step": 2, "title": "进入 API Keys 页面", "action": "text", "tip": "登录后点击右上角头像 → API Keys → 创建新的 API Key"},
@@ -107,6 +108,7 @@
       "free_info": "新用户注册送500万token，约对话2000次，用完后¥1/百万token",
       "priority": 4,
       "supports_vision": false,
+      "supports_function_calling": true,
       "guide_steps": [
         {"step": 1, "title": "打开 DeepSeek 注册页", "action": "open_url", "url": "https://platform.deepseek.com/sign_up", "tip": "手机号注册，支持微信登录"},
         {"step": 2, "title": "领取免费额度 + 创建 Key", "action": "text", "tip": "登录后点左侧「API Keys」→ 创建 API Key → 复制（sk- 开头）"},

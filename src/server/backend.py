@@ -26,7 +26,7 @@ except ImportError:
 
 # Tool calling support
 try:
-    from .tools import call_tool, parse_tool_calls, TOOLS_SYSTEM_ADDENDUM
+    from .tools import call_tool, parse_tool_calls, TOOLS_SYSTEM_ADDENDUM, TOOL_SCHEMAS
     _TOOLS_ENABLED = True
 except ImportError:
     _TOOLS_ENABLED = False
@@ -316,15 +316,49 @@ class AIBackend:
         # ── 3a. 优先走路由器（多平台轮询）──────────────────────────
         if self._router:
             try:
+                # 原生 FC：传递工具定义（平台不支持时路由器会忽略）
+                _tools = TOOL_SCHEMAS if (self.enable_tools and not skill_context) else None
+
                 last_provider = None
+                native_tool_calls = None
                 async for chunk_text, provider_id in self._router.chat_stream(
-                    messages, max_tokens=600, temperature=0.7
+                    messages, max_tokens=600, temperature=0.7, tools=_tools,
                 ):
                     if chunk_text == "__SWITCH__":
+                        continue
+                    if chunk_text == "__TOOL_CALLS__":
+                        # 原生 Function Calling 结果
+                        native_tool_calls = json.loads(provider_id)
                         continue
                     full_response += chunk_text
                     yield chunk_text
                     last_provider = provider_id
+
+                # 处理原生 tool_calls（比 ReAct 更准确）
+                if native_tool_calls:
+                    for tc in native_tool_calls:
+                        tc_name = tc.get("name", "")
+                        try:
+                            tc_args = json.loads(tc.get("arguments", "{}"))
+                        except json.JSONDecodeError:
+                            tc_args = {}
+                        logger.info(f"🔧 原生FC: {tc_name}({tc_args})")
+                        tool_result = await call_tool(tc_name, tc_args)
+                        # 将工具结果发回模型生成自然语言回答
+                        followup_msgs = messages + [
+                            {"role": "assistant", "content": None,
+                             "tool_calls": [{"id": tc.get("id", "call_1"), "type": "function",
+                                           "function": {"name": tc_name, "arguments": json.dumps(tc_args, ensure_ascii=False)}}]},
+                            {"role": "tool", "tool_call_id": tc.get("id", "call_1"), "content": tool_result},
+                        ]
+                        async for chunk_text2, _ in self._router.chat_stream(
+                            followup_msgs, max_tokens=400, temperature=0.7
+                        ):
+                            if chunk_text2 in ("__SWITCH__", "__TOOL_CALLS__"):
+                                continue
+                            full_response += chunk_text2
+                            yield chunk_text2
+
                 if last_provider:
                     logger.debug(f"路由器使用平台: {last_provider}")
                 self.conversation_history.append({"role": "assistant", "content": full_response})

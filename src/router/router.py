@@ -207,6 +207,7 @@ class AIRouter:
         messages: list,
         max_tokens: int = 600,
         temperature: float = 0.7,
+        tools: list = None,
     ) -> AsyncGenerator[Tuple[str, str], None]:
         """
         流式对话，yield (text_chunk, provider_id)
@@ -243,7 +244,7 @@ class AIRouter:
                 success = False
                 timed_out = False
 
-                gen = self._call_provider(state, messages, max_tokens, temperature)
+                gen = self._call_provider(state, messages, max_tokens, temperature, tools=tools)
                 try:
                     # 等待首个 chunk，设超时
                     first = await asyncio.wait_for(
@@ -276,8 +277,12 @@ class AIRouter:
         messages: list,
         max_tokens: int,
         temperature: float,
+        tools: list = None,
     ) -> AsyncGenerator[Tuple[str, str], None]:
-        """调用单个平台，处理限速/错误，失败时 yield __SWITCH__"""
+        """调用单个平台，处理限速/错误，失败时 yield __SWITCH__
+
+        tools: OpenAI 格式的工具定义列表，仅在平台支持 function calling 时传递。
+        """
         if not state.api_key:
             state.status = "disabled"
             yield ("__SWITCH__", state.pid)
@@ -285,17 +290,23 @@ class AIRouter:
 
         t0 = time.time()
         try:
+            payload = {
+                "model": state.model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "stream": True,
+            }
+            # 原生 Function Calling：平台支持 + 调用方传入工具
+            if tools and state.meta.get("supports_function_calling"):
+                payload["tools"] = tools
+                payload["tool_choice"] = "auto"
+
             async with httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=10.0)) as client:
                 async with client.stream(
                     "POST",
                     f"{state.base_url}/chat/completions",
-                    json={
-                        "model": state.model,
-                        "messages": messages,
-                        "max_tokens": max_tokens,
-                        "temperature": temperature,
-                        "stream": True,
-                    },
+                    json=payload,
                     headers={
                         "Authorization": f"Bearer {state.api_key}",
                         "Content-Type": "application/json",
@@ -316,6 +327,9 @@ class AIRouter:
                         return
 
                     got_content = False
+                    # 累积原生 tool_calls 分片
+                    _tc_chunks: list = []  # [{index, id, function:{name, arguments}}]
+
                     async for line in resp.aiter_lines():
                         line = line.strip()
                         if not line.startswith("data:"):
@@ -325,13 +339,36 @@ class AIRouter:
                             break
                         try:
                             parsed = json.loads(data)
-                            delta = (parsed.get("choices", [{}])[0]
-                                     .get("delta", {}).get("content", ""))
-                            if delta:
+                            choice = parsed.get("choices", [{}])[0]
+                            delta = choice.get("delta", {})
+
+                            # 文本内容
+                            content = delta.get("content", "")
+                            if content:
                                 got_content = True
-                                yield (delta, state.pid)
+                                yield (content, state.pid)
+
+                            # 原生 Function Calling 分片
+                            tc_list = delta.get("tool_calls")
+                            if tc_list:
+                                for tc in tc_list:
+                                    idx = tc.get("index", 0)
+                                    while len(_tc_chunks) <= idx:
+                                        _tc_chunks.append({"id": "", "name": "", "arguments": ""})
+                                    if tc.get("id"):
+                                        _tc_chunks[idx]["id"] = tc["id"]
+                                    fn = tc.get("function", {})
+                                    if fn.get("name"):
+                                        _tc_chunks[idx]["name"] = fn["name"]
+                                    if fn.get("arguments"):
+                                        _tc_chunks[idx]["arguments"] += fn["arguments"]
+
                         except json.JSONDecodeError:
                             continue
+
+                    # 如果有原生 tool_calls，yield 特殊标记让上层处理
+                    if _tc_chunks and _tc_chunks[0].get("name"):
+                        yield ("__TOOL_CALLS__", json.dumps(_tc_chunks, ensure_ascii=False))
 
                     latency = time.time() - t0
                     state.record_success(latency)
