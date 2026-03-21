@@ -1048,8 +1048,9 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
                 "2. 把每个成员的 full_intro 逐一展示（一个一个，像报到一样）\n"
                 "3. 如果有 missing_platforms_hint，展示给用户\n"
                 "4. 如果有 route_mode_hint，展示给用户\n"
-                "5. 最后问'团队已就位，是否开始执行？'\n"
-                "6. 用户确认后调用 confirm_team，team_id 是：" + team.team_id
+                "5. 告诉用户：'所有产出将保存到项目文件夹，完成后可一键下载'\n"
+                "6. 最后问'团队已就位，是否开始执行？'\n"
+                "7. 用户确认后调用 confirm_team，team_id 是：" + team.team_id
             ),
         }
     except Exception as e:
@@ -1087,11 +1088,19 @@ async def check_team_result(team_id: str) -> Dict[str, Any]:
 
         status = team.status
         if status == "done":
+            # 获取项目文件列表
+            project_files = []
+            if hasattr(team, '_project') and team._project:
+                project_files = team._project.list_files()
             return {
                 "status": "done",
                 "result": team.final_result,
                 "tasks_completed": sum(1 for t in team.tasks if t.status == "done"),
                 "total_tasks": len(team.tasks),
+                "project_files": project_files,
+                "project_id": team._project.project_id if hasattr(team, '_project') and team._project else "",
+                "download_url": f"/api/projects/{team._project.project_id}/download" if hasattr(team, '_project') and team._project else "",
+                "message": "所有产出文件已保存，可以通过项目文件夹查看或一键下载ZIP",
             }
         elif status == "error":
             return {"status": "error", "message": "团队执行出错"}

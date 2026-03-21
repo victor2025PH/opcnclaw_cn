@@ -185,7 +185,7 @@ class AgentTeam:
         self._ai_call = fn
 
     async def execute(self, user_request: str) -> str:
-        """执行团队任务（完整流程）"""
+        """执行团队任务（完整流程）— 每个 Agent 产出保存为文件"""
         self.status = "planning"
         self.context["user_request"] = user_request
         self._add_message("user", "ceo", "task", user_request)
@@ -193,6 +193,20 @@ class AgentTeam:
         if not self._ai_call:
             self.status = "error"
             return "AI 调用未配置"
+
+        # 创建项目工作空间
+        try:
+            from .project_workspace import create_project
+            self._project = create_project(
+                name=user_request[:20],
+                team_name=self.name,
+                task=user_request,
+                agent_count=len(self.agents),
+            )
+            logger.info(f"[Team:{self.name}] 项目空间: {self._project.dir}")
+        except Exception as e:
+            logger.warning(f"[Team] 创建项目空间失败: {e}")
+            self._project = None
 
         try:
             # 1. CEO 拆解任务
@@ -217,6 +231,13 @@ class AgentTeam:
             summary = await self._ceo_summarize(ceo)
             self.final_result = summary
             self.status = "done"
+
+            # 保存汇总到项目空间
+            if hasattr(self, '_project') and self._project:
+                try:
+                    self._project.save_summary(summary)
+                except Exception:
+                    pass
 
             # 持久化结果到 SQLite
             try:
@@ -356,6 +377,18 @@ class AgentTeam:
                     agent.execute(task, enriched_ctx, self._ai_call),
                     timeout=self.TASK_TIMEOUT,
                 )
+                # Agent 完成后保存文件到项目空间
+                if hasattr(self, '_project') and self._project and task.result:
+                    try:
+                        self._project.save_artifact(
+                            agent_name=agent.role.name,
+                            agent_avatar=agent.role.avatar,
+                            filename=task.description[:30],
+                            content=task.result,
+                            file_type="md",
+                        )
+                    except Exception:
+                        pass
             except asyncio.TimeoutError:
                 task.status = "error"
                 task.result = "超时"

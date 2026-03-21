@@ -2188,6 +2188,64 @@ async def clipboard_sync(request: Request):
             return {"ok": False, "error": str(e)}
 
 
+# ── 项目工作空间 API ─────────────────────────────────────────
+
+@app.get("/api/projects")
+async def list_projects_api():
+    """项目列表"""
+    from .project_workspace import list_projects
+    return {"projects": list_projects()}
+
+@app.get("/api/projects/{project_id}")
+async def get_project_api(project_id: str):
+    """项目详情"""
+    from .project_workspace import get_project
+    p = get_project(project_id)
+    if not p:
+        return {"error": "项目不存在"}
+    return {"project": p.to_dict(), "files": p.list_files()}
+
+@app.get("/api/projects/{project_id}/files/{filename}")
+async def get_project_file(project_id: str, filename: str):
+    """读取项目文件"""
+    from .project_workspace import get_project
+    p = get_project(project_id)
+    if not p:
+        return Response(content="项目不存在", status_code=404)
+    content = p.get_file(filename)
+    if content is None:
+        return Response(content="文件不存在", status_code=404)
+    # 判断文件类型
+    if filename.endswith('.md'):
+        return Response(content=content, media_type="text/markdown; charset=utf-8")
+    elif filename.endswith('.html'):
+        return Response(content=content, media_type="text/html; charset=utf-8")
+    elif filename.endswith('.csv'):
+        return Response(content=content, media_type="text/csv; charset=utf-8")
+    return Response(content=content, media_type="text/plain; charset=utf-8")
+
+@app.get("/api/projects/{project_id}/download")
+async def download_project(project_id: str):
+    """下载项目（ZIP 打包）"""
+    from .project_workspace import get_project
+    import zipfile, io
+    p = get_project(project_id)
+    if not p:
+        return Response(content="项目不存在", status_code=404)
+    # 创建 ZIP
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for f in p.dir.iterdir():
+            if f.is_file():
+                zf.write(f, f.name)
+    buffer.seek(0)
+    return Response(
+        content=buffer.read(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{project_id}.zip"'},
+    )
+
+
 # ── 集群 API ─────────────────────────────────────────────────
 
 @app.get("/api/cluster/nodes")
