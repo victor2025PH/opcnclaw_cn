@@ -4,6 +4,18 @@ setlocal EnableDelayedExpansion
 title OpenClaw AI 语音助手
 cd /d "%~dp0"
 
+:: ── Tauri 桌面端检测（仅当真正的 exe 文件存在且大于 1MB 时才启动）──
+set "OC_TAURI=%~dp0十三香小龙虾.exe"
+if exist "%OC_TAURI%" (
+    for %%F in ("%OC_TAURI%") do (
+        if %%~zF GTR 1000000 (
+            echo 正在启动桌面客户端 十三香小龙虾.exe ...
+            start "" "%OC_TAURI%"
+            exit /b 0
+        )
+    )
+)
+
 :: ── Detect Python ──
 set PYTHON_EXE=
 for %%p in (
