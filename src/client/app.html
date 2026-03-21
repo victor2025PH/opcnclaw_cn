@@ -2035,7 +2035,8 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 @media(min-width:768px) and (orientation:landscape){
   #chat-page{
     display:grid;
-    grid-template-columns:auto 1fr;
+    /* minmax(0,…) 防止子项 min-content 把侧栏列撑开导致主栏挤到右侧 */
+    grid-template-columns:minmax(0,auto) minmax(0,1fr);
     grid-template-rows:auto 1fr;
   }
   .chat-header{
@@ -2731,83 +2732,6 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
   </div>
 
-  <!-- Profile Management Panel -->
-  <div id="profile-panel" role="dialog" aria-label="Profiles">
-    <div class="pp-header">
-      <h3>👥 成员管理</h3>
-      <button class="icon-btn" id="pp-close" style="font-size:14px">✕</button>
-    </div>
-    <div class="pp-body">
-      <div class="pp-section-title" id="pp-members-title">当前成员</div>
-      <div id="pp-list"></div>
-      <!-- Profile Edit Form (inline, hidden by default) -->
-      <div class="pp-edit" id="pp-edit">
-        <div class="pp-edit-header">
-          <h4 id="pp-edit-title">编辑成员</h4>
-          <button id="pp-edit-close" title="取消">✕</button>
-        </div>
-        <div class="pp-edit-avatar-row">
-          <div class="pp-edit-avatar-preview" id="pp-edit-avatar-preview">👤</div>
-          <div style="flex:1;min-width:0">
-            <div class="pp-edit-avatar-grid" id="pp-edit-avatar-grid"></div>
-            <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-              <input type="text" id="pp-edit-avatar-custom" maxlength="2" placeholder="输入 emoji…"
-                style="width:60px;text-align:center;font-size:18px;padding:4px;background:var(--bg-surface);
-                border:1px solid var(--border);border-radius:6px;color:var(--text-primary);outline:none">
-              <span style="font-size:10px;color:var(--text-muted)">或输入任意表情</span>
-            </div>
-          </div>
-        </div>
-        <div class="pp-field">
-          <label>名称</label>
-          <input type="text" id="pp-edit-name" maxlength="20" placeholder="成员名称">
-        </div>
-        <div class="pp-field">
-          <label>环境</label>
-          <select id="pp-edit-env">
-            <option value="family">👨‍👩‍👧‍👦 家庭</option>
-            <option value="work">💼 工作</option>
-          </select>
-        </div>
-        <div class="pp-field">
-          <label>年龄段</label>
-          <select id="pp-edit-age">
-            <option value="adult">🧑 成人</option>
-            <option value="child">👶 儿童</option>
-            <option value="elder">👴 老人</option>
-          </select>
-        </div>
-        <div class="pp-field">
-          <label>语音</label>
-          <div style="display:flex;gap:6px;align-items:center">
-            <select id="pp-edit-voice" style="flex:1">
-              <option value="zh-CN-XiaohanNeural">晓涵（女）</option>
-              <option value="zh-CN-XiaoxiaoNeural">晓晓（女）</option>
-              <option value="zh-CN-XiaoyiNeural">晓伊（女）</option>
-              <option value="zh-CN-YunjianNeural">云健（男）</option>
-              <option value="zh-CN-YunxiNeural">云希（男）</option>
-              <option value="zh-CN-YunyangNeural">云扬（男）</option>
-            </select>
-            <button class="tts-preview-btn" id="pp-edit-voice-preview" title="试听" type="button">🔊</button>
-          </div>
-        </div>
-        <div class="pp-field">
-          <label>系统提示词</label>
-          <textarea id="pp-edit-prompt" rows="4" placeholder="定义这个成员的 AI 助手人格和行为…"></textarea>
-        </div>
-        <div class="pp-edit-btns">
-          <button class="pp-edit-cancel" id="pp-edit-cancel-btn">取消</button>
-          <button class="pp-edit-save" id="pp-edit-save-btn">保存</button>
-        </div>
-      </div>
-      <div class="pp-section-title" id="pp-presets-title">快速添加</div>
-      <div class="pp-section-title" style="font-size:11px;text-transform:none;letter-spacing:0;color:var(--text-secondary)">家庭模式</div>
-      <div class="pp-preset-grid" id="pp-family-presets"></div>
-      <div class="pp-section-title" style="font-size:11px;text-transform:none;letter-spacing:0;color:var(--text-secondary)">工作模式</div>
-      <div class="pp-preset-grid" id="pp-work-presets"></div>
-    </div>
-  </div>
-
   <div class="chat-main-col">
   <!-- Message Search -->
   <div class="msg-search-bar" id="msg-search-bar">
@@ -2947,6 +2871,83 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
   </footer>
   </div><!-- /.chat-main-col -->
+</div>
+
+<!-- Profile Management Panel — 必须放在 #chat-page 外，否则横屏 Grid 会与 .chat-main-col 抢占栅格导致排版错乱 -->
+<div id="profile-panel" role="dialog" aria-label="Profiles">
+    <div class="pp-header">
+      <h3>👥 成员管理</h3>
+      <button class="icon-btn" id="pp-close" style="font-size:14px">✕</button>
+    </div>
+    <div class="pp-body">
+      <div class="pp-section-title" id="pp-members-title">当前成员</div>
+      <div id="pp-list"></div>
+      <!-- Profile Edit Form (inline, hidden by default) -->
+      <div class="pp-edit" id="pp-edit">
+        <div class="pp-edit-header">
+          <h4 id="pp-edit-title">编辑成员</h4>
+          <button id="pp-edit-close" title="取消">✕</button>
+        </div>
+        <div class="pp-edit-avatar-row">
+          <div class="pp-edit-avatar-preview" id="pp-edit-avatar-preview">👤</div>
+          <div style="flex:1;min-width:0">
+            <div class="pp-edit-avatar-grid" id="pp-edit-avatar-grid"></div>
+            <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+              <input type="text" id="pp-edit-avatar-custom" maxlength="2" placeholder="输入 emoji…"
+                style="width:60px;text-align:center;font-size:18px;padding:4px;background:var(--bg-surface);
+                border:1px solid var(--border);border-radius:6px;color:var(--text-primary);outline:none">
+              <span style="font-size:10px;color:var(--text-muted)">或输入任意表情</span>
+            </div>
+          </div>
+        </div>
+        <div class="pp-field">
+          <label>名称</label>
+          <input type="text" id="pp-edit-name" maxlength="20" placeholder="成员名称">
+        </div>
+        <div class="pp-field">
+          <label>环境</label>
+          <select id="pp-edit-env">
+            <option value="family">👨‍👩‍👧‍👦 家庭</option>
+            <option value="work">💼 工作</option>
+          </select>
+        </div>
+        <div class="pp-field">
+          <label>年龄段</label>
+          <select id="pp-edit-age">
+            <option value="adult">🧑 成人</option>
+            <option value="child">👶 儿童</option>
+            <option value="elder">👴 老人</option>
+          </select>
+        </div>
+        <div class="pp-field">
+          <label>语音</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="pp-edit-voice" style="flex:1">
+              <option value="zh-CN-XiaohanNeural">晓涵（女）</option>
+              <option value="zh-CN-XiaoxiaoNeural">晓晓（女）</option>
+              <option value="zh-CN-XiaoyiNeural">晓伊（女）</option>
+              <option value="zh-CN-YunjianNeural">云健（男）</option>
+              <option value="zh-CN-YunxiNeural">云希（男）</option>
+              <option value="zh-CN-YunyangNeural">云扬（男）</option>
+            </select>
+            <button class="tts-preview-btn" id="pp-edit-voice-preview" title="试听" type="button">🔊</button>
+          </div>
+        </div>
+        <div class="pp-field">
+          <label>系统提示词</label>
+          <textarea id="pp-edit-prompt" rows="4" placeholder="定义这个成员的 AI 助手人格和行为…"></textarea>
+        </div>
+        <div class="pp-edit-btns">
+          <button class="pp-edit-cancel" id="pp-edit-cancel-btn">取消</button>
+          <button class="pp-edit-save" id="pp-edit-save-btn">保存</button>
+        </div>
+      </div>
+      <div class="pp-section-title" id="pp-presets-title">快速添加</div>
+      <div class="pp-section-title" style="font-size:11px;text-transform:none;letter-spacing:0;color:var(--text-secondary)">家庭模式</div>
+      <div class="pp-preset-grid" id="pp-family-presets"></div>
+      <div class="pp-section-title" style="font-size:11px;text-transform:none;letter-spacing:0;color:var(--text-secondary)">工作模式</div>
+      <div class="pp-preset-grid" id="pp-work-presets"></div>
+    </div>
 </div>
 
 <!-- ═══════════════ SETTINGS MODAL ═══════════════ -->
@@ -4158,6 +4159,7 @@ const { initUserPanel } = await import('/js/user-panel.js' + _v);
 const { initOfflineBanner } = await import('/js/offline-banner.js' + _v);
 const { initIoTPanel } = await import('/js/iot-panel.js' + _v);
 const { initPushManager } = await import('/js/push-manager.js' + _v);
+const { initPluginMarket } = await import('/js/plugin-market.js' + _v);
 
 const steps = [
   ['state', initState],
@@ -4173,6 +4175,7 @@ const steps = [
   ['offline-banner', initOfflineBanner],
   ['iot-panel', initIoTPanel],
   ['push-manager', initPushManager],
+  ['plugin-market', initPluginMarket],
 ];
 let failedAt = null;
 for (const [name, fn] of steps) {

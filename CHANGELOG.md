@@ -1,5 +1,23 @@
 # Changelog
 
+## v4.4.0 (2026-03-21)
+
+### CI/CD 自动化
+- GitHub Actions 测试覆盖全模块（排除 boot_test/server/benchmark）
+- Python 3.10-3.13 矩阵测试
+- 测试失败时 CI 直接标红，不再 continue-on-error
+
+### 安装包修复
+- Tauri exe 改为可选依赖（skipifsourcedoesntexist）
+- 无 Rust 环境也能编译安装包（纯 Python 模式，147MB）
+
+### 插件市场前端
+- plugin-market.js: 插件列表+搜索+启用/禁用 toggle
+- 基于已有 /api/plugins API
+
+### 工作流编辑器集成
+- workflow-editor.js 挂载到 admin 页面
+
 ## v4.3.0 (2026-03-21)
 
 ### 语音唤醒优化

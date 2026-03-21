@@ -85,8 +85,8 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 
 [Files]
 ; ── 核心应用文件 ──────────────────────────────────────────────
-; ── Tauri 桌面客户端（主启动器）───────────────────────────
-Source: "dist\十三香小龙虾.exe"; DestDir: "{app}"; Flags: ignoreversion
+; ── Tauri 桌面客户端（可选，需 npx tauri build 编译）───────
+Source: "dist\十三香小龙虾.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 ; ── 项目文件 ────────────────────────────────────────────────
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt";           DestDir: "{app}"; Flags: ignoreversion

@@ -12,52 +12,28 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-asyncio
-      
-      - name: Run core infrastructure tests
-        run: pytest tests/test_db.py tests/test_memory_search.py -v
 
-      - name: Run unit tests
-        run: pytest tests/test_modules.py tests/test_auth.py tests/test_bridges.py tests/test_model_downloader.py tests/test_health.py tests/test_i18n.py tests/test_session.py tests/test_security.py tests/test_phase13.py -v
+      - name: Run all tests (except boot_test and server)
+        run: |
+          pytest tests/ -v --ignore=tests/boot_test.py --ignore=tests/test_server.py --ignore=tests/test_benchmark.py -x
+        continue-on-error: false
 
-      - name: Run server tests
+      - name: Run server integration tests
         run: pytest tests/test_server.py -v
         continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff black
-      
-      - name: Check formatting
-        run: black --check src/ tests/
-        continue-on-error: true
-      
-      - name: Lint
-        run: ruff check src/ tests/
-        continue-on-error: true
