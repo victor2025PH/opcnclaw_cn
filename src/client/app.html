@@ -242,10 +242,8 @@ body{
 .ws-reconnect-bar.visible{transform:translateY(0)}
 .header-title{font-size:16px;font-weight:600}
 .header-right{display:flex;align-items:center;gap:4px;justify-self:end;position:relative;min-width:0;flex-wrap:nowrap}
-/* 精简顶栏：只显示核心按钮，其余收进更多菜单 */
-#desktop-toggle,#camera-toggle,#wechat-autoreply-toggle,#moments-panel-toggle,
-#model-panel-toggle,#mcp-panel-toggle,#perf-toggle,#vcmd-toggle,
-#skills-center-toggle,#summary-btn,#export-toggle,#bookmark-toggle{display:none!important}
+/* 精简顶栏：非核心按钮默认隐藏，通过 overflow-menu 的 syncVisibility 自动控制菜单显示 */
+.header-right .icon-btn.hdr-extra{display:none}
 .icon-btn{
   width:40px;height:40px;display:flex;align-items:center;justify-content:center;
   border:none;background:transparent;color:var(--text-secondary);
@@ -2653,10 +2651,10 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <span class="header-title" data-i18n="header.title">十三香小龙虾</span>
     </div>
     <div class="header-right">
-      <button class="icon-btn" id="desktop-toggle" data-i18n="header.desktop" data-i18n-attr="title" title="远程桌面">
+      <button class="icon-btn hdr-extra" id="desktop-toggle" data-i18n="header.desktop" data-i18n-attr="title" title="远程桌面">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       </button>
-      <button class="icon-btn" id="camera-toggle" data-i18n="header.camera" data-i18n-attr="title" title="摄像头">
+      <button class="icon-btn hdr-extra" id="camera-toggle" data-i18n="header.camera" data-i18n-attr="title" title="摄像头">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
       </button>
       <button class="icon-btn" id="wechat-autoreply-toggle" title="微信自动回复" onclick="openWechatPanel()" style="position:relative">
@@ -2666,28 +2664,28 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="icon-btn" id="moments-panel-toggle" title="朋友圈管理" onclick="openMomentsPanel()">
         🌅
       </button>
-      <button class="icon-btn" id="model-panel-toggle" title="模型管理">
+      <button class="icon-btn hdr-extra" id="model-panel-toggle" title="模型管理">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       </button>
-      <button class="icon-btn" id="mcp-panel-toggle" title="MCP 工具">
+      <button class="icon-btn hdr-extra" id="mcp-panel-toggle" title="MCP 工具">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       </button>
-      <button class="icon-btn" id="perf-toggle" title="性能监控">
+      <button class="icon-btn hdr-extra" id="perf-toggle" title="性能监控">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       </button>
-      <button class="icon-btn" id="vcmd-toggle" title="语音指令">
+      <button class="icon-btn hdr-extra" id="vcmd-toggle" title="语音指令">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
       </button>
-      <button class="icon-btn" id="skills-center-toggle" title="技能中心" style="position:relative">
+      <button class="icon-btn hdr-extra" id="skills-center-toggle" title="技能中心" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </button>
-      <button class="icon-btn" id="summary-btn" title="对话摘要">
+      <button class="icon-btn hdr-extra" id="summary-btn" title="对话摘要">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       </button>
-      <button class="icon-btn" id="export-toggle" title="导出" style="position:relative">
+      <button class="icon-btn hdr-extra" id="export-toggle" title="导出" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
-      <button class="icon-btn" id="bookmark-toggle" title="收藏">
+      <button class="icon-btn hdr-extra" id="bookmark-toggle" title="收藏">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
       <button class="icon-btn notif-bell" id="notif-toggle" title="通知">
