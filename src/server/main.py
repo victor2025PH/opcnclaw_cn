@@ -471,6 +471,14 @@ async def _startup(app: FastAPI):
     except Exception:
         pass
 
+    # 启动意图融合引擎（轻量，不阻塞）
+    try:
+        from .intent_fusion import get_engine
+        get_engine()
+        logger.info("✅ IntentFusion 引擎已启动")
+    except Exception as e:
+        logger.debug(f"IntentFusion 启动跳过: {e}")
+
     logger.info("✅ Phase 1 complete — server accepting requests")
 
     # ── Phase 2: heavy model loading (background) ─────────────
@@ -1832,6 +1840,12 @@ async def call_mcp_desktop_tool(request: Request):
     return result
 
 
+@app.get("/demo")
+@app.get("/demo/")
+async def demo_page():
+    return FileResponse("src/client/demo.html")
+
+
 @app.get("/qr")
 @app.get("/qr/")
 async def qr_page():
@@ -1938,6 +1952,12 @@ async def check_update():
         }
     except Exception as e:
         return {"has_update": False, "error": str(e)}
+
+
+@app.get("/api/system/update-check")
+async def system_update_check_alias():
+    """Alias for QR / legacy clients (same payload as /api/update/check)."""
+    return await check_update()
 
 
 @app.post("/api/update/apply")

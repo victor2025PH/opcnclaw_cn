@@ -128,6 +128,17 @@ class IntentRouter:
 
         Returns IntentResult with category indicating how to handle it.
         """
+        # 0. 去抖：同一桌面动作 1 秒内不重复执行（防止手势抖动）
+        if action in DESKTOP_DIRECT_MAP and self.history.action_frequency(action, window_s=1.0) >= 2:
+            logger.debug(f"[IntentRouter] 去抖拦截: {action} (1秒内已触发2次)")
+            return IntentResult(
+                category=IntentCategory.AMBIGUOUS,
+                action=action,
+                params={"debounced": True},
+                confidence=confidence,
+                source=source,
+            )
+
         # 1. Direct desktop action
         if action in DESKTOP_DIRECT_MAP:
             cmd = dict(DESKTOP_DIRECT_MAP[action])

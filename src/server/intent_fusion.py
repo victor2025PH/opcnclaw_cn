@@ -301,7 +301,16 @@ class IntentFusionEngine:
         candidates.sort(key=lambda f: (f.priority, f.confidence), reverse=True)
         best = candidates[0]
 
-        # 5. 更新状态
+        # 5. 去抖：与上次融合结果相同意图 + 间隔 < 1秒 → 跳过通知（防止 UI 闪烁）
+        if (self._current_intent
+                and self._current_intent.intent == best.intent
+                and (now - self._last_fusion) < 1.0
+                and abs(best.confidence - self._current_intent.confidence) < 0.15):
+            # 仅更新置信度，不重复通知
+            self._current_intent = best
+            return
+
+        # 6. 更新状态
         self._current_intent = best
         self._history.append(best)
         if len(self._history) > self.MAX_HISTORY:
@@ -310,7 +319,7 @@ class IntentFusionEngine:
         self._stats["fusions_performed"] += 1
         self._last_fusion = now
 
-        # 6. 通知监听器
+        # 7. 通知监听器
         self._notify(best)
 
         # 7. 从 buffer 中移除已融合的信号（避免重复融合）

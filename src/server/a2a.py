@@ -268,8 +268,9 @@ class A2AServer:
             self._publish_event("a2a:task_working", task)
 
             try:
+                # 超时保护：技能执行最多 60 秒
                 if asyncio.iscoroutinefunction(handler):
-                    result = await handler(task)
+                    result = await asyncio.wait_for(handler(task), timeout=60.0)
                 else:
                     result = handler(task)
 
@@ -281,6 +282,14 @@ class A2AServer:
                 task.completed_at = time.time()
                 task.add_message("agent", "任务完成")
                 self._publish_event("a2a:task_completed", task)
+
+            except asyncio.TimeoutError:
+                task.state = TaskState.FAILED
+                task.error = "技能执行超时 (60s)"
+                task.completed_at = time.time()
+                task.add_message("system", "执行超时")
+                self._publish_event("a2a:task_failed", task)
+                logger.warning(f"[A2A] 任务 {task.id} 超时: {task.intent}")
 
             except Exception as e:
                 task.state = TaskState.FAILED

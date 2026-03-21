@@ -795,6 +795,21 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                     
                     if transcript.strip():
+                        # 推送语音转写结果到 IntentFusion（语音→意图融合）
+                        try:
+                            from src.server.intent_fusion import push_signal
+                            # 提取关键词作为信号名（取前两个词）
+                            _words = transcript.strip().split()[:2]
+                            _sig_name = _words[0] if _words else transcript.strip()[:10]
+                            push_signal(
+                                channel="voice",
+                                name=_sig_name,
+                                confidence=0.8,
+                                params={"transcript": transcript, "emotion": last_emotion},
+                            )
+                        except Exception:
+                            pass
+
                         # Local command check — bypass LLM if matched
                         _local_handled = False
                         _local_mode = os.environ.get("OPENCLAW_MODE", "full") == "local"
