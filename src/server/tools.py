@@ -240,6 +240,93 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    # ── 桌面操作工具（A2A 集成）──────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "desktop_screenshot",
+            "description": "截取当前屏幕并用 OCR 识别文字。当用户说'看看屏幕'、'截个图'、'屏幕上写了什么'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "desktop_click",
+            "description": "点击屏幕上的指定文字或位置。当用户说'点击xx按钮'、'打开xx'时调用。先截图识别，再精确点击。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {"type": "string", "description": "要点击的文字内容（会先 OCR 定位再点击）"},
+                },
+                "required": ["target"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "desktop_type",
+            "description": "在当前焦点位置输入文字。当用户说'输入xx'、'打字xx'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "要输入的文字内容"},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "desktop_hotkey",
+            "description": "执行键盘快捷键。当用户说'复制'、'粘贴'、'撤销'、'全选'、'切换窗口'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keys": {
+                        "type": "string",
+                        "description": "快捷键组合，如 'ctrl+c'、'ctrl+v'、'alt+tab'、'ctrl+z'、'ctrl+a'",
+                    },
+                },
+                "required": ["keys"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "open_application",
+            "description": "打开应用程序。当用户说'打开微信'、'打开浏览器'、'打开记事本'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "app_name": {"type": "string", "description": "应用名称：微信/浏览器/记事本/文件管理器/命令行/计算器"},
+                },
+                "required": ["app_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_wechat_messages",
+            "description": "读取微信聊天记录。当用户说'看看张三发了什么'、'微信有新消息吗'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "contact": {"type": "string", "description": "联系人昵称（留空则读取当前会话）"},
+                    "count": {"type": "integer", "description": "读取条数，默认10"},
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────
@@ -653,6 +740,127 @@ async def get_notification_digest() -> Dict[str, Any]:
         return {"error": f"获取消息摘要失败: {str(e)}"}
 
 
+# ── 桌面操作工具实现 ─────────────────────────────────────────
+
+async def desktop_screenshot() -> Dict[str, Any]:
+    """截屏 + OCR 识别文字"""
+    try:
+        from .routers.desktop import desktop
+        if not desktop:
+            return {"error": "桌面控制不可用"}
+        content = desktop.get_screen_content()
+        return {
+            "text": content.get("text", "")[:2000],
+            "elements_count": len(content.get("elements", [])),
+            "screen_size": f"{desktop.screen_w}x{desktop.screen_h}",
+        }
+    except Exception as e:
+        return {"error": f"截屏失败: {e}"}
+
+
+async def desktop_click(target: str) -> Dict[str, Any]:
+    """OCR 定位目标文字并点击"""
+    try:
+        from .routers.desktop import desktop
+        if not desktop:
+            return {"error": "桌面控制不可用"}
+
+        # 先检查人机协作状态
+        from .cowork_bus import get_bus
+        if not get_bus().can_operate_desktop():
+            return {"error": "用户正在操作电脑，AI 暂停桌面操作"}
+
+        found = desktop.find_text(target)
+        if found:
+            desktop.mouse_click(found["x"], found["y"])
+            return {"clicked": True, "target": target, "position": f"({found['x']}, {found['y']})"}
+        return {"clicked": False, "error": f"未找到 '{target}'，请确认屏幕上有该文字"}
+    except Exception as e:
+        return {"error": f"点击失败: {e}"}
+
+
+async def desktop_type(text: str) -> Dict[str, Any]:
+    """在当前焦点输入文字"""
+    try:
+        from .routers.desktop import desktop
+        if not desktop:
+            return {"error": "桌面控制不可用"}
+        from .cowork_bus import get_bus
+        if not get_bus().can_operate_desktop():
+            return {"error": "用户正在操作电脑，AI 暂停桌面操作"}
+
+        # 中文走剪贴板，英文直接打字
+        has_cjk = any("\u4e00" <= c <= "\u9fff" for c in text)
+        if has_cjk:
+            desktop.type_chinese(text)
+        else:
+            desktop.type_text(text)
+        return {"typed": True, "text": text[:50]}
+    except Exception as e:
+        return {"error": f"输入失败: {e}"}
+
+
+async def desktop_hotkey(keys: str) -> Dict[str, Any]:
+    """执行键盘快捷键"""
+    try:
+        from .routers.desktop import desktop
+        if not desktop:
+            return {"error": "桌面控制不可用"}
+        key_list = [k.strip() for k in keys.split("+")]
+        desktop.hotkey(key_list)
+        return {"executed": True, "keys": keys}
+    except Exception as e:
+        return {"error": f"快捷键执行失败: {e}"}
+
+
+async def open_application(app_name: str) -> Dict[str, Any]:
+    """打开应用程序"""
+    APP_MAP = {
+        "微信": "WeChat",
+        "浏览器": "msedge",
+        "chrome": "chrome",
+        "记事本": "notepad",
+        "文件管理器": "explorer",
+        "命令行": "cmd",
+        "终端": "wt",
+        "计算器": "calc",
+        "vscode": "code",
+        "word": "winword",
+        "excel": "excel",
+    }
+    try:
+        import subprocess
+        cmd = APP_MAP.get(app_name.lower(), APP_MAP.get(app_name, app_name))
+        subprocess.Popen(cmd, shell=True, creationflags=0x08)
+        return {"opened": True, "app": app_name}
+    except Exception as e:
+        return {"error": f"打开 {app_name} 失败: {e}"}
+
+
+async def read_wechat_messages(contact: str = "", count: int = 10) -> Dict[str, Any]:
+    """读取微信聊天记录"""
+    try:
+        from .wechat_monitor import WeChatMonitor
+        monitor = WeChatMonitor()
+        if contact:
+            ok = monitor.click_session(contact)
+            if not ok:
+                return {"error": f"未找到联系人: {contact}"}
+
+        contact_name, messages = monitor.get_current_chat_messages(last_n=count)
+        return {
+            "contact": contact_name or contact,
+            "messages": [
+                {"sender": m.get("sender", ""), "content": m.get("content", "")[:100],
+                 "time": m.get("time_str", ""), "type": m.get("msg_type", "text")}
+                for m in messages[-count:]
+            ],
+            "count": len(messages),
+        }
+    except Exception as e:
+        return {"error": f"读取消息失败: {e}"}
+
+
 async def call_tool(name: str, args: Dict[str, Any]) -> str:
     """Dispatch a tool call and return a JSON string result."""
     try:
@@ -684,6 +892,19 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
             result = await account_inbox(**args)
         elif name == "get_notification_digest":
             result = await get_notification_digest()
+        # ── 桌面操作工具 ──
+        elif name == "desktop_screenshot":
+            result = await desktop_screenshot()
+        elif name == "desktop_click":
+            result = await desktop_click(**args)
+        elif name == "desktop_type":
+            result = await desktop_type(**args)
+        elif name == "desktop_hotkey":
+            result = await desktop_hotkey(**args)
+        elif name == "open_application":
+            result = await open_application(**args)
+        elif name == "read_wechat_messages":
+            result = await read_wechat_messages(**args)
         else:
             result = {"error": f"未知工具: {name}"}
     except Exception as e:
@@ -718,18 +939,30 @@ TOOLS_SYSTEM_ADDENDUM = """
 13. **account_inbox(account)** — 查看指定账号的未读消息
 14. **get_notification_digest** — 获取所有账号的消息摘要
 
+桌面操作工具：
+15. **desktop_screenshot** — 截屏+OCR识别屏幕文字
+16. **desktop_click(target)** — 点击屏幕上的指定文字（先OCR定位再点击）
+17. **desktop_type(text)** — 在当前位置输入文字
+18. **desktop_hotkey(keys)** — 执行快捷键（如 "ctrl+c"、"alt+tab"）
+19. **open_application(app_name)** — 打开应用（微信/浏览器/记事本等）
+20. **read_wechat_messages(contact, count)** — 读取微信聊天记录
+
 调用格式（不要加额外文字）：
 [TOOL_CALL] {"name": "工具名", "args": {...}} [/TOOL_CALL]
 
 多步任务链（最多 5 步）：
-- "用2号给张三发消息" → account_send(account="2号", ...)
-- "看看有什么新消息" → get_notification_digest
+- "帮我给张三发微信说明天开会" → send_wechat(contact="张三", message="明天开会")
+- "看看屏幕上写了什么" → desktop_screenshot
+- "点击确认按钮" → desktop_click(target="确认")
+- "打开微信看看新消息" → open_application(app_name="微信") → read_wechat_messages
 - "发一条美食朋友圈配图" → search_media → publish_moment
 
 规则：
 - 用自然语言告知用户结果，不要显示 JSON。
 - 群发消息前必须先告知目标人数并获得确认。
 - 用户说"用X号"时，用 account_send 而不是 send_wechat。
+- 桌面操作前会自动检查用户是否在操作电脑，避免冲突。
+- 截屏结果会包含 OCR 文字，用于理解屏幕内容。
 """.strip()
 
 
