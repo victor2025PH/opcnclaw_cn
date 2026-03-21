@@ -1392,28 +1392,99 @@ export function init() {
     showSetup();
   })();
 
-  // ── 团队完成自动通知（轮询 EventBus）──
+  // ── 团队状态实时通知 ──
   let _teamNotifiedIds = new Set();
+  let _teamProgressIds = new Set();
   setInterval(async () => {
     try {
       const r = await fetch(getBaseUrl() + '/api/agents/teams');
       const d = await r.json();
       for (const team of (d.teams || [])) {
-        if (team.status === 'done' && !_teamNotifiedIds.has(team.team_id)) {
-          _teamNotifiedIds.add(team.team_id);
-          // 获取完整结果
-          const rr = await fetch(getBaseUrl() + '/api/agents/team/' + team.team_id + '/result');
+        const tid = team.team_id;
+
+        // 执行中：显示进度条（只显示一次）
+        if ((team.status === 'executing' || team.status === 'planning') && !_teamProgressIds.has(tid)) {
+          _teamProgressIds.add(tid);
+          hideWelcome();
+          const progressEl = document.createElement('div');
+          progressEl.id = `team-progress-${tid}`;
+          progressEl.className = 'msg ai';
+          progressEl.innerHTML = `
+            <div class="msg-avatar">🦞</div>
+            <div class="msg-body">
+              <div class="team-progress-card">
+                <div class="tpc-header">👔 ${team.name} 工作中...</div>
+                <div class="tpc-bar"><div class="tpc-fill" style="width:0%"></div></div>
+                <div class="tpc-detail" id="tpc-detail-${tid}">准备中...</div>
+              </div>
+            </div>`;
+          dom.messages.appendChild(progressEl);
+          scrollToBottom();
+        }
+
+        // 更新进度
+        if ((team.status === 'executing') && _teamProgressIds.has(tid)) {
+          const tasks = team.tasks || [];
+          const done = tasks.filter(t => t.status === 'done').length;
+          const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+          const fill = document.querySelector(`#team-progress-${tid} .tpc-fill`);
+          const detail = document.getElementById(`tpc-detail-${tid}`);
+          if (fill) fill.style.width = pct + '%';
+          if (detail) {
+            const agents = Object.values(team.agents || {});
+            const lines = agents.slice(0, 6).map(a => {
+              const icon = a.status === 'done' ? '✅' : a.status === 'working' ? '🔄' : '⏳';
+              return `${a.avatar} ${a.name} ${icon}`;
+            });
+            detail.innerHTML = lines.join(' · ') + (agents.length > 6 ? ` ... 共${agents.length}人` : '');
+          }
+        }
+
+        // 完成：显示结果卡片
+        if (team.status === 'done' && !_teamNotifiedIds.has(tid)) {
+          _teamNotifiedIds.add(tid);
+          // 移除进度条
+          const progressEl = document.getElementById(`team-progress-${tid}`);
+          if (progressEl) progressEl.remove();
+
+          // 获取结果+项目文件
+          const rr = await fetch(getBaseUrl() + '/api/agents/team/' + tid + '/result');
           const rd = await rr.json();
           const result = rd.result || '(无结果)';
-          // 在聊天区追加团队结果卡片
+          const files = rd.project_files || [];
+          const projectId = rd.project_id || '';
+          const downloadUrl = rd.download_url || '';
+
+          // 构建文件列表 HTML
+          let filesHtml = '';
+          if (files.length) {
+            filesHtml = '<div class="trc-files">' +
+              files.slice(0, 8).map(f => `<div class="trc-file">📄 ${f.filename}</div>`).join('') +
+              (files.length > 8 ? `<div class="trc-file">... 共${files.length}个文件</div>` : '') +
+              '</div>';
+          }
+
           hideWelcome();
-          appendMessage({
-            role: 'assistant',
-            content: `✅ **${team.name}完成！**\n\n${result}`,
-            desktop: false,
-          });
+          const card = document.createElement('div');
+          card.className = 'msg ai';
+          card.innerHTML = `
+            <div class="msg-avatar">🦞</div>
+            <div class="msg-body">
+              <div class="team-result-card">
+                <div class="trc-header">✅ ${team.name}完成！</div>
+                <div class="trc-summary">${renderMarkdown(result.substring(0, 600))}</div>
+                ${filesHtml}
+                <div class="trc-actions">
+                  ${downloadUrl ? `<button onclick="window.location.href='${downloadUrl}'">📥 下载 ZIP</button>` : ''}
+                  ${projectId ? `<button onclick="window.open('/project','_blank')">📂 查看项目</button>` : ''}
+                  <button onclick="navigator.clipboard.writeText(${JSON.stringify(result.substring(0, 2000))})">📋 复制</button>
+                </div>
+              </div>
+            </div>`;
+          dom.messages.appendChild(card);
+          scrollToBottom();
         }
       }
     } catch (e) { /* silent */ }
-  }, 5000);
+  }, 4000);
 }

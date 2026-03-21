@@ -366,6 +366,18 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "team_morning_brief",
+            "description": "团队早会。当用户说'团队早会'、'汇报工作'、'今天的进度'、'团队状态'时调用。各 Agent 逐一汇报最新工作成果。",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "confirm_team",
             "description": "用户确认后开始执行团队任务。当用户说'开始'、'出发'、'执行'、'好的开始吧'时调用。必须在 deploy_team 之后、用户明确确认后才能调用。",
             "parameters": {
@@ -1115,6 +1127,54 @@ async def check_team_result(team_id: str) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+async def team_morning_brief() -> Dict[str, Any]:
+    """团队早会——各 Agent 汇报最新状态"""
+    try:
+        from .agent_team import list_teams
+        teams = list_teams()
+
+        # 找最近完成的团队
+        done_teams = [t for t in teams if t.get("status") == "done"]
+        if not done_teams:
+            return {
+                "message": "目前没有团队任务记录。你可以说'帮我写个营销方案'来创建第一个团队任务。",
+                "has_teams": False,
+            }
+
+        latest = done_teams[0]
+        agents = latest.get("agents", {})
+
+        # 生成各 Agent 汇报
+        reports = []
+        for aid, a in agents.items():
+            task = None
+            for t in latest.get("tasks", []):
+                if t.get("agent_id") == aid:
+                    task = t
+                    break
+            result_preview = task["result"][:100] if task and task.get("result") else "暂无成果"
+            reports.append({
+                "avatar": a.get("avatar", "🤖"),
+                "name": a.get("name", aid),
+                "report": f"老板好！{result_preview}",
+            })
+
+        # 构建汇报文本
+        brief_text = "# 团队早会\n\n"
+        for r in reports[:10]:
+            brief_text += f"**{r['avatar']} {r['name']}**：{r['report']}\n\n"
+
+        return {
+            "message": "请用自然语言把每个 Agent 的汇报逐一展示给用户（用上面的内容），像真人开会一样。",
+            "team_name": latest.get("name", ""),
+            "reports": reports,
+            "brief_text": brief_text,
+            "has_teams": True,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 async def _iot_control_tool(device_name: str, action: str, value: dict = None) -> Dict[str, Any]:
     """IoT 设备控制（工具接口）"""
     try:
@@ -1177,6 +1237,8 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
             result = await read_wechat_messages(**args)
         elif name == "iot_control":
             result = await _iot_control_tool(**args)
+        elif name == "team_morning_brief":
+            result = await team_morning_brief()
         elif name == "deploy_team":
             result = await deploy_team(**args)
         elif name == "confirm_team":
