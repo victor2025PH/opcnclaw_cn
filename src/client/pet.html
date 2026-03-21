@@ -7,31 +7,33 @@
 <style>
 :root{--eye-color:#00FFFF;--glow:rgba(0,255,255,0.4);--body-bg:linear-gradient(180deg,#fff 0%,#eef2ff 60%,#dbeafe 100%)}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:transparent;user-select:none;font-family:-apple-system,sans-serif}
+html{height:100%;background:transparent!important}
+body{height:100%;overflow:hidden;background:transparent!important;user-select:none;font-family:-apple-system,sans-serif;
+  -webkit-app-region:drag}
 
-/* ── 机器人容器（全屏可拖拽区域）── */
+/* ── 机器人容器 ── */
 .robot-wrap{
-  position:fixed;width:130px;height:180px;cursor:grab;z-index:9999;
-  bottom:30px;right:30px;
-  transition:filter 0.3s;
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:130px;height:170px;cursor:grab;z-index:9999;
 }
 .robot-wrap:active{cursor:grabbing}
 .robot-wrap:hover .robot-body-group{transform:scale(1.05)}
 
-/* ── 机器人主体 ── */
+/* ── 机器人主体（严格居中）── */
 .robot-body-group{
-  position:relative;width:100%;height:100%;
+  position:relative;width:130px;height:170px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   transition:transform 0.3s ease;
+  margin:0 auto;
 }
 
 /* 浮动动画 */
 .robot-float{animation:float 2.5s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 
-/* ── 头部 ── */
+/* ── 头部（居中）── */
 .head{
-  position:relative;z-index:3;width:72px;height:52px;
+  position:relative;z-index:3;width:72px;height:52px;margin:0 auto;
   background:radial-gradient(circle at 50% 10%,#fff 0%,#eef2ff 60%,#dbeafe 100%);
   border-radius:50% 50% 45% 45%;
   box-shadow:inset 0 -2px 6px rgba(0,0,0,0.1),0 5px 15px rgba(0,0,0,0.08);
@@ -65,12 +67,12 @@ html,body{height:100%;overflow:hidden;background:transparent;user-select:none;fo
 .expr-scan .eye{animation:eye-scan 1s linear infinite}
 @keyframes eye-scan{0%{box-shadow:0 0 5px var(--glow),inset 0 -16px 0 var(--eye-color)}100%{box-shadow:0 0 5px var(--glow),inset 0 16px 0 var(--eye-color)}}
 
-/* ── 颈部 ── */
-.neck{width:3px;height:10px;background:var(--eye-color);opacity:0.3;box-shadow:0 0 5px var(--eye-color);margin:-2px auto}
+/* ── 颈部（居中）── */
+.neck{width:3px;height:10px;background:var(--eye-color);opacity:0.3;box-shadow:0 0 5px var(--eye-color);margin:-2px auto 0 auto}
 
-/* ── 身体 ── */
+/* ── 身体（居中）── */
 .body{
-  position:relative;z-index:2;width:56px;height:72px;
+  position:relative;z-index:2;width:56px;height:72px;margin:0 auto;
   background:var(--body-bg);
   border-radius:30% 30% 40% 40% / 20% 20% 35% 35%;
   box-shadow:inset 0 -3px 8px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.06);
@@ -125,7 +127,7 @@ html,body{height:100%;overflow:hidden;background:transparent;user-select:none;fo
   position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);
   background:rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.1);
   border-radius:8px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,0.8);
-  white-space:nowrap;pointer-events:none;
+  white-space:nowrap;pointer-events:none;-webkit-app-region:no-drag;
 }
 
 /* ── 输入面板 ── */
@@ -136,6 +138,7 @@ html,body{height:100%;overflow:hidden;background:transparent;user-select:none;fo
   pointer-events:auto;
 }
 .input-panel.open{display:block;animation:slideUp 0.2s ease-out}
+.input-panel,.team-panel,.ctx-menu{-webkit-app-region:no-drag}
 @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .pip-header{font-size:13px;font-weight:600;margin-bottom:8px;text-align:center;color:#e8e8f0}
 .pip-quick{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;justify-content:center}
@@ -270,51 +273,64 @@ var ctxMenu = document.getElementById('ctxMenu');
 var visor = document.getElementById('visor');
 
 // ── 拖拽移动 ──
+// Tauri 模式：整个窗口就是透明的，拖拽移动窗口位置
+// 浏览器模式：拖拽 .robot-wrap 元素
+var isTauri = !!(window.__TAURI__ || window.__TAURI_INTERNALS__);
 var dragging = false, dragStartX, dragStartY, wrapStartX, wrapStartY;
-wrap.addEventListener('mousedown', function(e) {
-  if (e.target.closest('.input-panel') || e.target.closest('.team-panel') || e.target.closest('.pip-btn') || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-  dragging = true;
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  var rect = wrap.getBoundingClientRect();
-  wrapStartX = rect.left;
-  wrapStartY = rect.top;
-  wrap.style.transition = 'none';
-});
-document.addEventListener('mousemove', function(e) {
-  if (!dragging) return;
-  var x = wrapStartX + (e.clientX - dragStartX);
-  var y = wrapStartY + (e.clientY - dragStartY);
-  // 边界检测
-  x = Math.max(0, Math.min(window.innerWidth - 130, x));
-  y = Math.max(0, Math.min(window.innerHeight - 180, y));
-  wrap.style.left = x + 'px';
-  wrap.style.top = y + 'px';
-  wrap.style.right = 'auto';
-  wrap.style.bottom = 'auto';
-});
-document.addEventListener('mouseup', function() {
-  if (dragging) { dragging = false; wrap.style.transition = ''; }
-});
 
-// ── 点击飞行（点击桌面空白处机器人飞过去）──
-document.addEventListener('click', function(e) {
-  if (dragging) return;
-  if (e.target.closest('.robot-wrap') || e.target.closest('.ctx-menu')) return;
-  ctxMenu.classList.remove('open');
-  // 飞到点击位置
-  var tx = e.clientX - 65;
-  var ty = e.clientY - 90;
-  tx = Math.max(0, Math.min(window.innerWidth - 130, tx));
-  ty = Math.max(0, Math.min(window.innerHeight - 180, ty));
-  setMode('fly');
-  wrap.style.transition = 'left 0.6s ease, top 0.6s ease';
-  wrap.style.left = tx + 'px';
-  wrap.style.top = ty + 'px';
-  wrap.style.right = 'auto';
-  wrap.style.bottom = 'auto';
-  setTimeout(function() { setMode('idle'); wrap.style.transition = ''; }, 700);
-});
+if (!isTauri) {
+  // 浏览器模式：拖拽元素
+  wrap.style.position = 'fixed';
+  wrap.style.left = 'auto';
+  wrap.style.top = 'auto';
+  wrap.style.right = '30px';
+  wrap.style.bottom = '30px';
+  wrap.style.transform = 'none';
+
+  wrap.addEventListener('mousedown', function(e) {
+    if (e.target.closest('.input-panel') || e.target.closest('.team-panel') ||
+        e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    var rect = wrap.getBoundingClientRect();
+    wrapStartX = rect.left;
+    wrapStartY = rect.top;
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    var x = wrapStartX + (e.clientX - dragStartX);
+    var y = wrapStartY + (e.clientY - dragStartY);
+    x = Math.max(0, Math.min(window.innerWidth - 130, x));
+    y = Math.max(0, Math.min(window.innerHeight - 180, y));
+    wrap.style.left = x + 'px';
+    wrap.style.top = y + 'px';
+    wrap.style.right = 'auto';
+    wrap.style.bottom = 'auto';
+  });
+  document.addEventListener('mouseup', function() { dragging = false; });
+}
+// Tauri 模式：-webkit-app-region:drag 在 body 上已设置，窗口自动可拖
+
+// ── 点击飞行（仅浏览器模式）──
+if (!isTauri) {
+  document.addEventListener('click', function(e) {
+    if (dragging) return;
+    if (e.target.closest('.robot-wrap') || e.target.closest('.ctx-menu')) return;
+    ctxMenu.classList.remove('open');
+    var tx = e.clientX - 65;
+    var ty = e.clientY - 90;
+    tx = Math.max(0, Math.min(window.innerWidth - 130, tx));
+    ty = Math.max(0, Math.min(window.innerHeight - 180, ty));
+    setMode('fly');
+    wrap.style.transition = 'left 0.6s ease, top 0.6s ease';
+    wrap.style.left = tx + 'px';
+    wrap.style.top = ty + 'px';
+    wrap.style.right = 'auto';
+    wrap.style.bottom = 'auto';
+    setTimeout(function() { setMode('idle'); wrap.style.transition = ''; }, 700);
+  });
+}
 
 // ── 双击弹出输入框 ──
 wrap.addEventListener('dblclick', function(e) {
