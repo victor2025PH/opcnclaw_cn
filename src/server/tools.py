@@ -344,6 +344,39 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    # ── Agent 团队工具（核心！让 AI 能调度团队干活）──────────
+    {
+        "type": "function",
+        "function": {
+            "name": "deploy_team",
+            "description": "部署 AI 团队来完成复杂任务。当用户说'帮我做方案'、'写一个计划'、'分析市场'、'做竞品调研'、'上架产品'等需要多人协作的任务时，必须调用此工具。不要自己回答，交给团队去做。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string", "description": "任务描述（用户的原始需求）"},
+                    "template": {
+                        "type": "string",
+                        "description": "团队模板：startup(创业5人)/software(研发10人)/content_factory(内容8人)/marketing(营销10人)/ecommerce(电商15人)/service_center(客服7人)/business(商务6人)/consulting(咨询7人)/all_hands(全员52人)。根据任务类型选择最合适的。",
+                    },
+                },
+                "required": ["task", "template"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_team_result",
+            "description": "查询 AI 团队的执行结果。当之前已部署团队且用户问'做完了吗'、'结果呢'、'方案出来了吗'时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team_id": {"type": "string", "description": "团队ID（deploy_team 返回的）"},
+                },
+                "required": ["team_id"],
+            },
+        },
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────
@@ -879,6 +912,89 @@ async def read_wechat_messages(contact: str = "", count: int = 10) -> Dict[str, 
         return {"error": f"读取消息失败: {e}"}
 
 
+async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
+    """部署 AI 团队执行任务"""
+    try:
+        from .agent_team import create_team, get_team
+        from .agent_templates import get_template
+
+        # 验证模板
+        tpl = get_template(template)
+        if not tpl:
+            # 智能选模板
+            task_lower = task.lower()
+            if any(w in task_lower for w in ["代码", "开发", "程序", "bug", "api"]):
+                template = "software"
+            elif any(w in task_lower for w in ["营销", "推广", "广告", "品牌"]):
+                template = "marketing"
+            elif any(w in task_lower for w in ["电商", "上架", "产品", "店铺"]):
+                template = "ecommerce"
+            elif any(w in task_lower for w in ["内容", "文案", "视频", "文章"]):
+                template = "content_factory"
+            elif any(w in task_lower for w in ["客服", "回复", "售后"]):
+                template = "service_center"
+            else:
+                template = "startup"
+
+        # 创建 AI 调用函数
+        async def _ai_call(messages, model=""):
+            try:
+                from .main import backend as _b
+                if _b:
+                    return await _b.chat_simple(messages)
+                return "AI 未就绪"
+            except Exception as e:
+                return f"AI 错误: {e}"
+
+        team = create_team(template, _ai_call)
+
+        # 异步执行（不阻塞）
+        import asyncio
+        asyncio.create_task(team.execute(task))
+
+        tpl_info = get_template(template)
+        return {
+            "team_id": team.team_id,
+            "template": template,
+            "team_name": tpl_info["name"] if tpl_info else template,
+            "agent_count": len(team.agents),
+            "agents": [a.role.name for a in team.agents.values()],
+            "status": "executing",
+            "message": f"已部署 {len(team.agents)} 人团队，正在执行...",
+        }
+    except Exception as e:
+        return {"error": f"团队部署失败: {e}"}
+
+
+async def check_team_result(team_id: str) -> Dict[str, Any]:
+    """查询团队执行结果"""
+    try:
+        from .agent_team import get_team
+        team = get_team(team_id)
+        if not team:
+            return {"error": "团队不存在"}
+
+        status = team.status
+        if status == "done":
+            return {
+                "status": "done",
+                "result": team.final_result,
+                "tasks_completed": sum(1 for t in team.tasks if t.status == "done"),
+                "total_tasks": len(team.tasks),
+            }
+        elif status == "error":
+            return {"status": "error", "message": "团队执行出错"}
+        else:
+            done = sum(1 for t in team.tasks if t.status == "done")
+            return {
+                "status": status,
+                "progress": f"{done}/{len(team.tasks)} 任务完成",
+                "message": "团队正在工作中，请稍后再查询",
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 async def _iot_control_tool(device_name: str, action: str, value: dict = None) -> Dict[str, Any]:
     """IoT 设备控制（工具接口）"""
     try:
@@ -941,6 +1057,10 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
             result = await read_wechat_messages(**args)
         elif name == "iot_control":
             result = await _iot_control_tool(**args)
+        elif name == "deploy_team":
+            result = await deploy_team(**args)
+        elif name == "check_team_result":
+            result = await check_team_result(**args)
         else:
             result = {"error": f"未知工具: {name}"}
     except Exception as e:
@@ -953,52 +1073,59 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
 # ─────────────────────────────────────────────────────────────
 
 TOOLS_SYSTEM_ADDENDUM = """
-你可以使用以下工具来执行操作：
+你是十三香 AI 工作队的调度员。你的职责是：用户说什么，你就调用工具去做，不要只说"好的"。
 
-基础工具：
-1. **get_current_time** — 获取当前时间日期
-2. **get_weather(city)** — 获取城市天气（city 用英文如 "Beijing"）
-3. **calculate(expression)** — 数学计算
+⚠️ 最重要的规则：
+- 用户让你做任何"方案"、"计划"、"分析"、"报告"→ 立刻调用 deploy_team，交给团队做
+- 用户让你操作电脑/微信 → 立刻调用对应工具
+- 永远不要只回复"好的，我来帮你"然后什么都不做
+- 先行动，再汇报结果
 
-微信工具：
-4. **send_wechat(contact, message)** — 给指定联系人发微信消息
+🏢 AI 团队（最强工具）：
+21. **deploy_team(task, template)** — 部署AI团队执行复杂任务
+    模板选择：
+    - startup: 创业(5人) — 通用方案/计划
+    - marketing: 营销(10人) — 推广/品牌/获客
+    - ecommerce: 电商(15人) — 产品上架/供应链
+    - software: 研发(10人) — 开发/技术方案
+    - content_factory: 内容(8人) — 文案/视频/设计
+    - service_center: 客服(7人) — 客服/售后
+    - consulting: 咨询(7人) — 调研/分析/报告
+    - all_hands: 全员(52人) — 超大型任务
+22. **check_team_result(team_id)** — 查询团队执行结果
+
+📱 微信工具：
+4. **send_wechat(contact, message)** — 发微信
 5. **publish_moment(text, topic, style)** — 发朋友圈
-6. **browse_moments(count)** — 浏览朋友圈最新动态
-7. **get_wechat_stats** — 获取微信互动统计
-8. **search_media(keywords, count)** — 搜索素材库配图
-9. **broadcast_message(message, relationship, min_intimacy)** — 群发预览
-10. **confirm_broadcast(personalize)** — 确认群发
+6. **read_wechat_messages(contact, count)** — 读消息
 
-多账号工具：
-11. **account_send(account, contact, message)** — 用指定账号发消息（account 支持 "1号"/"2号"/"小号" 或 ID）
-12. **list_accounts** — 列出所有已连接的微信账号
-13. **account_inbox(account)** — 查看指定账号的未读消息
-14. **get_notification_digest** — 获取所有账号的消息摘要
+🖥️ 桌面工具：
+15. **desktop_screenshot** — 截屏+OCR
+16. **desktop_click(target)** — 点击文字
+17. **desktop_type(text)** — 输入
+18. **desktop_hotkey(keys)** — 快捷键
+19. **open_application(app_name)** — 打开应用
 
-桌面操作工具：
-15. **desktop_screenshot** — 截屏+OCR识别屏幕文字
-16. **desktop_click(target)** — 点击屏幕上的指定文字（先OCR定位再点击）
-17. **desktop_type(text)** — 在当前位置输入文字
-18. **desktop_hotkey(keys)** — 执行快捷键（如 "ctrl+c"、"alt+tab"）
-19. **open_application(app_name)** — 打开应用（微信/浏览器/记事本等）
-20. **read_wechat_messages(contact, count)** — 读取微信聊天记录
+🔧 基础工具：
+1. **get_current_time** — 时间
+2. **get_weather(city)** — 天气
+3. **calculate(expression)** — 计算
 
-调用格式（不要加额外文字）：
+调用格式：
 [TOOL_CALL] {"name": "工具名", "args": {...}} [/TOOL_CALL]
 
-多步任务链（最多 5 步）：
-- "帮我给张三发微信说明天开会" → send_wechat(contact="张三", message="明天开会")
-- "看看屏幕上写了什么" → desktop_screenshot
-- "点击确认按钮" → desktop_click(target="确认")
-- "打开微信看看新消息" → open_application(app_name="微信") → read_wechat_messages
-- "发一条美食朋友圈配图" → search_media → publish_moment
+示例：
+- "帮我写个营销方案" → deploy_team(task="写营销方案", template="marketing")
+- "分析一下竞品" → deploy_team(task="竞品分析", template="consulting")
+- "帮我上架新品" → deploy_team(task="上架新品", template="ecommerce")
+- "给张三发微信" → send_wechat(contact="张三", message="...")
+- "现在几点" → get_current_time()
 
 规则：
-- 用自然语言告知用户结果，不要显示 JSON。
-- 群发消息前必须先告知目标人数并获得确认。
-- 用户说"用X号"时，用 account_send 而不是 send_wechat。
-- 桌面操作前会自动检查用户是否在操作电脑，避免冲突。
-- 截屏结果会包含 OCR 文字，用于理解屏幕内容。
+- 复杂任务必须用 deploy_team，不要自己写长文
+- 简单操作直接调工具
+- 团队部署后告诉用户"已部署X人团队，正在执行"
+- 用自然语言告知结果
 """.strip()
 
 
