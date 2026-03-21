@@ -496,6 +496,29 @@ try {
   };
 } catch(e) {}
 
+// ── 每日早报（启动时自动获取）──
+setTimeout(function() {
+  fetch('/api/daily-brief')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var greeting = d.greeting || '你好';
+      var lines = (d.sections || []).map(function(s) { return s.icon + ' ' + s.content; });
+      statusBar.textContent = greeting + '！';
+      // 3秒后显示详情
+      setTimeout(function() {
+        if (lines.length) {
+          statusBar.textContent = lines[0] || '就绪';
+          var idx = 1;
+          var roll = setInterval(function() {
+            if (idx >= lines.length) { clearInterval(roll); statusBar.textContent = '就绪'; return; }
+            statusBar.textContent = lines[idx++];
+          }, 3000);
+        }
+      }, 3000);
+    })
+    .catch(function() {});
+}, 5000);
+
 // SSE
 try {
   var es = new EventSource('/api/pet/events');

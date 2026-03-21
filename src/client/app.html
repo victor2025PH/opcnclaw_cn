@@ -4197,6 +4197,7 @@ const { initOfflineBanner } = await import('/js/offline-banner.js' + _v);
 const { initIoTPanel } = await import('/js/iot-panel.js' + _v);
 const { initPushManager } = await import('/js/push-manager.js' + _v);
 const { initPluginMarket } = await import('/js/plugin-market.js' + _v);
+const { initAgentPanel } = await import('/js/agent-panel.js' + _v);
 
 const steps = [
   ['state', initState],
@@ -4213,6 +4214,7 @@ const steps = [
   ['iot-panel', initIoTPanel],
   ['push-manager', initPushManager],
   ['plugin-market', initPluginMarket],
+  ['agent-panel', initAgentPanel],
 ];
 let failedAt = null;
 for (const [name, fn] of steps) {

@@ -408,6 +408,7 @@ from .routers.intent import router as intent_router
 from .routers.a2a import router as a2a_router
 from .routers.users import router as users_router
 from .routers.agents import router as agents_router
+from .routers.pet import router as pet_router
 
 app.include_router(voice_router)
 app.include_router(desktop_router)
@@ -420,6 +421,7 @@ app.include_router(intent_router)
 app.include_router(a2a_router)
 app.include_router(users_router)
 app.include_router(agents_router)
+app.include_router(pet_router)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -2229,6 +2231,76 @@ async def cluster_receive_task(request: Request):
         return await backend.chat_simple(messages) if backend else "AI未就绪"
     result = await agent.execute(task, body.get("context",{}), _ai)
     return {"ok": True, "result": result, "status": task.status}
+
+
+# ── 每日早报 API ─────────────────────────────────────────────
+
+@app.get("/api/daily-brief")
+async def daily_brief():
+    """每日早报：天气+未读消息+今日待办"""
+    import datetime
+    now = datetime.datetime.now()
+    brief = {
+        "time": now.strftime("%Y-%m-%d %H:%M"),
+        "greeting": "早上好" if now.hour < 12 else ("下午好" if now.hour < 18 else "晚上好"),
+        "sections": [],
+    }
+
+    # 天气（使用 tools 中的 get_weather）
+    try:
+        from .tools import get_weather
+        weather = await get_weather("Beijing")
+        brief["sections"].append({
+            "icon": "🌤",
+            "title": "天气",
+            "content": f"{weather.get('city','')}: {weather.get('description','')}, {weather.get('temperature','')}°C",
+        })
+    except Exception:
+        brief["sections"].append({"icon": "🌤", "title": "天气", "content": "获取失败"})
+
+    # 未读微信消息
+    try:
+        from .wechat_monitor import WeChatMonitor
+        monitor = WeChatMonitor()
+        sessions = monitor.get_unread_sessions()
+        unread_count = len(sessions) if sessions else 0
+        brief["sections"].append({
+            "icon": "💬",
+            "title": "微信",
+            "content": f"{unread_count} 条未读消息" if unread_count else "无未读消息",
+        })
+    except Exception:
+        brief["sections"].append({"icon": "💬", "title": "微信", "content": "未连接"})
+
+    # 团队历史
+    try:
+        from . import db as _db
+        conn = _db.get_conn("main")
+        today = now.strftime("%Y-%m-%d")
+        count = conn.execute(
+            "SELECT COUNT(*) FROM team_history WHERE created_at > ?",
+            (now.timestamp() - 86400,)
+        ).fetchone()[0]
+        brief["sections"].append({
+            "icon": "👥",
+            "title": "团队",
+            "content": f"过去24小时完成 {count} 个团队任务" if count else "暂无团队任务",
+        })
+    except Exception:
+        pass
+
+    # 系统状态
+    try:
+        import psutil
+        brief["sections"].append({
+            "icon": "📊",
+            "title": "系统",
+            "content": f"CPU {psutil.cpu_percent()}%, 内存 {psutil.virtual_memory().percent}%",
+        })
+    except Exception:
+        pass
+
+    return brief
 
 
 @app.get("/api/remote/status")
