@@ -497,7 +497,7 @@ pub fn run() {
                     .transparent(true)
                     .always_on_top(true)
                     .skip_taskbar(true)
-                    .resizable(true)
+                    .resizable(false)
                     .build()
                     {
                         Ok(pet) => {
@@ -508,10 +508,15 @@ pub fn run() {
                                 let pw = 160i32;
                                 let ph = 220i32;
                                 let x = pos.x + size.width as i32 - pw - margin;
-                                let y = pos.y + size.height as i32 - ph - margin;
+                                let y = pos.y + size.height as i32 - ph - margin - 50;
                                 let _ = pet.set_position(PhysicalPosition::new(x, y));
                             }
-                            let _ = pet.show();
+                            // 延迟 1 秒显示，等 WebView 加载透明背景
+                            let pet_clone = pet.clone();
+                            std::thread::spawn(move || {
+                                std::thread::sleep(Duration::from_millis(1000));
+                                let _ = pet_clone.show();
+                            });
                         }
                         Err(e) => eprintln!("[Tauri] pet window: {}", e),
                     }
