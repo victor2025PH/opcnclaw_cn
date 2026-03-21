@@ -66,17 +66,25 @@ class TrayIcon:
 
     def _build_menu(self) -> "pystray.Menu":
         import pystray
+        _hp = self.https_port
         return pystray.Menu(
-            pystray.MenuItem("🦞 十三香小龙虾 AI 助手", None, enabled=False),
+            pystray.MenuItem("🦞 十三香 AI 工作队", None, enabled=False),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("🌐 打开网页版",
-                lambda _: webbrowser.open(f"https://localhost:{self.https_port}/app")),
+            pystray.MenuItem("🖥️ 显示主窗口",
+                lambda _: webbrowser.open(f"https://localhost:{_hp}/app")),
+            pystray.MenuItem("🌐 浏览器打开",
+                lambda _: webbrowser.open(f"https://localhost:{_hp}/app")),
             pystray.MenuItem("📱 手机扫码连接",
-                lambda _: webbrowser.open(f"http://localhost:{self.http_port}/qr")),
+                lambda _: webbrowser.open(f"https://localhost:{_hp}/qr")),
             pystray.MenuItem("💬 聊天界面",
-                lambda _: webbrowser.open(f"http://localhost:{self.http_port}/chat")),
+                lambda _: webbrowser.open(f"https://localhost:{_hp}/chat")),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("⚙️ 打开设置", self._open_settings),
+            pystray.MenuItem("🐾 显示桌宠",
+                lambda _: webbrowser.open(f"https://localhost:{_hp}/pet")),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("⚙️ 设置", self._open_settings),
+            pystray.MenuItem("📊 管理面板",
+                lambda _: webbrowser.open(f"https://localhost:{_hp}/admin")),
             pystray.MenuItem("📋 查看日志",
                 lambda _: subprocess.Popen(["notepad", str(Path("logs/server.log").absolute())]
                            if Path("logs/server.log").exists() else

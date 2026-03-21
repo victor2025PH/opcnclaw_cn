@@ -2,9 +2,9 @@ use std::process::{Child, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, PhysicalPosition, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 /// 用户主动退出标志
 static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
@@ -12,6 +12,8 @@ static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
 const BACKEND_PORT: u16 = 8766;
 const BACKEND_URL: &str = "http://127.0.0.1:8766";
 const APP_URL: &str = "http://127.0.0.1:8766/app";
+/// 桌宠页面（与主程序同时启动，也可托盘显示/隐藏）
+const PET_URL: &str = "http://127.0.0.1:8766/pet";
 const HEALTH_URL: &str = "http://127.0.0.1:8766/api/ping";
 const HEALTH_TIMEOUT: Duration = Duration::from_secs(120);
 const HEALTH_POLL: Duration = Duration::from_millis(500);
@@ -240,6 +242,16 @@ fn backend_status(state: tauri::State<PythonBackend>) -> serde_json::Value {
 }
 
 #[tauri::command]
+fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        w.show().map_err(|e| e.to_string())?;
+        let _ = w.unminimize();
+        w.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn restart_backend(state: tauri::State<PythonBackend>) -> Result<String, String> {
     state.stop();
     std::thread::sleep(Duration::from_secs(2));
@@ -305,11 +317,27 @@ pub fn run() {
             };
 
             // ── 系统托盘 ──────────────────────────────
-            let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
-            let restart = MenuItem::with_id(app, "restart", "重启 AI 引擎", true, None::<&str>)?;
-            let browser = MenuItem::with_id(app, "browser", "浏览器打开", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &restart, &browser, &quit])?;
+            // 统一托盘菜单（与 Python launcher 一致）
+            let title = MenuItem::with_id(app, "title", "🦞 十三香 AI 工作队", false, None::<&str>)?;
+            let sep1 = PredefinedMenuItem::separator(app)?;
+            let show = MenuItem::with_id(app, "show", "🖥️ 显示主窗口", true, None::<&str>)?;
+            let browser = MenuItem::with_id(app, "browser", "🌐 浏览器打开", true, None::<&str>)?;
+            let qr = MenuItem::with_id(app, "qr", "📱 手机扫码连接", true, None::<&str>)?;
+            let chat = MenuItem::with_id(app, "chat", "💬 聊天界面", true, None::<&str>)?;
+            let sep2 = PredefinedMenuItem::separator(app)?;
+            let pet_show = MenuItem::with_id(app, "pet_show", "🐾 显示桌宠", true, None::<&str>)?;
+            let pet_hide = MenuItem::with_id(app, "pet_hide", "🙈 隐藏桌宠", true, None::<&str>)?;
+            let sep3 = PredefinedMenuItem::separator(app)?;
+            let settings = MenuItem::with_id(app, "settings", "⚙️ 设置", true, None::<&str>)?;
+            let admin = MenuItem::with_id(app, "admin", "📊 管理面板", true, None::<&str>)?;
+            let restart = MenuItem::with_id(app, "restart", "🔄 重启服务", true, None::<&str>)?;
+            let sep4 = PredefinedMenuItem::separator(app)?;
+            let quit = MenuItem::with_id(app, "quit", "❌ 退出", true, None::<&str>)?;
+            let menu = Menu::with_items(
+                app,
+                &[&title, &sep1, &show, &browser, &qr, &chat, &sep2,
+                  &pet_show, &pet_hide, &sep3, &settings, &admin, &restart, &sep4, &quit],
+            )?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
@@ -331,6 +359,30 @@ pub fn run() {
                     }
                     "browser" => {
                         let _ = open::that(APP_URL);
+                    }
+                    "qr" => {
+                        let _ = open::that(format!("{}/qr", BACKEND_URL));
+                    }
+                    "chat" => {
+                        let _ = open::that(format!("{}/chat", BACKEND_URL));
+                    }
+                    "settings" => {
+                        let _ = open::that(format!("{}/setup", BACKEND_URL));
+                    }
+                    "admin" => {
+                        let _ = open::that(format!("{}/admin", BACKEND_URL));
+                    }
+                    "pet_show" => {
+                        if let Some(w) = app.get_webview_window("pet") {
+                            let _ = w.show();
+                            let _ = w.unminimize();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "pet_hide" => {
+                        if let Some(w) = app.get_webview_window("pet") {
+                            let _ = w.hide();
+                        }
                     }
                     "quit" => {
                         SHOULD_QUIT.store(true, Ordering::SeqCst);
@@ -430,11 +482,48 @@ pub fn run() {
                 .min_inner_size(800.0, 600.0)
                 .center()
                 .build();
+
+                // 桌宠：与主窗口一同出现（后端就绪且非错误页时）
+                if ready {
+                    match WebviewWindowBuilder::new(
+                        &app_handle,
+                        "pet",
+                        WebviewUrl::External(PET_URL.parse().unwrap()),
+                    )
+                    .title("桌宠")
+                    .inner_size(280.0, 320.0)
+                    .min_inner_size(240.0, 280.0)
+                    .decorations(false)
+                    .transparent(true)
+                    .always_on_top(true)
+                    .resizable(true)
+                    .build()
+                    {
+                        Ok(pet) => {
+                            if let Ok(Some(monitor)) = app_handle.primary_monitor() {
+                                let pos = monitor.position();
+                                let size = monitor.size();
+                                let margin = 24i32;
+                                let pw = 280i32;
+                                let ph = 320i32;
+                                let x = pos.x + size.width as i32 - pw - margin;
+                                let y = pos.y + size.height as i32 - ph - margin;
+                                let _ = pet.set_position(PhysicalPosition::new(x, y));
+                            }
+                            let _ = pet.show();
+                        }
+                        Err(e) => eprintln!("[Tauri] pet window: {}", e),
+                    }
+                }
             });
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![backend_status, restart_backend])
+        .invoke_handler(tauri::generate_handler![
+            backend_status,
+            restart_backend,
+            focus_main_window
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| match event {
@@ -446,6 +535,16 @@ pub fn run() {
             } if label == "main" => {
                 api.prevent_close();
                 if let Some(w) = app_handle.get_webview_window("main") {
+                    let _ = w.hide();
+                }
+            }
+            RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::CloseRequested { api, .. },
+                ..
+            } if label == "pet" => {
+                api.prevent_close();
+                if let Some(w) = app_handle.get_webview_window("pet") {
                     let _ = w.hide();
                 }
             }
