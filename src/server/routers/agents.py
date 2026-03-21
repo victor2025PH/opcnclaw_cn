@@ -100,6 +100,53 @@ async def get_team_result(team_id: str):
     return {"result": team.final_result, "status": team.status}
 
 
+@router.post("/team/{team_id}/agent/{agent_id}/chat")
+async def chat_with_agent(team_id: str, agent_id: str, request: Request):
+    """与团队中的单个 Agent 对话"""
+    team = get_team(team_id)
+    if not team:
+        return {"ok": False, "error": "团队不存在"}
+    agent = team.agents.get(agent_id)
+    if not agent:
+        return {"ok": False, "error": f"Agent {agent_id} 不存在"}
+
+    body = await request.json()
+    user_msg = body.get("message", "")
+    if not user_msg:
+        return {"ok": False, "error": "缺少 message"}
+
+    try:
+        # 构建带上下文的 prompt
+        messages = [
+            {"role": "system", "content": agent.role.system_prompt},
+            {"role": "user", "content": user_msg},
+        ]
+        # 加入之前的工作成果作为上下文
+        if agent.current_task and agent.current_task.result:
+            messages.insert(1, {
+                "role": "assistant",
+                "content": f"我之前的工作成果：\n{agent.current_task.result[:800]}"
+            })
+
+        async def _ai(msgs, model=""):
+            try:
+                from src.server.main import backend as _b
+                if _b:
+                    return await _b.chat_simple(msgs)
+                return "AI 未就绪"
+            except Exception as e:
+                return str(e)
+
+        reply = await _ai(messages)
+        # 更新 Agent 的工作成果
+        if agent.current_task:
+            agent.current_task.result = reply
+
+        return {"ok": True, "agent_id": agent_id, "reply": reply}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @router.post("/team/{team_id}/stop")
 async def stop_team(team_id: str):
     """停止团队执行"""

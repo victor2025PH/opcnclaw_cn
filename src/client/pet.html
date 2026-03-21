@@ -1,752 +1,515 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>桌宠</title>
-  <style>
-    :root {
-      --pet-bg: transparent;
-      --pet-accent: #7c6aef;
-      --pet-accent-glow: rgba(124, 106, 239, 0.45);
-      --pet-coral: #ff8a6a;
-      --pet-rose: #e94560;
-      --pet-violet: #7c3aed;
-      --pet-cyan-glow: rgba(34, 211, 238, 0.45);
-      --pet-caption-bg: rgba(12, 12, 24, 0.78);
-      --pet-caption-border: rgba(255, 255, 255, 0.1);
-      --pet-radius: 12px;
-      --pet-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
-      --pet-breathe: 3.2s ease-in-out infinite;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--pet-bg);
-      color: #e8e8f0;
-      user-select: none;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .pet-body, .eye, .pet-stage { animation: none !important; transition: none !important; }
-      .pet-stage.bounce .pet-body { transform: none !important; }
-    }
-    .wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      height: 100%;
-      padding: 8px 10px 10px;
-      gap: 8px;
-    }
-    .drag-bar {
-      width: 100%;
-      height: 26px;
-      border-radius: 8px;
-      background: rgba(18, 18, 32, 0.55);
-      border: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: rgba(255,255,255,0.45);
-    }
-    .drag-bar[data-tauri-drag-region] { cursor: move; }
-    .pet-stage {
-      position: relative;
-      width: 120px;
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    .pet-stage:active { transform: scale(0.98); }
-    .pet-mic-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 88px;
-      height: 88px;
-      --pet-bump: 0;
-      transition: transform 0.09s ease-out;
-      transform: scale(calc(1 + var(--pet-bump)));
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .pet-mic-wrap { transition: none; transform: none !important; }
-    }
-    .pet-body {
-      width: 88px;
-      height: 88px;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 32% 28%, rgba(255,255,255,0.45) 0%, transparent 42%),
-        radial-gradient(circle at 35% 30%, var(--pet-coral) 0%, var(--pet-rose) 42%, var(--pet-violet) 100%);
-      box-shadow:
-        0 8px 32px var(--pet-accent-glow),
-        0 2px 8px rgba(0,0,0,0.35),
-        inset 0 -8px 20px rgba(0,0,0,0.22),
-        inset 0 2px 12px rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.12);
-      animation: breathe var(--pet-breathe);
-      transition: transform 0.35s var(--pet-ease);
-    }
-    .pet-stage.bounce .pet-body {
-      animation: bounce-pop 0.5s var(--pet-ease);
-    }
-    @keyframes bounce-pop {
-      0% { transform: scale(1); }
-      40% { transform: scale(1.14); }
-      100% { transform: scale(1); }
-    }
-    .pet-face {
-      position: absolute;
-      width: 88px;
-      height: 88px;
-      border-radius: 50%;
-      pointer-events: none;
-    }
-    .eye {
-      position: absolute;
-      top: 32%;
-      width: 12px;
-      height: 16px;
-      background: #1a1025;
-      border-radius: 50%;
-      animation: blink 5s infinite;
-    }
-    .eye.l { left: 26%; }
-    .eye.r { right: 26%; }
-    .pupil {
-      position: absolute;
-      top: 22%;
-      left: 18%;
-      width: 5px;
-      height: 6px;
-      background: #fff;
-      border-radius: 50%;
-      opacity: 0.85;
-      pointer-events: none;
-    }
-    @keyframes breathe {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.045); }
-    }
-    @keyframes blink {
-      0%, 96%, 100% { transform: scaleY(1); }
-      98% { transform: scaleY(0.12); }
-    }
-    .pet-stage.state-listening .pet-body {
-      animation: breathe 1.75s ease-in-out infinite;
-      box-shadow:
-        0 8px 40px var(--pet-cyan-glow),
-        inset 0 -8px 20px rgba(0,0,0,0.2);
-    }
-    .pet-stage.state-processing .pet-body {
-      animation: breathe 2.2s linear infinite;
-      filter: saturate(1.15);
-    }
-    .pet-stage.state-speaking .pet-body {
-      animation: pulse-speak 0.55s var(--pet-ease) infinite;
-    }
-    @keyframes pulse-speak {
-      0%, 100% { transform: scale(1.04); }
-      50% { transform: scale(1.11); }
-    }
-    .pet-stage.state-thinking .pet-body {
-      animation: breathe 2s ease-in-out infinite;
-      filter: hue-rotate(28deg) saturate(1.2);
-    }
-    .pet-stage.state-error .pet-body {
-      animation: none;
-      filter: grayscale(0.35) hue-rotate(-20deg);
-      box-shadow: 0 6px 24px rgba(248, 113, 113, 0.35);
-    }
-    .caption {
-      width: 100%;
-      min-height: 38px;
-      max-height: 80px;
-      overflow: hidden;
-      padding: 8px 10px;
-      border-radius: var(--pet-radius);
-      background: var(--pet-caption-bg);
-      border: 1px solid var(--pet-caption-border);
-      font-size: 12px;
-      line-height: 1.45;
-      text-align: center;
-      color: rgba(255,255,255,0.9);
-      word-break: break-word;
-    }
-    .status-line {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--pet-accent);
-      margin-bottom: 4px;
-      letter-spacing: 0.02em;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI助手</title>
+<style>
+:root{--eye-color:#00FFFF;--glow:rgba(0,255,255,0.4);--body-bg:linear-gradient(180deg,#fff 0%,#eef2ff 60%,#dbeafe 100%)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:transparent;user-select:none;font-family:-apple-system,sans-serif}
+
+/* ── 机器人容器（全屏可拖拽区域）── */
+.robot-wrap{
+  position:fixed;width:130px;height:180px;cursor:grab;z-index:9999;
+  bottom:30px;right:30px;
+  transition:filter 0.3s;
+}
+.robot-wrap:active{cursor:grabbing}
+.robot-wrap:hover .robot-body-group{transform:scale(1.05)}
+
+/* ── 机器人主体 ── */
+.robot-body-group{
+  position:relative;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:transform 0.3s ease;
+}
+
+/* 浮动动画 */
+.robot-float{animation:float 2.5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* ── 头部 ── */
+.head{
+  position:relative;z-index:3;width:72px;height:52px;
+  background:radial-gradient(circle at 50% 10%,#fff 0%,#eef2ff 60%,#dbeafe 100%);
+  border-radius:50% 50% 45% 45%;
+  box-shadow:inset 0 -2px 6px rgba(0,0,0,0.1),0 5px 15px rgba(0,0,0,0.08);
+}
+.head-shine{position:absolute;top:4px;left:25%;width:50%;height:40%;background:#fff;opacity:0.6;border-radius:50%;filter:blur(2px)}
+
+/* 面罩（眼睛区域）*/
+.visor{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-45%);
+  width:85%;height:65%;background:#0a0a1a;
+  border-radius:40% 40% 45% 45%;
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  box-shadow:inset 0 0 8px rgba(255,255,255,0.1);
+  border:1px solid rgba(50,50,80,0.5);overflow:hidden;
+}
+
+/* 数字眼 */
+.eye{
+  width:20px;height:16px;background:#001020;overflow:hidden;position:relative;
+  border-radius:50%;border:1px solid var(--eye-color);
+  box-shadow:0 0 5px var(--glow);transition:all 0.3s;
+}
+.eye-lines{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.eye-line{width:100%;height:2px;background:var(--eye-color);box-shadow:0 0 2px var(--eye-color);transition:background 0.5s}
+.eye-glow{position:absolute;inset:0;background:var(--eye-color);opacity:0.15;filter:blur(3px)}
+
+/* 眼睛表情 */
+.expr-happy .eye{border-radius:50% 50% 20% 20%;transform:scaleY(0.6)}
+.expr-blink .eye{transform:scaleY(0.1) scaleX(1.1)}
+.expr-scared .eye{transform:scaleY(1.3) scaleX(0.7);border-radius:40%}
+.expr-scan .eye{animation:eye-scan 1s linear infinite}
+@keyframes eye-scan{0%{box-shadow:0 0 5px var(--glow),inset 0 -16px 0 var(--eye-color)}100%{box-shadow:0 0 5px var(--glow),inset 0 16px 0 var(--eye-color)}}
+
+/* ── 颈部 ── */
+.neck{width:3px;height:10px;background:var(--eye-color);opacity:0.3;box-shadow:0 0 5px var(--eye-color);margin:-2px auto}
+
+/* ── 身体 ── */
+.body{
+  position:relative;z-index:2;width:56px;height:72px;
+  background:var(--body-bg);
+  border-radius:30% 30% 40% 40% / 20% 20% 35% 35%;
+  box-shadow:inset 0 -3px 8px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.06);
+  border:1px solid rgba(200,210,230,0.5);
+}
+/* 胸口能量核心 */
+.core{
+  position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);
+  width:12px;height:12px;border-radius:50%;
+  background:var(--eye-color);box-shadow:0 0 10px var(--glow),0 0 20px var(--glow);
+  animation:core-pulse 2s ease-in-out infinite;
+}
+@keyframes core-pulse{0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}}
+
+/* ── 手臂 ── */
+.arm{
+  position:absolute;top:12px;width:12px;height:50px;z-index:1;
+  transition:transform 0.4s ease;
+}
+.arm svg{width:100%;height:100%}
+.arm-l{left:-14px;transform-origin:top right}
+.arm-r{right:-14px;transform-origin:top left}
+
+/* 手臂动画 */
+.mode-wave .arm-r{animation:wave 1s ease-in-out infinite}
+@keyframes wave{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(-50deg)}}
+.mode-dance .arm-l{animation:dance-l 0.4s ease infinite}
+.mode-dance .arm-r{animation:dance-r 0.4s ease infinite alternate}
+@keyframes dance-l{0%,100%{transform:rotate(5deg)}50%{transform:rotate(45deg)}}
+@keyframes dance-r{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(-45deg)}}
+.mode-fly .arm-l{transform:rotate(35deg)}
+.mode-fly .arm-r{transform:rotate(-35deg)}
+.mode-scared .arm-l{transform:rotate(150deg)}
+.mode-scared .arm-r{transform:rotate(-150deg)}
+
+/* ── 行为模式 ── */
+.mode-idle .robot-float{animation:float 2.5s ease-in-out infinite}
+.mode-dance .robot-float{animation:bounce 0.4s ease infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+.mode-fly .robot-float{animation:none;transform:translateY(-20px)}
+.mode-scared .robot-float{animation:shake 0.3s ease infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.mode-spin .head{animation:spin 0.8s ease-in-out}
+@keyframes spin{0%{transform:rotateY(0)}100%{transform:rotateY(360deg)}}
+
+/* ── 颜色循环 ── */
+@keyframes color-cycle{0%{--eye-color:#00FFFF}25%{--eye-color:#A855F7}50%{--eye-color:#22C55E}75%{--eye-color:#F97316}100%{--eye-color:#00FFFF}}
+.robot-body-group{animation:color-cycle 16s linear infinite}
+
+/* ── 状态栏 ── */
+.status-bar{
+  position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,0.8);
+  white-space:nowrap;pointer-events:none;
+}
+
+/* ── 输入面板 ── */
+.input-panel{
+  display:none;position:absolute;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);
+  width:280px;background:rgba(8,8,20,0.95);border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:100;
+  pointer-events:auto;
+}
+.input-panel.open{display:block;animation:slideUp 0.2s ease-out}
+@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.pip-header{font-size:13px;font-weight:600;margin-bottom:8px;text-align:center;color:#e8e8f0}
+.pip-quick{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;justify-content:center}
+.pip-btn{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,0.15);
+  background:linear-gradient(135deg,rgba(0,255,255,0.15),rgba(168,85,247,0.15));
+  color:#e8e8f0;font-size:11px;cursor:pointer;transition:all 0.15s}
+.pip-btn:hover{background:linear-gradient(135deg,rgba(0,255,255,0.3),rgba(168,85,247,0.3));border-color:var(--eye-color)}
+.pip-row{display:flex;gap:6px}
+.pip-row input{flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);
+  background:rgba(0,0,0,0.3);color:#fff;font-size:12px;outline:none}
+.pip-row button{width:36px;height:36px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,#00FFFF,#A855F7);color:#fff;font-size:16px;cursor:pointer}
+
+/* ── 右键菜单 ── */
+.ctx-menu{
+  display:none;position:fixed;z-index:10000;
+  background:rgba(8,8,20,0.96);border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;padding:4px 0;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,0.6);
+}
+.ctx-menu.open{display:block}
+.ctx-item{display:block;width:100%;padding:8px 14px;border:none;background:none;
+  color:#e8e8f0;font-size:12px;text-align:left;cursor:pointer}
+.ctx-item:hover{background:rgba(0,255,255,0.15)}
+.ctx-sep{height:1px;margin:4px 8px;background:rgba(255,255,255,0.08)}
+
+/* ── 团队进度面板 ── */
+.team-panel{
+  display:none;position:absolute;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);
+  width:300px;max-height:360px;overflow-y:auto;
+  background:rgba(8,8,20,0.95);border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:100;
+  pointer-events:auto;
+}
+.team-panel.open{display:block}
+.tp-header{font-size:13px;font-weight:600;margin-bottom:8px;color:#e8e8f0}
+.tp-agent{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 6px;border-radius:6px;
+  background:rgba(255,255,255,0.04);margin-bottom:3px;color:#ccc}
+.tp-agent .av{font-size:16px}
+.tp-agent .nm{flex:1}
+.tp-agent .st{font-size:10px}
+.tp-agent.done .st{color:#22c55e}
+.tp-agent.working .st{color:#f59e0b}
+.tp-result{font-size:11px;line-height:1.5;max-height:180px;overflow-y:auto;
+  background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;margin-top:8px;display:none;color:#ddd}
+.tp-result.show{display:block}
+.tp-actions{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.tp-actions button{padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.06);color:#e8e8f0;font-size:11px;cursor:pointer}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="drag-bar" data-tauri-drag-region style="height:8px;background:transparent;border:none;min-height:0;padding:0"></div>
-    <div class="pet-stage state-idle" id="petStage" aria-label="桌宠" title="单击弹跳 · 双击对话">
-      <div class="pet-mic-wrap" id="petMicWrap">
-        <!-- 小龙虾造型 -->
-        <svg class="pet-lobster" viewBox="0 0 100 110" width="88" height="97">
-          <!-- 钳子 -->
-          <ellipse class="claw claw-l" cx="15" cy="38" rx="14" ry="10" fill="#e63946" stroke="#c1121f" stroke-width="1.5"/>
-          <ellipse class="claw claw-r" cx="85" cy="38" rx="14" ry="10" fill="#e63946" stroke="#c1121f" stroke-width="1.5"/>
-          <line class="arm arm-l" x1="28" y1="40" x2="38" y2="48" stroke="#d62828" stroke-width="4" stroke-linecap="round"/>
-          <line class="arm arm-r" x1="72" y1="40" x2="62" y2="48" stroke="#d62828" stroke-width="4" stroke-linecap="round"/>
-          <!-- 身体 -->
-          <ellipse cx="50" cy="58" rx="24" ry="28" fill="url(#bodyGrad)" stroke="#c1121f" stroke-width="1.5"/>
-          <!-- 头部 -->
-          <ellipse cx="50" cy="38" rx="20" ry="18" fill="url(#headGrad)" stroke="#c1121f" stroke-width="1.5"/>
-          <!-- 触角 -->
-          <path class="antenna antenna-l" d="M38 24 Q30 8 22 12" stroke="#e63946" stroke-width="2" fill="none" stroke-linecap="round"/>
-          <path class="antenna antenna-r" d="M62 24 Q70 8 78 12" stroke="#e63946" stroke-width="2" fill="none" stroke-linecap="round"/>
-          <!-- 眼睛 -->
-          <circle class="eye-bg" cx="42" cy="34" r="6" fill="white" stroke="#333" stroke-width="1"/>
-          <circle class="eye-bg" cx="58" cy="34" r="6" fill="white" stroke="#333" stroke-width="1"/>
-          <circle class="pupil" id="pupilL" cx="42" cy="35" r="3" fill="#1a1025"/>
-          <circle class="pupil" id="pupilR" cx="58" cy="35" r="3" fill="#1a1025"/>
-          <!-- 嘴巴 -->
-          <path class="mouth" d="M44 44 Q50 48 56 44" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          <!-- 小脚 -->
-          <line x1="35" y1="78" x2="30" y2="90" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="42" y1="80" x2="38" y2="92" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="58" y1="80" x2="62" y2="92" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="65" y1="78" x2="70" y2="90" stroke="#d62828" stroke-width="2.5" stroke-linecap="round"/>
-          <!-- 渐变定义 -->
-          <defs>
-            <radialGradient id="bodyGrad" cx="50%" cy="40%">
-              <stop offset="0%" stop-color="#ef476f"/>
-              <stop offset="100%" stop-color="#c1121f"/>
-            </radialGradient>
-            <radialGradient id="headGrad" cx="50%" cy="30%">
-              <stop offset="0%" stop-color="#e63946"/>
-              <stop offset="100%" stop-color="#c1121f"/>
-            </radialGradient>
-          </defs>
-        </svg>
-        <div class="pet-body" id="petBody" style="display:none"></div>
+
+<!-- 机器人 -->
+<div class="robot-wrap" id="robotWrap">
+  <div class="robot-body-group mode-idle" id="robotGroup">
+    <div class="robot-float">
+      <!-- 头部 -->
+      <div class="head">
+        <div class="head-shine"></div>
+        <div class="visor" id="visor">
+          <div class="eye" id="eyeL">
+            <div class="eye-lines"><div class="eye-line"></div><div class="eye-line"></div><div class="eye-line"></div><div class="eye-line"></div><div class="eye-line"></div></div>
+            <div class="eye-glow"></div>
+          </div>
+          <div class="eye" id="eyeR">
+            <div class="eye-lines"><div class="eye-line"></div><div class="eye-line"></div><div class="eye-line"></div><div class="eye-line"></div><div class="eye-line"></div></div>
+            <div class="eye-glow"></div>
+          </div>
+        </div>
+      </div>
+      <!-- 颈部 -->
+      <div class="neck"></div>
+      <!-- 身体 -->
+      <div class="body" style="position:relative">
+        <div class="core"></div>
+        <!-- 手臂 -->
+        <div class="arm arm-l">
+          <svg viewBox="0 0 18 64" fill="none"><path d="M16 2C16 2 4 10 4 28C4 50 12 60 16 62C17 62.5 18 60 18 56C18 56 18 10 16 2Z" fill="url(#ag)"/><defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#dbeafe"/></linearGradient></defs></svg>
+        </div>
+        <div class="arm arm-r">
+          <svg viewBox="0 0 18 64" fill="none" style="transform:scaleX(-1)"><path d="M16 2C16 2 4 10 4 28C4 50 12 60 16 62C17 62.5 18 60 18 56C18 56 18 10 16 2Z" fill="url(#ag2)"/><defs><linearGradient id="ag2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#dbeafe"/></linearGradient></defs></svg>
+        </div>
       </div>
     </div>
-    <div class="caption" id="caption">
-      <div class="status-line" id="statusLine">就绪</div>
-      <div id="captionText">双击我开始对话</div>
-    </div>
+  </div>
+  <div class="status-bar" id="statusBar">就绪</div>
 
-    <!-- 输入面板（双击桌宠弹出） -->
-    <div class="pet-input-panel" id="petInputPanel">
-      <div class="pip-header">🦞 有什么可以帮你的？</div>
-      <div class="pip-quick">
-        <button class="pip-btn team-btn" data-task="帮我写一个营销推广方案" data-tpl="marketing">📣 写方案</button>
-        <button class="pip-btn team-btn" data-task="帮我做一份竞品分析报告" data-tpl="consulting">🔬 竞品</button>
-        <button class="pip-btn team-btn" data-task="帮我上架一款新产品" data-tpl="ecommerce">🛍️ 上新品</button>
-        <button class="pip-btn team-btn" data-task="帮我写技术方案" data-tpl="software">💻 技术</button>
-      </div>
-      <div class="pip-input-row">
-        <input type="text" id="petInput" placeholder="告诉AI团队你想做什么..." autocomplete="off">
-        <button id="petSendBtn">🚀</button>
-      </div>
+  <!-- 输入面板 -->
+  <div class="input-panel" id="inputPanel">
+    <div class="pip-header">🤖 有什么可以帮你的？</div>
+    <div class="pip-quick">
+      <button class="pip-btn" onclick="launchTask('marketing','帮我写营销方案，请先问我需求')">📣 方案</button>
+      <button class="pip-btn" onclick="launchTask('consulting','帮我做竞品分析，请先问我需求')">🔬 竞品</button>
+      <button class="pip-btn" onclick="launchTask('ecommerce','帮我上架新品，请先问我需求')">🛍️ 新品</button>
+      <button class="pip-btn" onclick="launchTask('software','帮我写技术方案，请先问我需求')">💻 技术</button>
     </div>
-
-    <!-- 团队进度面板 -->
-    <div class="pet-team-panel" id="petTeamPanel">
-      <div class="ptp-header" id="ptpHeader">👔 团队工作中...</div>
-      <div class="ptp-agents" id="ptpAgents"></div>
-      <div class="ptp-result" id="ptpResult"></div>
-      <div class="ptp-actions" id="ptpActions"></div>
-    </div>
-
-    <!-- 右键菜单 -->
-    <div class="pet-context-menu" id="petContextMenu">
-      <button class="pcm-item" data-action="chat">💬 打开聊天</button>
-      <button class="pcm-item" data-action="team-status">👥 团队状态</button>
-      <div class="pcm-sep"></div>
-      <button class="pcm-item" data-action="task" data-tpl="marketing">📣 快速：营销方案</button>
-      <button class="pcm-item" data-action="task" data-tpl="consulting">🔬 快速：竞品分析</button>
-      <button class="pcm-item" data-action="task" data-tpl="ecommerce">🛍️ 快速：上架产品</button>
-      <div class="pcm-sep"></div>
-      <button class="pcm-item" data-action="admin">📊 管理面板</button>
-      <button class="pcm-item" data-action="settings">⚙️ 设置</button>
+    <div class="pip-row">
+      <input type="text" id="petInput" placeholder="告诉AI团队你想做什么...">
+      <button onclick="sendInput()">🚀</button>
     </div>
   </div>
 
-  <style>
-    /* 小龙虾动画 */
-    .pet-lobster{transition:transform 0.3s ease}
-    .pet-stage.state-idle .pet-lobster{animation:lobster-idle 3s ease-in-out infinite}
-    .pet-stage.state-listening .pet-lobster{animation:lobster-listen 1.5s ease-in-out infinite}
-    .pet-stage.state-thinking .pet-lobster{animation:lobster-think 2s ease-in-out infinite}
-    .pet-stage.state-speaking .pet-lobster{animation:lobster-speak 0.8s ease-in-out infinite}
-    .pet-stage.bounce .pet-lobster{animation:lobster-bounce 0.5s ease}
-    .pet-stage.state-error .pet-lobster{filter:grayscale(0.5);animation:lobster-shake 0.3s ease infinite}
+  <!-- 团队面板 -->
+  <div class="team-panel" id="teamPanel">
+    <div class="tp-header" id="tpHeader">👔 团队工作中...</div>
+    <div id="tpAgents"></div>
+    <div class="tp-result" id="tpResult"></div>
+    <div class="tp-actions" id="tpActions"></div>
+  </div>
+</div>
 
-    @keyframes lobster-idle{0%,100%{transform:rotate(0)}25%{transform:rotate(-3deg)}75%{transform:rotate(3deg)}}
-    @keyframes lobster-listen{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-    @keyframes lobster-think{0%,100%{transform:rotate(0) translateY(0)}50%{transform:rotate(5deg) translateY(-3px)}}
-    @keyframes lobster-speak{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-    @keyframes lobster-bounce{0%{transform:translateY(0)}40%{transform:translateY(-15px)}100%{transform:translateY(0)}}
-    @keyframes lobster-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+<!-- 右键菜单 -->
+<div class="ctx-menu" id="ctxMenu">
+  <button class="ctx-item" onclick="window.open('/app','_blank')">💬 打开聊天</button>
+  <button class="ctx-item" onclick="showTeamStatus()">👥 团队状态</button>
+  <div class="ctx-sep"></div>
+  <button class="ctx-item" onclick="launchTask('marketing','')">📣 快速：营销方案</button>
+  <button class="ctx-item" onclick="launchTask('consulting','')">🔬 快速：竞品分析</button>
+  <button class="ctx-item" onclick="launchTask('ecommerce','')">🛍️ 快速：上架产品</button>
+  <div class="ctx-sep"></div>
+  <button class="ctx-item" onclick="window.open('/admin','_blank')">📊 管理面板</button>
+  <button class="ctx-item" onclick="window.open('/app#settings','_blank')">⚙️ 设置</button>
+</div>
 
-    /* 钳子动画 */
-    .pet-stage.state-listening .claw-l{animation:claw-open-l 1.5s ease-in-out infinite}
-    .pet-stage.state-listening .claw-r{animation:claw-open-r 1.5s ease-in-out infinite}
-    @keyframes claw-open-l{0%,100%{transform:rotate(0)}50%{transform:rotate(-15deg) translateX(-3px)}}
-    @keyframes claw-open-r{0%,100%{transform:rotate(0)}50%{transform:rotate(15deg) translateX(3px)}}
+<script>
+var wrap = document.getElementById('robotWrap');
+var group = document.getElementById('robotGroup');
+var statusBar = document.getElementById('statusBar');
+var inputPanel = document.getElementById('inputPanel');
+var teamPanel = document.getElementById('teamPanel');
+var ctxMenu = document.getElementById('ctxMenu');
+var visor = document.getElementById('visor');
 
-    /* 触角动画 */
-    .antenna{animation:antenna-wave 2.5s ease-in-out infinite}
-    .antenna-r{animation-delay:0.3s}
-    @keyframes antenna-wave{0%,100%{d:path("M38 24 Q30 8 22 12")}50%{d:path("M38 24 Q28 6 20 14")}}
+// ── 拖拽移动 ──
+var dragging = false, dragStartX, dragStartY, wrapStartX, wrapStartY;
+wrap.addEventListener('mousedown', function(e) {
+  if (e.target.closest('.input-panel') || e.target.closest('.team-panel') || e.target.closest('.pip-btn') || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+  dragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  var rect = wrap.getBoundingClientRect();
+  wrapStartX = rect.left;
+  wrapStartY = rect.top;
+  wrap.style.transition = 'none';
+});
+document.addEventListener('mousemove', function(e) {
+  if (!dragging) return;
+  var x = wrapStartX + (e.clientX - dragStartX);
+  var y = wrapStartY + (e.clientY - dragStartY);
+  // 边界检测
+  x = Math.max(0, Math.min(window.innerWidth - 130, x));
+  y = Math.max(0, Math.min(window.innerHeight - 180, y));
+  wrap.style.left = x + 'px';
+  wrap.style.top = y + 'px';
+  wrap.style.right = 'auto';
+  wrap.style.bottom = 'auto';
+});
+document.addEventListener('mouseup', function() {
+  if (dragging) { dragging = false; wrap.style.transition = ''; }
+});
 
-    /* 嘴巴：说话时张嘴 */
-    .pet-stage.state-speaking .mouth{animation:mouth-talk 0.4s ease-in-out infinite}
-    @keyframes mouth-talk{0%,100%{d:path("M44 44 Q50 48 56 44")}50%{d:path("M44 44 Q50 52 56 44")}}
+// ── 点击飞行（点击桌面空白处机器人飞过去）──
+document.addEventListener('click', function(e) {
+  if (dragging) return;
+  if (e.target.closest('.robot-wrap') || e.target.closest('.ctx-menu')) return;
+  ctxMenu.classList.remove('open');
+  // 飞到点击位置
+  var tx = e.clientX - 65;
+  var ty = e.clientY - 90;
+  tx = Math.max(0, Math.min(window.innerWidth - 130, tx));
+  ty = Math.max(0, Math.min(window.innerHeight - 180, ty));
+  setMode('fly');
+  wrap.style.transition = 'left 0.6s ease, top 0.6s ease';
+  wrap.style.left = tx + 'px';
+  wrap.style.top = ty + 'px';
+  wrap.style.right = 'auto';
+  wrap.style.bottom = 'auto';
+  setTimeout(function() { setMode('idle'); wrap.style.transition = ''; }, 700);
+});
 
-    /* 输入面板 */
-    .pet-input-panel{
-      display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-      width:280px;background:rgba(12,12,24,0.95);border:1px solid rgba(255,255,255,0.12);
-      border-radius:14px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);
-      animation:pipSlideUp 0.2s ease-out;z-index:100;
-    }
-    .pet-input-panel.open{display:block}
-    @keyframes pipSlideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-    .pip-header{font-size:13px;font-weight:600;margin-bottom:8px;text-align:center}
-    .pip-quick{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;justify-content:center}
-    .pip-btn{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,0.15);
-      background:rgba(255,255,255,0.06);color:#e8e8f0;font-size:11px;cursor:pointer;transition:all 0.15s}
-    .pip-btn:hover{background:rgba(124,106,239,0.25);border-color:var(--pet-accent)}
-    .pip-btn.team-btn{background:linear-gradient(135deg,rgba(124,106,239,0.3),rgba(139,92,246,0.3));border-color:rgba(124,106,239,0.4)}
-    .pip-input-row{display:flex;gap:6px}
-    .pip-input-row input{flex:1;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);
-      background:rgba(0,0,0,0.3);color:#fff;font-size:12px;outline:none}
-    .pip-input-row input:focus{border-color:var(--pet-accent)}
-    .pip-input-row button{width:36px;height:36px;border-radius:10px;border:none;
-      background:var(--pet-accent);color:#fff;font-size:16px;cursor:pointer}
+// ── 双击弹出输入框 ──
+wrap.addEventListener('dblclick', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  teamPanel.classList.remove('open');
+  inputPanel.classList.toggle('open');
+  if (inputPanel.classList.contains('open')) {
+    setTimeout(function() { document.getElementById('petInput').focus(); }, 100);
+  }
+});
 
-    /* 团队进度面板 */
-    .pet-team-panel{
-      display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-      width:300px;max-height:360px;overflow-y:auto;
-      background:rgba(12,12,24,0.95);border:1px solid rgba(255,255,255,0.12);
-      border-radius:14px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:100;
-    }
-    .pet-team-panel.open{display:block}
-    .ptp-header{font-size:13px;font-weight:600;margin-bottom:8px}
-    .ptp-agents{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
-    .ptp-agent{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 6px;border-radius:6px;
-      background:rgba(255,255,255,0.04)}
-    .ptp-agent .a-avatar{font-size:16px}
-    .ptp-agent .a-name{flex:1;color:#ccc}
-    .ptp-agent .a-status{font-size:10px}
-    .ptp-agent.done .a-status{color:#22c55e}
-    .ptp-agent.working .a-status{color:#f59e0b}
-    .ptp-agent.pending .a-status{color:#666}
-    .ptp-result{font-size:11px;line-height:1.5;max-height:180px;overflow-y:auto;
-      background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;margin-bottom:8px;display:none}
-    .ptp-result.has-content{display:block}
-    .ptp-actions{display:flex;gap:6px;justify-content:center}
-    .ptp-actions button{padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);
-      background:rgba(255,255,255,0.06);color:#e8e8f0;font-size:11px;cursor:pointer}
+// ── 右键菜单 ──
+wrap.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top = Math.max(0, e.clientY - 250) + 'px';
+  ctxMenu.classList.add('open');
+});
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.ctx-menu')) ctxMenu.classList.remove('open');
+});
 
-    /* 右键菜单 */
-    .pet-context-menu{
-      display:none;position:absolute;z-index:200;
-      background:rgba(12,12,24,0.96);border:1px solid rgba(255,255,255,0.12);
-      border-radius:10px;padding:4px 0;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,0.6);
-    }
-    .pet-context-menu.open{display:block}
-    .pcm-item{display:block;width:100%;padding:8px 14px;border:none;background:none;
-      color:#e8e8f0;font-size:12px;text-align:left;cursor:pointer}
-    .pcm-item:hover{background:rgba(124,106,239,0.2)}
-    .pcm-sep{height:1px;margin:4px 8px;background:rgba(255,255,255,0.08)}
-  </style>
+// ── 鼠标悬停 → 挥手 ──
+wrap.addEventListener('mouseenter', function() { if (!dragging) setMode('wave'); });
+wrap.addEventListener('mouseleave', function() { if (!dragging) setMode('idle'); });
 
-  <script>
-    (function () {
-      var stage = document.getElementById('petStage');
-      var statusLine = document.getElementById('statusLine');
-      var captionText = document.getElementById('captionText');
-      var pupilL = document.getElementById('pupilL');
-      var pupilR = document.getElementById('pupilR');
-      var reduced = false;
-      try {
-        reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      } catch (_) {}
+// ── 表情和模式 ──
+var currentMode = 'idle';
+function setMode(mode) {
+  currentMode = mode;
+  group.className = 'robot-body-group mode-' + mode;
+  // 表情联动
+  visor.className = 'visor';
+  if (mode === 'wave') visor.classList.add('expr-happy');
+  else if (mode === 'scared') visor.classList.add('expr-scared');
+  else if (mode === 'scan') visor.classList.add('expr-scan');
+}
 
-      var labels = {
-        idle: '就绪',
-        listening: '正在听…',
-        processing: '处理中…',
-        thinking: '思考中…',
-        speaking: '说话中…',
-        error: '异常'
-      };
+// ── 随机行为 ──
+setInterval(function() {
+  if (currentMode !== 'idle' && currentMode !== 'scan') return;
+  var r = Math.random();
+  var next = r > 0.92 ? 'spin' : r > 0.82 ? 'dance' : r > 0.70 ? 'scan' : 'idle';
+  setMode(next);
+  if (next !== 'idle') setTimeout(function() { setMode('idle'); }, next === 'dance' ? 3000 : 2000);
+}, 5000);
 
-      function setVisualState(s) {
-        var key = s || 'idle';
-        stage.className = 'pet-stage state-' + key;
-        statusLine.textContent = labels[key] || labels.idle;
+// ── 眨眼 ──
+setInterval(function() {
+  if (currentMode === 'idle') {
+    visor.classList.add('expr-blink');
+    setTimeout(function() { visor.classList.remove('expr-blink'); }, 150);
+  }
+}, 3000 + Math.random() * 2000);
+
+// ── 团队调度 ──
+var currentTeamId = null;
+var pollTimer = null;
+
+function launchTask(tpl, task) {
+  inputPanel.classList.remove('open');
+  ctxMenu.classList.remove('open');
+  if (!task) task = prompt('请输入任务描述：');
+  if (!task) return;
+
+  setMode('scan');
+  statusBar.textContent = '组建团队中...';
+
+  fetch('/api/agents/team/create', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({template_id: tpl})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.ok) { statusBar.textContent = '创建失败'; return; }
+    currentTeamId = d.team.team_id;
+    showTeamPanel(d.team.name, d.team.agents, 'executing');
+    return fetch('/api/agents/team/' + currentTeamId + '/execute', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({task: task})
+    });
+  })
+  .then(function(r) { if(r) return r.json(); })
+  .then(function() {
+    setMode('dance');
+    statusBar.textContent = '团队工作中...';
+    startPoll();
+  })
+  .catch(function(e) { setMode('scared'); statusBar.textContent = '出错: ' + e.message; });
+}
+
+function sendInput() {
+  var text = document.getElementById('petInput').value.trim();
+  if (text) launchTask('startup', text);
+  document.getElementById('petInput').value = '';
+}
+document.getElementById('petInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') sendInput();
+});
+
+function showTeamPanel(name, agents, status) {
+  teamPanel.classList.add('open');
+  document.getElementById('tpHeader').textContent = (status === 'done' ? '✅ ' : '👔 ') + name;
+  var html = '';
+  var keys = Object.keys(agents);
+  for (var i = 0; i < keys.length; i++) {
+    var a = agents[keys[i]];
+    var s = a.status || 'idle';
+    var icon = s === 'done' ? '✅' : s === 'working' ? '🔄' : '⏳';
+    html += '<div class="tp-agent ' + s + '"><span class="av">' + (a.avatar||'🤖') + '</span><span class="nm">' + (a.name||keys[i]) + '</span><span class="st">' + icon + '</span></div>';
+  }
+  document.getElementById('tpAgents').innerHTML = html;
+}
+
+function startPoll() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(function() {
+    if (!currentTeamId) return;
+    fetch('/api/agents/team/' + currentTeamId + '/status')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      showTeamPanel(d.name || '团队', d.agents || {}, d.status);
+      var tasks = d.tasks || [];
+      var done = tasks.filter(function(t){return t.status==='done'}).length;
+      statusBar.textContent = done + '/' + tasks.length + ' 完成';
+      if (d.status === 'done') {
+        clearInterval(pollTimer);
+        setMode('wave');
+        statusBar.textContent = '搞定啦！';
+        loadResult();
+      } else if (d.status === 'error') {
+        clearInterval(pollTimer);
+        setMode('scared');
+        statusBar.textContent = '执行出错';
       }
+    });
+  }, 3000);
+}
 
-      var lastAppliedTs = 0;
-      var lastMic = 0;
-      var lastAud = 0;
-      var micWrap = document.getElementById('petMicWrap');
-      function recomputePetBump() {
-        if (!micWrap) return;
-        var bump;
-        var mode = 'sum';
-        try {
-          mode = localStorage.getItem('oc_pet_level_mode') || 'sum';
-        } catch (_) {}
-        var m = lastMic;
-        var a = lastAud;
-        if (mode === 'max') {
-          bump = Math.min(0.24, Math.max(m * 0.14, a * 0.12));
-        } else {
-          bump = Math.min(0.24, m * 0.14 + a * 0.12);
-        }
-        if (reduced) bump = 0;
-        micWrap.style.setProperty('--pet-bump', String(bump));
+function loadResult() {
+  fetch('/api/agents/team/' + currentTeamId + '/result')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var el = document.getElementById('tpResult');
+    el.textContent = (d.result || '').substring(0, 500);
+    el.classList.add('show');
+    document.getElementById('tpActions').innerHTML =
+      '<button onclick="navigator.clipboard.writeText(document.getElementById(\'tpResult\').textContent)">📋 复制</button>' +
+      '<button onclick="window.open(\'/app\',\'_blank\')">💬 继续</button>' +
+      '<button onclick="teamPanel.classList.remove(\'open\');document.getElementById(\'tpResult\').classList.remove(\'show\')">✕</button>';
+  });
+}
+
+function showTeamStatus() {
+  ctxMenu.classList.remove('open');
+  fetch('/api/agents/teams').then(function(r){return r.json()}).then(function(d) {
+    var teams = d.teams || [];
+    if (!teams.length) { statusBar.textContent = '暂无团队'; return; }
+    var last = teams[teams.length-1];
+    currentTeamId = last.team_id;
+    showTeamPanel(last.name, last.agents, last.status);
+    if (last.status === 'done') loadResult();
+    else if (last.status !== 'error') startPoll();
+  });
+}
+
+// ── 状态同步（从主窗口接收）──
+try {
+  var ch = new BroadcastChannel('openclaw-pet');
+  ch.onmessage = function(e) {
+    var d = e.data || {};
+    if (d.visualState === 'listening') setMode('scan');
+    else if (d.visualState === 'thinking') setMode('scan');
+    else if (d.visualState === 'speaking') setMode('dance');
+    else if (d.visualState === 'error') setMode('scared');
+    if (d.subtitle) statusBar.textContent = d.subtitle.substring(0, 30);
+  };
+} catch(e) {}
+
+// SSE
+try {
+  var es = new EventSource('/api/pet/events');
+  es.onmessage = function(ev) {
+    try {
+      var d = JSON.parse(ev.data);
+      if (d.visualState) {
+        if (d.visualState === 'listening') setMode('scan');
+        else if (d.visualState === 'speaking') setMode('dance');
       }
-      try {
-        window.addEventListener('storage', function (e) {
-          if (e.key === 'oc_pet_level_mode') recomputePetBump();
-        });
-      } catch (_) {}
-      function applyPayload(d) {
-        if (!d) return;
-        if (d.petLevelMode !== undefined) {
-          try {
-            localStorage.setItem('oc_pet_level_mode', d.petLevelMode);
-          } catch (_) {}
-        }
-        if (d.micLevel !== undefined) lastMic = Number(d.micLevel) || 0;
-        if (d.playbackLevel !== undefined) lastAud = Number(d.playbackLevel) || 0;
-        if (d.micLevel !== undefined || d.playbackLevel !== undefined || d.petLevelMode !== undefined) {
-          recomputePetBump();
-        }
-        var onlyLevels =
-          d.visualState === undefined &&
-          d.subtitle === undefined &&
-          d.status === undefined;
-        if (onlyLevels) return;
-        var t = typeof d.ts === 'number' ? d.ts : 0;
-        if (t && t < lastAppliedTs) return;
-        if (t) lastAppliedTs = t;
-        if (d.visualState) setVisualState(d.visualState);
-        if (d.subtitle !== undefined) captionText.textContent = d.subtitle;
-        if (d.status && !d.visualState) statusLine.textContent = d.status;
-      }
-
-      try {
-        var ch = new BroadcastChannel('openclaw-pet');
-        ch.onmessage = function (e) {
-          var d = e.data || {};
-          if (!d.ts) d.ts = Date.now();
-          applyPayload(d);
-        };
-      } catch (_) {}
-
-      var sseOk = false;
-      try {
-        var es = new EventSource('/api/pet/events');
-        es.onopen = function () { sseOk = true; };
-        es.onmessage = function (ev) {
-          try {
-            var d = JSON.parse(ev.data);
-            applyPayload(d);
-          } catch (_) {}
-        };
-        es.onerror = function () {
-          sseOk = false;
-          try { es.close(); } catch (_) {}
-        };
-      } catch (_) {}
-
-      function schedulePetPoll() {
-        setTimeout(function () {
-          fetch('/api/pet/state')
-            .then(function (r) { return r.json(); })
-            .then(function (d) { applyPayload(d); })
-            .catch(function () {})
-            .finally(function () {
-              schedulePetPoll();
-            });
-        }, sseOk ? 5200 : 2400);
-      }
-      schedulePetPoll();
-
-      setVisualState('idle');
-      recomputePetBump();
-
-      stage.addEventListener('click', function () {
-        if (reduced) return;
-        stage.classList.remove('bounce');
-        void stage.offsetWidth;
-        stage.classList.add('bounce');
-        setTimeout(function () { stage.classList.remove('bounce'); }, 520);
-      });
-
-      // ── 双击：弹出输入面板（替代打开主窗口）──
-      stage.addEventListener('dblclick', function (ev) {
-        ev.preventDefault();
-        toggleInputPanel();
-      });
-
-      // ── 右键菜单 ──
-      document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        var menu = document.getElementById('petContextMenu');
-        menu.style.left = Math.min(e.clientX, window.innerWidth - 190) + 'px';
-        menu.style.top = Math.max(0, e.clientY - 200) + 'px';
-        menu.classList.add('open');
-      });
-      document.addEventListener('click', function() {
-        document.getElementById('petContextMenu').classList.remove('open');
-      });
-      document.querySelectorAll('.pcm-item').forEach(function(item) {
-        item.addEventListener('click', function() {
-          var action = item.dataset.action;
-          if (action === 'chat') window.open('/app', '_blank');
-          else if (action === 'admin') window.open('/admin', '_blank');
-          else if (action === 'settings') window.open('/app#settings', '_blank');
-          else if (action === 'team-status') showTeamStatus();
-          else if (action === 'task') launchTeam(item.dataset.tpl, '');
-        });
-      });
-
-      // ── 输入面板逻辑 ──
-      var inputPanel = document.getElementById('petInputPanel');
-      var teamPanel = document.getElementById('petTeamPanel');
-      var petInput = document.getElementById('petInput');
-      var currentTeamId = null;
-      var pollTimer = null;
-
-      function toggleInputPanel() {
-        teamPanel.classList.remove('open');
-        inputPanel.classList.toggle('open');
-        if (inputPanel.classList.contains('open')) {
-          setTimeout(function() { petInput.focus(); }, 100);
-        }
-      }
-
-      // 快捷任务按钮
-      document.querySelectorAll('.pip-btn.team-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          launchTeam(btn.dataset.tpl, btn.dataset.task);
-        });
-      });
-
-      // 输入框发送
-      document.getElementById('petSendBtn').addEventListener('click', function() {
-        var text = petInput.value.trim();
-        if (text) launchTeam('startup', text);
-      });
-      petInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          var text = petInput.value.trim();
-          if (text) launchTeam('startup', text);
-        }
-      });
-
-      // ── 团队调度核心 ──
-      function launchTeam(template, task) {
-        inputPanel.classList.remove('open');
-        if (!task) task = prompt('请输入任务描述：');
-        if (!task) return;
-
-        setVisualState('thinking');
-        captionText.textContent = '正在组建团队...';
-
-        // 创建团队
-        fetch('/api/agents/team/create', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({template_id: template || 'startup'})
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (!d.ok) { captionText.textContent = '创建失败'; return; }
-          currentTeamId = d.team.team_id;
-          var agents = d.team.agents;
-
-          // 显示团队面板
-          setVisualState('thinking');
-          showTeamPanel(d.team.name, agents, 'executing');
-
-          // 执行任务
-          return fetch('/api/agents/team/' + currentTeamId + '/execute', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({task: task})
-          });
-        })
-        .then(function(r) { if(r) return r.json(); })
-        .then(function(d) {
-          if (!d) return;
-          captionText.textContent = '团队在工作了...';
-          stage.className = 'pet-stage state-speaking'; // 指挥模式
-
-          // 开始轮询状态
-          startPollTeam();
-        })
-        .catch(function(e) {
-          setVisualState('error');
-          captionText.textContent = '出错了: ' + e.message;
-        });
-      }
-
-      function showTeamPanel(name, agents, status) {
-        teamPanel.classList.add('open');
-        document.getElementById('ptpHeader').textContent =
-          (status === 'done' ? '✅ ' : '👔 ') + name;
-
-        var agentsHtml = '';
-        var keys = Object.keys(agents);
-        for (var i = 0; i < keys.length; i++) {
-          var a = agents[keys[i]];
-          var s = a.status || 'idle';
-          var icon = s === 'done' ? '✅' : s === 'working' ? '🔄' : '⏳';
-          agentsHtml += '<div class="ptp-agent ' + s + '">' +
-            '<span class="a-avatar">' + (a.avatar || '🤖') + '</span>' +
-            '<span class="a-name">' + (a.name || keys[i]) + '</span>' +
-            '<span class="a-status">' + icon + '</span></div>';
-        }
-        document.getElementById('ptpAgents').innerHTML = agentsHtml;
-      }
-
-      function startPollTeam() {
-        if (pollTimer) clearInterval(pollTimer);
-        pollTimer = setInterval(function() {
-          if (!currentTeamId) return;
-          fetch('/api/agents/team/' + currentTeamId + '/status')
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-              if (!d.ok && !d.agents) return;
-              var agents = d.agents || {};
-              var tasks = d.tasks || [];
-              var done = 0;
-              for (var i = 0; i < tasks.length; i++) {
-                if (tasks[i].status === 'done') done++;
-              }
-
-              showTeamPanel(d.name || '团队', agents, d.status);
-              captionText.textContent = done + '/' + tasks.length + ' 任务完成';
-
-              if (d.status === 'done' || d.status === 'error') {
-                clearInterval(pollTimer);
-                pollTimer = null;
-
-                if (d.status === 'done') {
-                  setVisualState('idle');
-                  captionText.textContent = '搞定啦！点击查看结果';
-                  stage.classList.add('bounce');
-                  setTimeout(function() { stage.classList.remove('bounce'); }, 600);
-                  loadResult();
-                } else {
-                  setVisualState('error');
-                  captionText.textContent = '执行出错了';
-                }
-              }
-            })
-            .catch(function() {});
-        }, 3000);
-      }
-
-      function loadResult() {
-        fetch('/api/agents/team/' + currentTeamId + '/result')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            var result = d.result || '(无结果)';
-            var el = document.getElementById('ptpResult');
-            el.textContent = result.substring(0, 500) + (result.length > 500 ? '...' : '');
-            el.classList.add('has-content');
-
-            document.getElementById('ptpActions').innerHTML =
-              '<button onclick="copyResult()">📋 复制</button>' +
-              '<button onclick="window.open(\'/app\',\'_blank\')">💬 继续聊</button>' +
-              '<button onclick="closeTeamPanel()">✕ 关闭</button>';
-          });
-      }
-
-      function showTeamStatus() {
-        fetch('/api/agents/teams')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            var teams = d.teams || [];
-            if (teams.length === 0) {
-              captionText.textContent = '暂无团队在工作';
-              return;
-            }
-            var last = teams[teams.length - 1];
-            currentTeamId = last.team_id;
-            showTeamPanel(last.name, last.agents, last.status);
-            if (last.status === 'executing' || last.status === 'planning') startPollTeam();
-            else if (last.status === 'done') loadResult();
-          });
-      }
-
-      window.copyResult = function() {
-        var text = document.getElementById('ptpResult').textContent;
-        navigator.clipboard.writeText(text).then(function() {
-          captionText.textContent = '已复制到剪贴板';
-        });
-      };
-      window.closeTeamPanel = function() {
-        teamPanel.classList.remove('open');
-        document.getElementById('ptpResult').classList.remove('has-content');
-        document.getElementById('ptpActions').innerHTML = '';
-      };
-
-      // 点击外部关闭面板
-      document.addEventListener('click', function(e) {
-        if (!inputPanel.contains(e.target) && !stage.contains(e.target)) {
-          inputPanel.classList.remove('open');
-        }
-      });
-
-      async function tryFocusMain() {
-        try {
-          var core = window.__TAURI__ && window.__TAURI__.core;
-          if (core && typeof core.invoke === 'function') {
-            await core.invoke('focus_main_window');
-            return;
-          }
-          if (window.__TAURI__ && typeof window.__TAURI__.invoke === 'function') {
-            await window.__TAURI__.invoke('focus_main_window');
-            return;
-          }
-        } catch (err) {
-          console.warn('[pet] focus main', err);
-        }
-        try {
-          window.open('/app', '_blank', 'noopener');
-        } catch (_) {}
-      }
-
-      if (!reduced && pupilL && pupilR) {
-        document.addEventListener('mousemove', function (e) {
-          var r = stage.getBoundingClientRect();
-          var cx = r.left + r.width / 2;
-          var cy = r.top + r.height / 2;
-          var dx = (e.clientX - cx) / (r.width || 1);
-          var dy = (e.clientY - cy) / (r.height || 1);
-          var mx = Math.max(-1, Math.min(1, dx)) * 3;
-          var my = Math.max(-1, Math.min(1, dy)) * 2;
-          pupilL.style.transform = 'translate(' + mx + 'px,' + my + 'px)';
-          pupilR.style.transform = 'translate(' + mx + 'px,' + my + 'px)';
-        });
-      }
-    })();
-  </script>
+      if (d.subtitle) statusBar.textContent = d.subtitle.substring(0, 30);
+    } catch(e) {}
+  };
+} catch(e) {}
+</script>
 </body>
 </html>
