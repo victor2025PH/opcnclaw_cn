@@ -1386,10 +1386,17 @@ export function init() {
     }
 
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.origin);
-    const maxRetries = isLocalhost ? 3 : 1;
+    const maxRetries = isLocalhost ? 8 : 1;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+      if (attempt > 0) {
+        // 前3次每2秒，之后每3秒
+        const delay = attempt <= 3 ? 2000 : 3000;
+        // 显示等待提示
+        const statusEl = document.getElementById('qr-status');
+        if (statusEl) statusEl.textContent = `正在等待服务器启动... (${attempt}/${maxRetries})`;
+        await new Promise(r => setTimeout(r, delay));
+      }
       const info = await testConnection(window.location.origin);
       if (info) {
         S.serverUrl = window.location.origin;

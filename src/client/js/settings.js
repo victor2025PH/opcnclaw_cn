@@ -1,5 +1,5 @@
 // settings.js — Orchestrator (sections extracted to settings-models.js, settings-wechat.js, settings-chat.js)
-import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, bus } from '/js/state.js';
+import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, bus, expressionSystem, gazeTracker, intentFusion, EXPR_PRESETS } from '/js/state.js';
 import { initWechatPanel } from '/js/settings-wechat.js';
 import { initModelPanel, initMcpPanel, initModelDepGraph } from '/js/settings-models.js';
 import { initMessageSearch, initBookmarks, initReactions, initTranslate, initMessageExport, initMessageEdit, initPinnedMessages, initSummary } from '/js/settings-chat.js';
@@ -7,6 +7,13 @@ import { initIntentPanel } from '/js/intent-panel.js';
 import { initCoworkPanel } from '/js/cowork-panel.js';
 import { initGestureBindings } from '/js/gesture-bindings.js';
 import { initActionTimeline } from '/js/action-timeline.js';
+import { invalidatePetGainCache, petBroadcast, petSetSkin, petGetSkin, PET_SKIN_IDS } from '/js/pet-bridge.js';
+
+const PET_SKIN_I18N_KEYS = {
+  eve: 'settings.petSkinEve',
+  walle: 'settings.petSkinWalle',
+  orbit: 'settings.petSkinOrbit',
+};
 
 // ══════════════════════════════════════════════════════════════
 // EMOTION INDICATOR (module-scope)
@@ -227,10 +234,14 @@ const mcpHistory = (function() {
   }
 
   document.getElementById('mcp-clear-history')?.addEventListener('click', () => {
-    if (confirm('清空所有调用历史？')) clear();
+    if (confirm(t('mcp.clearHistoryConfirm'))) clear();
   });
 
-  setTimeout(render, 500);
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    requestAnimationFrame(render);
+  } else {
+    document.addEventListener('DOMContentLoaded', render, { once: true });
+  }
 
   return { add, clear, render };
 })();
@@ -447,16 +458,30 @@ function initThemeSwitcher() {
   const sel = document.getElementById('theme-select');
   if (!sel) return;
   const mq = window.matchMedia('(prefers-color-scheme: light)');
+  const quickBtn = document.getElementById('theme-quick-toggle');
 
   function resolveTheme(pref) {
     if (pref === 'auto') return mq.matches ? 'light' : 'dark';
     return pref;
   }
 
+  function syncQuickThemeBtn() {
+    const resolved = document.documentElement.getAttribute('data-theme') || 'dark';
+    if (!quickBtn) return;
+    const isLight = resolved === 'light';
+    quickBtn.title = t('header.themeToggle');
+    quickBtn.setAttribute('aria-label', t('header.themeToggle'));
+    quickBtn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+    quickBtn.innerHTML = isLight
+      ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+  }
+
   function applyTheme(resolved) {
     document.documentElement.setAttribute('data-theme', resolved);
     const mc = document.querySelector('meta[name="theme-color"]');
     if (mc) mc.content = resolved === 'light' ? '#f5f5fa' : '#0a0a14';
+    syncQuickThemeBtn();
   }
 
   const saved = localStorage.getItem('oc-theme') || 'dark';
@@ -470,6 +495,13 @@ function initThemeSwitcher() {
 
   mq.addEventListener('change', () => {
     if (sel.value === 'auto') applyTheme(resolveTheme('auto'));
+  });
+
+  quickBtn?.addEventListener('click', () => {
+    const resolved = document.documentElement.getAttribute('data-theme') || 'dark';
+    sel.value = resolved === 'light' ? 'dark' : 'light';
+    localStorage.setItem('oc-theme', sel.value);
+    applyTheme(resolveTheme(sel.value));
   });
 }
 
@@ -522,20 +554,23 @@ function initVoiceClone() {
       const r = await fetch(getBaseUrl() + '/api/voice-clone/list');
       const d = await r.json();
       if (!d.ok || !d.voices?.length) {
-        listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">暂无克隆声音</div>';
+        listEl.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:8px 0">${escapeHtml(t('clone.empty'))}</div>`;
         return;
       }
-      listEl.innerHTML = d.voices.map(v => `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-surface);border-radius:8px;margin-bottom:6px;border:1px solid ${d.active_path?.includes(v.name) ? 'var(--accent)' : 'var(--border)'}">
+      listEl.innerHTML = d.voices.map((v) => {
+        const active = d.active_path?.includes(v.name);
+        const safeName = escapeHtml(v.name);
+        return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-surface);border-radius:8px;margin-bottom:6px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'}">
           <span style="font-size:18px">🎭</span>
-          <span style="flex:1;font-size:13px;font-weight:500">${v.name}</span>
-          <span style="font-size:11px;color:var(--text-muted)">${v.duration ? v.duration + 's' : ''}</span>
-          <button onclick="_cloneActivate('${v.name}')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">${d.active_path?.includes(v.name) ? '● 使用中' : '使用'}</button>
-          <button onclick="_cloneDelete('${v.name}')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:14px">✕</button>
-        </div>
-      `).join('');
-    } catch(e) {
-      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">加载失败</div>';
+          <span style="flex:1;font-size:13px;font-weight:500">${safeName}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${v.duration ? `${v.duration}s` : ''}</span>
+          <button type="button" onclick="_cloneActivate(${JSON.stringify(v.name)})" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">${escapeHtml(active ? t('clone.inUse') : t('clone.use'))}</button>
+          <button type="button" onclick="_cloneDelete(${JSON.stringify(v.name)})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:14px" title="${escapeHtml(t('clone.delete'))}">✕</button>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      listEl.innerHTML = `<div style="font-size:12px;color:var(--text-muted)">${escapeHtml(t('clone.loadFail'))}</div>`;
     }
   }
 
@@ -545,33 +580,33 @@ function initVoiceClone() {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ name })
       });
-      window.ocToast?.success('已切换到克隆声音');
+      window.ocToast?.success(t('clone.switchToast'));
       loadClones();
-    } catch(e) {}
+    } catch (e) {}
   };
 
   window._cloneDelete = async function(name) {
-    if (!confirm('删除声音 "' + name + '"？')) return;
-    await fetch(getBaseUrl() + '/api/voice-clone/' + name, { method: 'DELETE' });
+    if (!confirm(t('clone.deleteConfirm', { name }))) return;
+    await fetch(getBaseUrl() + '/api/voice-clone/' + encodeURIComponent(name), { method: 'DELETE' });
     loadClones();
   };
 
   async function uploadClone(blob, name) {
-    statusEl.textContent = '⏳ 上传中...';
+    statusEl.textContent = t('clone.uploading');
     const form = new FormData();
     form.append('audio', blob, 'recording.webm');
-    form.append('name', name || '我的声音');
+    form.append('name', name || t('clone.defaultVoiceName'));
     try {
       const r = await fetch(getBaseUrl() + '/api/voice-clone/create', { method: 'POST', body: form });
       const d = await r.json();
       if (d.ok) {
-        statusEl.textContent = `✅ 声音「${d.name}」已保存 (${d.duration}s)`;
+        statusEl.textContent = t('clone.saveOk', { name: d.name, duration: d.duration });
         loadClones();
       } else {
-        statusEl.textContent = '❌ ' + (d.error || '上传失败');
+        statusEl.textContent = '❌ ' + (d.error || t('clone.uploadFail'));
       }
-    } catch(e) {
-      statusEl.textContent = '❌ 网络错误';
+    } catch (e) {
+      statusEl.textContent = t('clone.networkErr');
     }
   }
 
@@ -597,9 +632,9 @@ function initVoiceClone() {
         const s = Math.floor((Date.now() - startTime) / 1000);
         timerEl.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
       }, 200);
-      statusEl.textContent = '🎤 正在录音...请朗读一段文字';
-    } catch(e) {
-      statusEl.textContent = '❌ 无法访问麦克风: ' + e.message;
+      statusEl.textContent = t('clone.recordingHint');
+    } catch (e) {
+      statusEl.textContent = t('clone.micErrorPrefix') + e.message;
     }
   });
 
@@ -616,6 +651,8 @@ function initVoiceClone() {
 
   const settingsToggle = document.getElementById('settings-toggle');
   settingsToggle?.addEventListener('click', () => setTimeout(loadClones, 500));
+  window.addEventListener('oc-lang-change', () => loadClones());
+  window.addEventListener('oc-i18n-updated', () => loadClones());
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -682,7 +719,11 @@ function initPullToRefresh() {
       try {
         const r = await fetch(getBaseUrl() + '/api/models');
         const d = await r.json();
-        document.getElementById('mp-mode-badge').textContent = d.mode === 'full' ? '完整模式' : '极简模式';
+        const badge = document.getElementById('mp-mode-badge');
+        if (badge) {
+          badge.dataset.mode = d.mode === 'full' ? 'full' : 'min';
+          badge.textContent = d.mode === 'full' ? t('model.fullMode') : t('model.minMode');
+        }
         document.dispatchEvent(new CustomEvent('oc:models-refresh', { detail: d.models || [] }));
       } catch {}
     });
@@ -796,22 +837,48 @@ function initKeyboardShortcuts() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 11. FOCUS MANAGEMENT (a11y)
+// 11. FOCUS MANAGEMENT (a11y) — real Tab trap
 // ══════════════════════════════════════════════════════════════
 function initFocusManagement() {
-  let _prevFocus = null;
+  const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const _traps = new Map();
+
+  function _onKeydown(e) {
+    if (e.key !== 'Tab') return;
+    const panel = e.currentTarget;
+    const focusable = [...panel.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || document.activeElement === panel) {
+        e.preventDefault(); last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    }
+  }
 
   function trapFocus(panelId) {
     const panel = document.getElementById(panelId);
     if (!panel) return;
+    if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+
     const obs = new MutationObserver(() => {
       const isVisible = !panel.classList.contains('hidden');
       if (isVisible) {
-        _prevFocus = document.activeElement;
-        panel.focus();
-      } else if (_prevFocus) {
-        _prevFocus.focus();
-        _prevFocus = null;
+        _traps.set(panelId, document.activeElement);
+        panel.addEventListener('keydown', _onKeydown);
+        requestAnimationFrame(() => {
+          const first = panel.querySelector(FOCUSABLE);
+          (first || panel).focus();
+        });
+      } else {
+        panel.removeEventListener('keydown', _onKeydown);
+        const prev = _traps.get(panelId);
+        if (prev && prev.focus) { try { prev.focus(); } catch(e) {} }
+        _traps.delete(panelId);
       }
     });
     obs.observe(panel, { attributes: true, attributeFilter: ['class'] });
@@ -844,7 +911,7 @@ function initVoiceCommands() {
       _skills = d.skills || d || [];
       renderSkills(_skills);
     } catch {
-      $id('vcmd-list').innerHTML = '<div class="mcp-empty">暂无可用技能</div>';
+      $id('vcmd-list').innerHTML = `<div class="mcp-empty" data-i18n="vcmd.noSkills">${t('vcmd.noSkills')}</div>`;
     }
   }
 
@@ -877,11 +944,11 @@ function initVoiceCommands() {
     try {
       const r = await fetch(getBaseUrl() + `/api/desktop-skill/${id}`, { method: 'POST' });
       const d = await r.json();
-      window.ocToast?.success(d.message || '技能已执行');
+      window.ocToast?.success(d.message || t('vcmd.skillExecuted'));
     } catch(e) {
-      window.ocToast?.error('执行失败: ' + e.message);
+      window.ocToast?.error(t('vcmd.execFailed', { msg: e.message || '' }));
     }
-    if (btn) { btn.disabled = false; btn.textContent = '执行'; }
+    if (btn) { btn.disabled = false; btn.textContent = t('vcmd.execute'); }
   }
 
   $id('vcmd-search')?.addEventListener('input', (e) => {
@@ -968,7 +1035,7 @@ function initVoiceCommands() {
 
   $id('vcmd-save-custom')?.addEventListener('click', () => {
     const name = $id('vcmd-custom-name').value.trim();
-    if (!name || _formSteps.length === 0) { window.ocToast?.warning('名称和步骤不能为空'); return; }
+    if (!name || _formSteps.length === 0) { window.ocToast?.warning(t('vcmd.nameStepsRequired')); return; }
     _customs.push({ name, steps: [..._formSteps] });
     saveCmds();
     _editing = false;
@@ -990,6 +1057,19 @@ function initVoiceCommands() {
 
   $id('vcmd-toggle')?.addEventListener('click', openPanelWithCustom);
   $id('vcmd-back')?.addEventListener('click', closePanel);
+
+  function refreshVcmdI18n() {
+    const q = ($id('vcmd-search')?.value || '').toLowerCase();
+    const filtered = q
+      ? _skills.filter(s =>
+        (s.name_zh || s.name || s.id).toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q))
+      : _skills;
+    renderSkills(filtered);
+    renderCustomList();
+  }
+  window.addEventListener('oc-lang-change', refreshVcmdI18n);
+  window.addEventListener('oc-i18n-updated', refreshVcmdI18n);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1002,7 +1082,8 @@ function initVoiceCommands() {
 function initSettingsExport() {
   const SETTINGS_KEYS = [
     'oc-theme', 'oc-lang', 'oc-fav-tools', 'oc-mcp-history', 'oc-cmd-recent',
-    'oc-custom-vcmd', 'oc-perf-data', 'oc-emotion-enabled', 'oc-mic-hint'
+    'oc-custom-vcmd', 'oc-perf-data', 'oc-emotion-enabled', 'oc-mic-hint',
+    'oc_pet_mic_gain', 'oc_pet_playback_gain', 'oc_pet_level_mode', 'oc_pet_skin',
   ];
 
   function collectAll() {
@@ -1014,6 +1095,7 @@ function initSettingsExport() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k.startsWith('oc-') && !(k in data)) data[k] = localStorage.getItem(k);
+      if (k.startsWith('oc_pet_') && !(k in data)) data[k] = localStorage.getItem(k);
     }
     return data;
   }
@@ -1058,11 +1140,39 @@ function initSettingsExport() {
 function initExpressionSettings() {
   const $id = id => document.getElementById(id);
 
+  function exprItemLabel(name, def) {
+    const k = `expr.item.${name}`;
+    const tx = t(k);
+    return tx !== k ? tx : def.label;
+  }
+
+  function presetLabel(key, p) {
+    const k = `expr.preset.${key}.label`;
+    const tx = t(k);
+    return tx !== k ? tx : p.label;
+  }
+
+  function presetDesc(key, p) {
+    const k = `expr.preset.${key}.desc`;
+    const tx = t(k);
+    return tx !== k ? tx : p.description;
+  }
+
+  function refreshGazeStatusText() {
+    const st = $id('gaze-status');
+    if (!st) return;
+    if (!$id('gaze-enable')?.checked) {
+      st.textContent = '';
+      return;
+    }
+    st.textContent = gazeTracker.calibration.isCalibrated ? t('gaze.statusCalibrated') : t('gaze.statusRough');
+  }
+
   function renderExprItem(name, def, type) {
     const isHead = type === 'head_movement';
-    const uid = `expr-sw-${name}`;
+    const displayLabel = escapeHtml(exprItemLabel(name, def));
     return `<div class="settings-row" style="flex-wrap:wrap;gap:4px;align-items:center" data-expr="${name}">
-      <span class="settings-label" style="flex:1;min-width:120px">${def.label}</span>
+      <span class="settings-label" style="flex:1;min-width:120px">${displayLabel}</span>
       <label style="position:relative;width:40px;height:22px;flex-shrink:0">
         <input type="checkbox" class="expr-item-toggle" data-name="${name}" data-type="${type}" ${def.enabled ? 'checked' : ''} style="opacity:0;width:0;height:0">
         <span style="position:absolute;inset:0;background:var(--bg-surface);border-radius:11px;cursor:pointer;transition:.3s"></span>
@@ -1086,7 +1196,7 @@ function initExpressionSettings() {
     $id('expr-head-list').innerHTML = head.map(e => renderExprItem(e.name, e, e.type)).join('');
 
     $id('expr-presets').innerHTML = Object.entries(EXPR_PRESETS).map(([key, p]) =>
-      `<button class="btn" data-preset="${key}" style="background:var(--bg-surface);color:var(--text-primary);font-size:11px;padding:6px 10px" title="${p.description}">${p.label}</button>`
+      `<button class="btn" data-preset="${escapeHtml(key)}" style="background:var(--bg-surface);color:var(--text-primary);font-size:11px;padding:6px 10px" title="${escapeHtml(presetDesc(key, p))}">${escapeHtml(presetLabel(key, p))}</button>`
     ).join('');
   }
 
@@ -1150,7 +1260,7 @@ function initExpressionSettings() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(config),
         });
-        window.ocToast?.success('表情控制配置已保存');
+        window.ocToast?.success(t('expr.saveOk'));
       } catch (e) {
         console.error('Save expression config failed:', e);
       }
@@ -1189,11 +1299,14 @@ function initExpressionSettings() {
         valEl.textContent = `${pct}%`;
         valEl.style.color = tag.active ? 'var(--success)' : 'var(--text-muted)';
       }
-      return `${tag.label}: ${(tag.value * 100).toFixed(0)}% ${tag.active ? '🟢' : '⚪'}`;
+      const k = `expr.item.${tag.name}`;
+      const tx = t(k);
+      const label = tx !== k ? tx : tag.label;
+      return `${label}: ${(tag.value * 100).toFixed(0)}% ${tag.active ? '🟢' : '⚪'}`;
     });
     monitor.innerHTML = lines.length > 0
       ? lines.map(l => `<div style="padding:2px 0">${l}</div>`).join('')
-      : '<div style="opacity:.5">开启摄像头和表情控制后显示实时数据...</div>';
+      : `<div style="opacity:.5" data-i18n="expr.liveEmpty">${t('expr.liveEmpty')}</div>`;
   });
 
   $id('gaze-enable')?.addEventListener('change', (e) => {
@@ -1205,9 +1318,7 @@ function initExpressionSettings() {
       knob.style.transform = e.target.checked ? 'translateX(22px)' : '';
       knob.style.background = e.target.checked ? 'var(--accent)' : '#fff';
     }
-    $id('gaze-status').textContent = e.target.checked
-      ? (gazeTracker.calibration.isCalibrated ? '已校准，追踪中' : '未校准，使用粗略追踪')
-      : '';
+    refreshGazeStatusText();
   });
 
   $id('gaze-dwell')?.addEventListener('input', (e) => {
@@ -1218,7 +1329,7 @@ function initExpressionSettings() {
 
   $id('gaze-calibrate-btn')?.addEventListener('click', () => {
     if (!S.isCameraOn) {
-      $id('gaze-status').textContent = '请先打开摄像头';
+      $id('gaze-status').textContent = t('gaze.openCameraFirst');
       return;
     }
     startGazeCalibration();
@@ -1228,7 +1339,7 @@ function initExpressionSettings() {
     intentFusion.startRecording();
     $id('workflow-start-rec').style.display = 'none';
     $id('workflow-stop-rec').style.display = 'block';
-    $id('workflow-rec-status').textContent = '正在录制...';
+    $id('workflow-rec-status').textContent = t('workflow.recording');
     $id('workflow-rec-status').style.color = 'var(--error)';
   });
 
@@ -1238,25 +1349,25 @@ function initExpressionSettings() {
     $id('workflow-stop-rec').style.display = 'none';
 
     if (actions.length === 0) {
-      $id('workflow-rec-status').textContent = '没有录制到任何操作';
+      $id('workflow-rec-status').textContent = t('workflow.empty');
       $id('workflow-rec-status').style.color = 'var(--text-muted)';
       return;
     }
 
-    const name = prompt('给工作流起个名字：', `工作流-${new Date().toLocaleDateString()}`);
+    const name = prompt(t('workflow.namePrompt'), `${t('workflow.nameDefaultPrefix')}${new Date().toLocaleDateString()}`);
     if (!name) return;
 
     try {
       const resp = await fetch(getBaseUrl() + '/api/workflows', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actions, name, description: `${actions.length} 个步骤` }),
+        body: JSON.stringify({ actions, name, description: t('workflow.descSteps', { n: String(actions.length) }) }),
       });
       const data = await resp.json();
-      $id('workflow-rec-status').textContent = `✅ 已保存「${name}」(${actions.length}步)`;
+      $id('workflow-rec-status').textContent = t('workflow.savedOk', { name, steps: String(actions.length) });
       $id('workflow-rec-status').style.color = 'var(--success)';
     } catch (e) {
-      $id('workflow-rec-status').textContent = '保存失败: ' + e.message;
+      $id('workflow-rec-status').textContent = t('workflow.saveFail', { msg: e.message || '' });
       $id('workflow-rec-status').style.color = 'var(--error)';
     }
   });
@@ -1282,9 +1393,19 @@ function initExpressionSettings() {
           knob.style.transform = 'translateX(22px)';
           knob.style.background = 'var(--accent)';
         }
+        refreshGazeStatusText();
       }).catch(() => {});
     });
   }, 500);
+
+  window.addEventListener('oc-lang-change', () => {
+    renderPanel();
+    refreshGazeStatusText();
+  });
+  window.addEventListener('oc-i18n-updated', () => {
+    renderPanel();
+    refreshGazeStatusText();
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1735,6 +1856,11 @@ window.ocPlugins = ocPlugins;
   menu.querySelectorAll('.hom-item').forEach(item => {
     item.addEventListener('click', () => {
       const targetId = item.dataset.target;
+      if (!targetId) {
+        // 无 data-target 的按钮（如手机简洁版、初始设置）由 onclick 处理
+        menu.classList.remove('open');
+        return;
+      }
       if (targetId === 'export-toggle' && typeof window._openExportMenu === 'function') {
         window._openExportMenu(moreBtn);
       } else {
@@ -1899,7 +2025,7 @@ function initAdvancedTheme() {
     if (slider) slider.value = DEFAULT_FONT;
     if (sizeVal) sizeVal.textContent = DEFAULT_FONT + 'px';
     updatePresets(DEFAULT_ACCENT);
-    if (typeof window.ocToast !== 'undefined') window.ocToast.info('主题已重置');
+    if (typeof window.ocToast !== 'undefined') window.ocToast.info(t('settings.themeResetOk'));
   });
 }
 
@@ -2016,13 +2142,13 @@ function initQaEditor() {
     const icon = $id('qa-add-icon')?.value?.trim() || '📌';
     const name = $id('qa-add-name')?.value?.trim();
     const skill = $id('qa-add-skill')?.value?.trim();
-    if (!name || !skill) { if (typeof window.ocToast !== 'undefined') window.ocToast.warning('名称和技能 ID 不能为空'); return; }
+    if (!name || !skill) { if (typeof window.ocToast !== 'undefined') window.ocToast.warning(t('settings.qaNameSkillRequired')); return; }
     const id = 'custom_' + Date.now();
     const actions = qa.getActions();
     actions.push({ id, icon, label: name, skill });
     qa.save(actions); render(); qa.render();
     $id('qa-add-icon').value = ''; $id('qa-add-name').value = ''; $id('qa-add-skill').value = '';
-    if (typeof window.ocToast !== 'undefined') window.ocToast.success('已添加');
+    if (typeof window.ocToast !== 'undefined') window.ocToast.success(t('settings.qaAdded'));
   });
 
   const observer = new MutationObserver(() => {
@@ -2370,6 +2496,89 @@ function initOnboarding() {
   setTimeout(() => showStep(0), 1500);
 }
 
+function initPetGainSliders() {
+  const GM = 'oc_pet_mic_gain';
+  const GP = 'oc_pet_playback_gain';
+  const GL = 'oc_pet_level_mode';
+  const m = document.getElementById('pet-mic-gain');
+  const p = document.getElementById('pet-playback-gain');
+  const lm = document.getElementById('pet-level-mode');
+  const mv = document.getElementById('pet-mic-gain-val');
+  const pv = document.getElementById('pet-playback-gain-val');
+  if (!m || !p || !mv || !pv) return;
+  function syncVals() {
+    mv.textContent = Number(m.value).toFixed(2);
+    pv.textContent = Number(p.value).toFixed(2);
+  }
+  function load() {
+    const a = localStorage.getItem(GM);
+    const b = localStorage.getItem(GP);
+    m.value = a != null && a !== '' ? a : '1';
+    p.value = b != null && b !== '' ? b : '1';
+    if (lm) {
+      const mode = localStorage.getItem(GL) || 'sum';
+      lm.value = mode === 'max' ? 'max' : 'sum';
+    }
+    syncVals();
+  }
+  function save() {
+    localStorage.setItem(GM, m.value);
+    localStorage.setItem(GP, p.value);
+    syncVals();
+    invalidatePetGainCache();
+  }
+  function saveLevelMode() {
+    if (!lm) return;
+    const v = lm.value === 'max' ? 'max' : 'sum';
+    localStorage.setItem(GL, v);
+    try {
+      petBroadcast({ petLevelMode: v, ts: Date.now() });
+    } catch (_) {}
+  }
+  load();
+  m.addEventListener('input', save);
+  p.addEventListener('input', save);
+  lm?.addEventListener('change', saveLevelMode);
+  document.getElementById('settings-toggle')?.addEventListener('click', () => {
+    setTimeout(load, 0);
+  });
+}
+
+function initPetSkinSelect() {
+  const sel = document.getElementById('pet-skin-select');
+  if (!sel) return;
+  function rebuildOptions() {
+    sel.innerHTML = PET_SKIN_IDS.map((id) => {
+      const key = PET_SKIN_I18N_KEYS[id] || 'settings.petSkin';
+      return `<option value="${id}">${escapeHtml(t(key))}</option>`;
+    }).join('');
+  }
+  function applyToUi() {
+    const v = petGetSkin();
+    if (sel.value !== v) sel.value = v;
+  }
+  function refreshFromI18n() {
+    rebuildOptions();
+    applyToUi();
+  }
+  rebuildOptions();
+  applyToUi();
+  window.addEventListener('oc-lang-change', refreshFromI18n);
+  window.addEventListener('oc-i18n-updated', refreshFromI18n);
+  sel.addEventListener('change', () => {
+    petSetSkin(sel.value);
+  });
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'oc_pet_skin' || e.key === 'petSkin') applyToUi();
+  });
+  document.getElementById('settings-toggle')?.addEventListener('click', () => {
+    setTimeout(applyToUi, 0);
+  });
+  try {
+    petBroadcast({ skin: petGetSkin(), ts: Date.now() });
+  } catch (_) {}
+}
+
 // ══════════════════════════════════════════════════════════════
 // COMBINED INIT
 // ══════════════════════════════════════════════════════════════
@@ -2413,6 +2622,8 @@ export function init() {
   initCoworkPanel();
   initGestureBindings();
   initActionTimeline();
+  initPetGainSliders();
+  initPetSkinSelect();
 
   fn.showEmotionBadge = showEmotionBadge;
 }

@@ -2693,6 +2693,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           else{document.getElementById('setup-page').classList.add('hidden');document.getElementById('chat-page').classList.remove('hidden');}
         }catch(e){alert('连接失败: '+e.message);}
       })()">使用当前服务器</button>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:12px">如果服务器刚启动，请等待几秒后点击上方按钮</p>
   </div>
 </div>
 
@@ -2780,8 +2781,8 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="hom-item" data-target="bookmark-toggle"><span class="hom-icon">⭐</span><span data-i18n="menu.bookmark">收藏</span></button>
       <button class="hom-item" id="hom-profile" onclick="document.getElementById('settings-toggle').click();setTimeout(()=>{const b=document.querySelector('.stab[data-tab=tab-profile]');if(b)b.click()},200)"><span class="hom-icon">🧠</span><span data-i18n="menu.profile">我的画像</span></button>
       <div class="hom-sep"></div>
-      <button class="hom-item" onclick="window.open('/chat','_blank')"><span class="hom-icon">📱</span><span data-i18n="menu.mobileLite">手机简洁版</span></button>
-      <button class="hom-item" onclick="window.open('/setup?force','_blank')"><span class="hom-icon">⚙️</span><span data-i18n="menu.setup">初始设置</span></button>
+      <button class="hom-item" onclick="try{window.open(location.origin+'/chat','_blank')}catch(e){location.href='/chat'}"><span class="hom-icon">📱</span><span data-i18n="menu.mobileLite">手机简洁版</span></button>
+      <button class="hom-item" onclick="try{window.open(location.origin+'/setup?force','_blank')}catch(e){location.href='/setup?force'}"><span class="hom-icon">⚙️</span><span data-i18n="menu.setup">初始设置</span></button>
     </div>
     <!-- Export dropdown (top-level so it works in both simple/pro mode) -->
     <div class="export-menu" id="export-menu">
@@ -2954,6 +2955,13 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
     // 首次或未配置时显示引导
     (async function(){
+      // 版本检查：版本升级时重置引导状态
+      var currentVer = '6.0.0';
+      var savedVer = localStorage.getItem('oc_version');
+      if (savedVer !== currentVer) {
+        localStorage.removeItem('oc_onboarded');
+        localStorage.setItem('oc_version', currentVer);
+      }
       var onboarded = localStorage.getItem('oc_onboarded');
       try{
         var r=await fetch('/api/ai/status');
@@ -2964,10 +2972,22 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           document.getElementById('ob-step-ai').style.display='block';
           document.getElementById('onboarding').style.display='flex';
         }else if(!onboarded){
-          // AI 已配置但首次使用：显示完整引导
+          // AI 已配置但首次使用/版本升级：显示画像引导
+          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
+          try{
+            var pr=await fetch('/api/user/profile');
+            var pp=await pr.json();
+            if(!pp.company && !pp.industry){
+              document.getElementById('ob-step-profile').style.display='block';
+            }else{
+              document.getElementById('ob-step-ready').style.display='block';
+            }
+          }catch(e2){
+            document.getElementById('ob-step-ready').style.display='block';
+          }
           document.getElementById('onboarding').style.display='flex';
         }
-        // AI 已配置且已 onboarded：不显示
+        // AI 已配置且已 onboarded 且同版本：不显示
       }catch(e){
         if(!onboarded) document.getElementById('onboarding').style.display='flex';
       }
@@ -3878,15 +3898,15 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
     <button id="wxp-back" style="background:none;border:none;color:var(--text-secondary,#8a9bb0);font-size:22px;cursor:pointer;padding:4px">‹</button>
     <span style="font-size:18px">💬</span>
-    <span style="font-size:17px;font-weight:600;color:var(--text-primary,#e8f0fe)">微信自动回复</span>
+    <span style="font-size:17px;font-weight:600;color:var(--text-primary,#e8f0fe)" data-i18n="wx.panel_title">微信自动回复</span>
     <!-- 总开关 -->
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-      <span style="font-size:13px;color:var(--text-secondary,#8a9bb0)" id="wxp-mode-label">OCR模式</span>
+      <span style="font-size:13px;color:var(--text-secondary,#8a9bb0)" id="wxp-mode-label" data-i18n="wx.mode_ocr">OCR模式</span>
       <label class="wxp-switch">
         <input type="checkbox" id="wxp-master-toggle">
         <span class="wxp-slider"></span>
       </label>
-      <span style="font-size:13px;color:var(--text-secondary,#8a9bb0)" id="wxp-status-txt">已关闭</span>
+      <span style="font-size:13px;color:var(--text-secondary,#8a9bb0)" id="wxp-status-txt" data-i18n="wx.status_off">已关闭</span>
     </div>
   </div>
 
@@ -3908,13 +3928,13 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
     <!-- 安全设置 -->
     <div class="wxp-section">
-      <div class="wxp-section-title">⚙️ 安全设置</div>
+      <div class="wxp-section-title" data-i18n="wx.section_security">⚙️ 安全设置</div>
       <label class="wxp-row">
-        <span>人工审核模式</span>
+        <span data-i18n="wx.manual_review">人工审核模式</span>
         <input type="checkbox" id="wxp-manual-review" class="wxp-check">
       </label>
       <div class="wxp-row">
-        <span>静默时段</span>
+        <span data-i18n="wx.quiet_hours">静默时段</span>
         <div style="display:flex;align-items:center;gap:6px">
           <input type="time" id="wxp-quiet-start" value="23:00" class="wxp-time-input">
           <span style="color:#8a9bb0">—</span>
@@ -3922,87 +3942,87 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         </div>
       </div>
       <div class="wxp-row">
-        <span>回复延迟（秒）</span>
+        <span data-i18n="wx.reply_delay">回复延迟（秒）</span>
         <div style="display:flex;align-items:center;gap:6px">
           <input type="number" id="wxp-delay-min" value="1.5" min="0.5" max="10" step="0.5" class="wxp-num-input" style="width:54px">
           <span style="color:#8a9bb0">~</span>
           <input type="number" id="wxp-delay-max" value="5.0" min="1" max="30" step="0.5" class="wxp-num-input" style="width:54px">
         </div>
       </div>
-      <button class="wxp-btn-secondary" id="wxp-save-config" style="margin-top:6px">保存设置</button>
+      <button class="wxp-btn-secondary" id="wxp-save-config" style="margin-top:6px" data-i18n="wx.save">保存设置</button>
     </div>
 
     <!-- 白名单联系人 -->
     <div class="wxp-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="wxp-section-title" style="margin-bottom:0">👥 白名单联系人</div>
-        <button class="wxp-btn-primary" id="wxp-add-contact-btn" style="padding:5px 12px;font-size:12px">+ 添加</button>
+        <div class="wxp-section-title" style="margin-bottom:0" data-i18n="wx.section_whitelist">👥 白名单联系人</div>
+        <button class="wxp-btn-primary" id="wxp-add-contact-btn" style="padding:5px 12px;font-size:12px" data-i18n="wx.add">+ 添加</button>
       </div>
       <!-- 添加联系人表单（默认隐藏）-->
       <div id="wxp-add-form" class="hidden" style="background:rgba(255,255,255,.05);border-radius:10px;padding:12px;margin-bottom:10px">
-        <input type="text" id="wxp-new-name" placeholder="微信好友名字（需与微信一致）" class="wxp-input" style="margin-bottom:8px">
+        <input type="text" id="wxp-new-name" data-i18n="wx.ph_contact_name" data-i18n-attr="placeholder" placeholder="微信好友名字（需与微信一致）" class="wxp-input" style="margin-bottom:8px">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
           <label style="font-size:13px;color:#8a9bb0;display:flex;align-items:center;gap:4px">
-            <input type="checkbox" id="wxp-new-isgroup"> 群聊
+            <input type="checkbox" id="wxp-new-isgroup"> <span data-i18n="wx.group_chat">群聊</span>
           </label>
           <label style="font-size:13px;color:#8a9bb0;display:flex;align-items:center;gap:4px">
-            每日上限
+            <span data-i18n="wx.daily_limit">每日上限</span>
             <input type="number" id="wxp-new-limit" value="20" min="1" max="200" class="wxp-num-input" style="width:50px">
           </label>
         </div>
-        <textarea id="wxp-new-persona" placeholder="专属人设（空=使用全局人设）" class="wxp-input wxp-textarea" rows="2"></textarea>
+        <textarea id="wxp-new-persona" data-i18n="wx.ph_persona" data-i18n-attr="placeholder" placeholder="专属人设（空=使用全局人设）" class="wxp-input wxp-textarea" rows="2"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="wxp-btn-primary" id="wxp-confirm-add" style="flex:1">确认添加</button>
-          <button class="wxp-btn-secondary" id="wxp-cancel-add" style="flex:1">取消</button>
+          <button class="wxp-btn-primary" id="wxp-confirm-add" style="flex:1" data-i18n="wx.confirm_add">确认添加</button>
+          <button class="wxp-btn-secondary" id="wxp-cancel-add" style="flex:1" data-i18n="wx.cancel">取消</button>
         </div>
       </div>
       <!-- 联系人列表 -->
       <div id="wxp-contacts-list">
-        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:16px">暂无联系人，点击"添加"开始设置</div>
+        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:16px" data-i18n="wx.contacts_empty">暂无联系人，点击"添加"开始设置</div>
       </div>
     </div>
 
     <!-- 待审核队列 -->
     <div class="wxp-section" id="wxp-reviews-section">
-      <div class="wxp-section-title">🔔 待审核回复</div>
+      <div class="wxp-section-title" data-i18n="wx.section_reviews">🔔 待审核回复</div>
       <div id="wxp-reviews-list">
-        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px">暂无待审核</div>
+        <div style="color:#8a9bb0;font-size:13px;text-align:center;padding:12px" data-i18n="wx.reviews_empty">暂无待审核</div>
       </div>
     </div>
 
     <!-- 回复日志 -->
     <div class="wxp-section">
-      <div class="wxp-section-title">📋 最近回复记录</div>
+      <div class="wxp-section-title" data-i18n="wx.section_logs">📋 最近回复记录</div>
       <div id="wxp-logs-list" style="font-size:12px"></div>
     </div>
 
     <!-- 诊断工具 -->
     <div class="wxp-section" id="wxp-debug-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="wxp-section-title" style="margin-bottom:0">🔧 诊断工具</div>
-        <button class="wxp-btn-secondary" onclick="wxpToggleDebug()" id="wxp-debug-toggle-btn" style="padding:4px 10px;font-size:12px">展开</button>
+        <div class="wxp-section-title" style="margin-bottom:0" data-i18n="wx.section_debug">🔧 诊断工具</div>
+        <button class="wxp-btn-secondary" onclick="wxpToggleDebug()" id="wxp-debug-toggle-btn" style="padding:4px 10px;font-size:12px" data-i18n="wx.expand">展开</button>
       </div>
       <div id="wxp-debug-body" class="hidden">
         <!-- 监控状态 -->
         <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px;margin-bottom:10px">
-          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">监控器状态</div>
-          <div id="wxp-monitor-stats" style="font-size:12px;color:#e8f0fe;font-family:monospace;white-space:pre-wrap">点击刷新加载...</div>
-          <button class="wxp-btn-secondary" onclick="wxpRefreshStats()" style="margin-top:6px;padding:4px 10px;font-size:12px">🔄 刷新状态</button>
+          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px" data-i18n="wx.monitor_status">监控器状态</div>
+          <div id="wxp-monitor-stats" style="font-size:12px;color:#e8f0fe;font-family:monospace;white-space:pre-wrap" data-i18n="wx.monitor_placeholder">点击刷新加载...</div>
+          <button class="wxp-btn-secondary" onclick="wxpRefreshStats()" style="margin-top:6px;padding:4px 10px;font-size:12px" data-i18n="wx.refresh_status">🔄 刷新状态</button>
         </div>
         <!-- 手动测试读取 -->
         <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px;margin-bottom:10px">
-          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">手动测试读取（读取当前微信窗口，不触发回复）</div>
-          <button class="wxp-btn-primary" onclick="wxpTestRead()" id="wxp-test-read-btn" style="padding:6px 14px;font-size:12px">📖 读取当前窗口</button>
+          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px" data-i18n="wx.test_read_hint">手动测试读取（读取当前微信窗口，不触发回复）</div>
+          <button class="wxp-btn-primary" onclick="wxpTestRead()" id="wxp-test-read-btn" style="padding:6px 14px;font-size:12px" data-i18n="wx.read_window">📖 读取当前窗口</button>
           <div id="wxp-test-result" style="margin-top:8px;font-size:11px;color:#e8f0fe;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;display:none"></div>
         </div>
         <!-- UIA 控件树 -->
         <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px">
-          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px">UIA 控件树导出（需微信运行）</div>
+          <div style="font-size:12px;color:#8a9bb0;margin-bottom:6px" data-i18n="wx.uia_hint">UIA 控件树导出（需微信运行）</div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-            <span style="font-size:12px;color:#8a9bb0">深度</span>
+            <span style="font-size:12px;color:#8a9bb0" data-i18n="wx.depth">深度</span>
             <input type="number" id="wxp-uia-depth" value="4" min="1" max="7" class="wxp-num-input" style="width:46px">
-            <button class="wxp-btn-primary" onclick="wxpDumpUIA()" id="wxp-uia-dump-btn" style="padding:6px 14px;font-size:12px">🌳 导出控件树</button>
-            <button class="wxp-btn-secondary" onclick="wxpCopyUIA()" style="padding:6px 10px;font-size:12px">复制</button>
+            <button class="wxp-btn-primary" onclick="wxpDumpUIA()" id="wxp-uia-dump-btn" style="padding:6px 14px;font-size:12px" data-i18n="wx.export_tree">🌳 导出控件树</button>
+            <button class="wxp-btn-secondary" onclick="wxpCopyUIA()" style="padding:6px 10px;font-size:12px" data-i18n="wx.copy">复制</button>
           </div>
           <div id="wxp-uia-result" style="font-size:11px;color:#e8f0fe;font-family:monospace;white-space:pre;max-height:300px;overflow:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;display:none"></div>
         </div>
@@ -4017,23 +4037,23 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <div class="mp-header">
     <div class="mp-header-left">
       <button class="icon-btn" id="moments-back" onclick="closeMomentsPanel()">←</button>
-      <span>🌅 朋友圈管理</span>
+      <span data-i18n="mp.title">🌅 朋友圈管理</span>
     </div>
   </div>
 
   <div class="mp-stats-grid">
-    <div class="wxp-stat-card"><div id="mp-stat-likes" class="mp-stat-val" style="color:#f472b6">0</div><div class="mp-stat-label">今日点赞</div></div>
-    <div class="wxp-stat-card"><div id="mp-stat-comments" class="mp-stat-val" style="color:#7c6aef">0</div><div class="mp-stat-label">今日评论</div></div>
-    <div class="wxp-stat-card"><div id="mp-stat-publishes" class="mp-stat-val" style="color:#4ade80">0</div><div class="mp-stat-label">今日发布</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-likes" class="mp-stat-val" style="color:#f472b6">0</div><div class="mp-stat-label" data-i18n="mp.stat_likes">今日点赞</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-comments" class="mp-stat-val" style="color:#7c6aef">0</div><div class="mp-stat-label" data-i18n="mp.stat_comments">今日评论</div></div>
+    <div class="wxp-stat-card"><div id="mp-stat-publishes" class="mp-stat-val" style="color:#4ade80">0</div><div class="mp-stat-label" data-i18n="mp.stat_publishes">今日发布</div></div>
   </div>
 
   <!-- 浏览朋友圈 -->
   <div class="wxp-section">
-    <div class="wxp-section-title">📖 浏览朋友圈</div>
+    <div class="wxp-section-title" data-i18n="mp.browse_title">📖 浏览朋友圈</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="wxp-btn-primary" onclick="mpBrowse()" id="mp-browse-btn" style="flex:1;padding:8px;font-size:13px">开始浏览 + AI 分析</button>
+      <button class="wxp-btn-primary" onclick="mpBrowse()" id="mp-browse-btn" style="flex:1;padding:8px;font-size:13px" data-i18n="mp.browse_btn">开始浏览 + AI 分析</button>
       <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#8a9bb0">
-        <input type="checkbox" id="mp-auto-interact" checked> 自动互动
+        <input type="checkbox" id="mp-auto-interact" checked> <span data-i18n="mp.auto_interact">自动互动</span>
       </label>
     </div>
     <div id="mp-browse-result" class="mp-scroll-area"></div>
@@ -4041,43 +4061,43 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
   <!-- 发布朋友圈 -->
   <div class="wxp-section">
-    <div class="wxp-section-title">✏️ 发布朋友圈</div>
+    <div class="wxp-section-title" data-i18n="mp.publish_title">✏️ 发布朋友圈</div>
     <div style="margin-bottom:8px">
-      <input type="text" id="mp-pub-topic" placeholder="主题（如：今天的天气真好）" class="wxp-text-input" style="width:100%;font-size:12px;margin-bottom:6px">
+      <input type="text" id="mp-pub-topic" data-i18n="mp.topic_ph" data-i18n-attr="placeholder" placeholder="主题（如：今天的天气真好）" class="wxp-text-input" style="width:100%;font-size:12px;margin-bottom:6px">
       <div style="display:flex;gap:6px">
-        <button class="wxp-btn-secondary" onclick="mpGenerate()" style="flex:1;padding:6px;font-size:12px">🤖 AI 生成文案</button>
-        <button class="wxp-btn-primary" onclick="mpPublish()" style="padding:6px 14px;font-size:12px">📤 发布</button>
+        <button class="wxp-btn-secondary" onclick="mpGenerate()" style="flex:1;padding:6px;font-size:12px" data-i18n="mp.gen_ai">🤖 AI 生成文案</button>
+        <button class="wxp-btn-primary" onclick="mpPublish()" style="padding:6px 14px;font-size:12px" data-i18n="mp.publish_btn">📤 发布</button>
       </div>
     </div>
     <div id="mp-gen-result" style="font-size:12px"></div>
-    <textarea id="mp-pub-text" placeholder="朋友圈文案（可手写或 AI 生成）" class="mp-textarea"></textarea>
+    <textarea id="mp-pub-text" data-i18n="mp.text_ph" data-i18n-attr="placeholder" placeholder="朋友圈文案（可手写或 AI 生成）" class="mp-textarea"></textarea>
   </div>
 
   <!-- 30 天日历 -->
   <div class="wxp-section">
-    <div class="wxp-section-title">📅 内容日历</div>
+    <div class="wxp-section-title" data-i18n="mp.cal_title">📅 内容日历</div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button class="wxp-btn-secondary" onclick="mpCalendarLoad()" style="flex:1;padding:6px;font-size:12px">查看日历</button>
-      <button class="wxp-btn-primary" onclick="mpCalendarGen()" style="flex:1;padding:6px;font-size:12px">🤖 生成 30 天计划</button>
+      <button class="wxp-btn-secondary" onclick="mpCalendarLoad()" style="flex:1;padding:6px;font-size:12px" data-i18n="mp.cal_view">查看日历</button>
+      <button class="wxp-btn-primary" onclick="mpCalendarGen()" style="flex:1;padding:6px;font-size:12px" data-i18n="mp.cal_gen">🤖 生成 30 天计划</button>
     </div>
     <div id="mp-calendar" class="mp-scroll-area" style="max-height:250px"></div>
   </div>
 
   <!-- 数据分析 -->
   <div class="wxp-section">
-    <div class="wxp-section-title">📊 数据分析</div>
+    <div class="wxp-section-title" data-i18n="mp.analytics_title">📊 数据分析</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <button class="wxp-btn-secondary" onclick="mpAnalytics('overview')" style="padding:4px 10px;font-size:11px">总览</button>
-      <button class="wxp-btn-secondary" onclick="mpAnalytics('top-contacts')" style="padding:4px 10px;font-size:11px">活跃好友</button>
-      <button class="wxp-btn-secondary" onclick="mpAnalytics('best-times')" style="padding:4px 10px;font-size:11px">最佳时段</button>
-      <button class="wxp-btn-secondary" onclick="mpAnalytics('strategy-report')" style="padding:4px 10px;font-size:11px">🤖 AI 策略</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('overview')" style="padding:4px 10px;font-size:11px" data-i18n="mp.an_overview">总览</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('top-contacts')" style="padding:4px 10px;font-size:11px" data-i18n="mp.an_contacts">活跃好友</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('best-times')" style="padding:4px 10px;font-size:11px" data-i18n="mp.an_times">最佳时段</button>
+      <button class="wxp-btn-secondary" onclick="mpAnalytics('strategy-report')" style="padding:4px 10px;font-size:11px" data-i18n="mp.an_ai">🤖 AI 策略</button>
     </div>
     <div id="mp-analytics" class="mp-scroll-area" style="max-height:250px"></div>
   </div>
 
   <!-- 风控状态 -->
   <div class="wxp-section">
-    <div class="wxp-section-title">🛡️ 风控状态</div>
+    <div class="wxp-section-title" data-i18n="mp.guard_title">🛡️ 风控状态</div>
     <div id="mp-guard-stats" style="font-size:12px;color:#8a9bb0"></div>
   </div>
 </div>

@@ -103,7 +103,7 @@ Source: "openclaw_debug.bat";    DestDir: "{app}"; Flags: ignoreversion
 Source: "config.ini";            DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 
 ; ── 源代码目录 ────────────────────────────────────────────────
-Source: "src\*";               DestDir: "{app}\src"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "src\*";               DestDir: "{app}\src"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "__pycache__\*,*.pyc,*.pyo"
 Source: "skills\*";            DestDir: "{app}\skills"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; ── 离线依赖包（pip install 无需联网）──────────────────────
 Source: "offline_packages\*";  DestDir: "{app}\offline_packages"; Flags: ignoreversion recursesubdirs createallsubdirs
