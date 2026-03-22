@@ -679,25 +679,26 @@ async def _startup_models_deferred(app: FastAPI):
     elapsed = time.time() - _startup_progress["started_at"]
     logger.info(f"✅ Phase 2 complete — all models loaded ({elapsed:.1f}s total)")
 
-    # ── 自动启动微信监控（Windows + 微信在运行时）──
+    # ── 微信监控（不再自动启动，需要用户手动开启）──
+    # 之前这里会自动开启 reply_all=True 导致重启后乱发消息
+    # 现在改为：只初始化引擎，不自动开启回复
     if sys.platform == "win32" and _wechat_autoreply_available:
-        async def _auto_start_wechat():
-            await asyncio.sleep(3)  # 等其他组件就绪
+        async def _init_wechat_engine():
+            await asyncio.sleep(5)
             try:
-                from .wechat_monitor import _wechat_is_running, UIAReader
+                from .wechat_monitor import _wechat_is_running
                 if _wechat_is_running():
-                    UIAReader.activate_wechat_window()
-                    await asyncio.sleep(1)
-                    # 自动启用微信监控
+                    # 只初始化，不开启自动回复
                     _, engine = init_wechat_v2(ai_backend=backend, desktop=desktop)
                     if engine:
-                        engine.update_config({"enabled": True, "reply_all": True})
-                        logger.info("✅ 微信自动回复已自动启动")
+                        # 默认关闭自动回复，用户需要在设置中手动开启
+                        engine.update_config({"enabled": False, "reply_all": False})
+                        logger.info("ℹ️ 微信引擎已初始化（自动回复默认关闭，需手动开启）")
                 else:
-                    logger.info("ℹ️ 微信未运行，跳过自动监控")
+                    logger.info("ℹ️ 微信未运行")
             except Exception as e:
-                logger.debug(f"微信自动启动跳过: {e}")
-        asyncio.create_task(_auto_start_wechat())
+                logger.debug(f"微信引擎初始化跳过: {e}")
+        asyncio.create_task(_init_wechat_engine())
 
     # Background tasks: account health heartbeat
     async def _health_heartbeat_loop():
@@ -981,8 +982,14 @@ async def server_info():
 # ── System API (供 Cursor 前端用) ──────────────────────────────────
 
 @app.post("/api/system/restart")
-async def system_restart():
-    """重启服务（/api/restart 的别名）"""
+async def system_restart(request: Request):
+    """重启服务（需要确认参数防止误触发）"""
+    try:
+        body = await request.json()
+        if not body.get("confirm"):
+            return {"ok": False, "error": "需要 confirm:true 参数"}
+    except Exception:
+        pass
     return await restart()
 
 
