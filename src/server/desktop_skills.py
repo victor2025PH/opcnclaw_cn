@@ -697,11 +697,11 @@ def _register(skill: DesktopSkill):
 
 _register(DesktopSkill(
     id="open_wechat",
-    name_zh="打开微信",
+    name_zh="唤起微信",
     name_en="Open WeChat",
-    desc_zh="自动查找并打开微信窗口（支持从托盘恢复、快捷键唤起、启动程序）",
+    desc_zh="点击后自动查找微信窗口并置顶到前台。如果微信最小化了会自动恢复，没登录会提示登录",
     desc_en="Find and open WeChat window (from tray, hotkey, or launch)",
-    icon="💬",
+    icon="📲",
     execute=execute_open_wechat,
 ))
 
@@ -738,11 +738,11 @@ def execute_screenshot(desktop) -> SkillResult:
 
 _register(DesktopSkill(
     id="screenshot",
-    name_zh="截图保存",
+    name_zh="截屏保存",
     name_en="Save Screenshot",
-    desc_zh="截取当前屏幕并保存为 PNG 文件到 data/screenshots/ 目录",
+    desc_zh="点击后截取当前屏幕画面，自动保存为 PNG 图片到 data/screenshots/ 文件夹",
     desc_en="Capture and save current screen as PNG",
-    icon="📸",
+    icon="🖼️",
     execute=execute_screenshot,
 ))
 
@@ -773,9 +773,9 @@ _register(DesktopSkill(
     id="open_browser",
     name_zh="打开浏览器",
     name_en="Open Browser",
-    desc_zh="打开默认网页浏览器",
+    desc_zh="点击后打开系统默认浏览器（Chrome/Edge/Firefox 等）",
     desc_en="Open the default web browser",
-    icon="🌐",
+    icon="🔗",
     execute=execute_open_browser,
 ))
 
@@ -808,11 +808,11 @@ def execute_open_explorer(desktop) -> SkillResult:
 
 _register(DesktopSkill(
     id="open_explorer",
-    name_zh="打开文件管理器",
+    name_zh="文件管理",
     name_en="Open File Explorer",
-    desc_zh="打开 Windows 资源管理器 / macOS Finder / Linux 文件管理器",
+    desc_zh="点击后打开文件资源管理器，可以浏览和管理电脑上的文件",
     desc_en="Open File Explorer / Finder",
-    icon="📂",
+    icon="📁",
     execute=execute_open_explorer,
 ))
 
@@ -850,11 +850,11 @@ def execute_open_notepad(desktop) -> SkillResult:
 
 _register(DesktopSkill(
     id="open_notepad",
-    name_zh="打开记事本",
+    name_zh="记事本",
     name_en="Open Notepad",
-    desc_zh="打开文本编辑器（Windows 记事本 / macOS TextEdit）",
+    desc_zh="点击后打开文本编辑器，可以快速记录笔记或编辑文本",
     desc_en="Open text editor",
-    icon="📝",
+    icon="✏️",
     execute=execute_open_notepad,
 ))
 
@@ -882,11 +882,11 @@ def execute_show_desktop(desktop) -> SkillResult:
 
 _register(DesktopSkill(
     id="show_desktop",
-    name_zh="显示桌面",
+    name_zh="回到桌面",
     name_en="Show Desktop",
-    desc_zh="最小化所有窗口，显示桌面（Win+D）",
+    desc_zh="点击后最小化所有窗口回到桌面（相当于按 Win+D）",
     desc_en="Minimize all windows to show desktop",
-    icon="🖥️",
+    icon="🏠",
     execute=execute_show_desktop,
 ))
 
@@ -920,11 +920,11 @@ def execute_list_windows(desktop) -> SkillResult:
 
 _register(DesktopSkill(
     id="list_windows",
-    name_zh="列出窗口",
+    name_zh="窗口列表",
     name_en="List Windows",
-    desc_zh="列出当前所有打开的窗口标题",
+    desc_zh="点击后列出当前电脑上所有打开的程序窗口名称",
     desc_en="List all open window titles",
-    icon="🪟",
+    icon="📋",
     execute=execute_list_windows,
 ))
 
@@ -960,11 +960,11 @@ def execute_lock_screen(desktop) -> SkillResult:
 
 _register(DesktopSkill(
     id="lock_screen",
-    name_zh="锁定屏幕",
+    name_zh="锁屏",
     name_en="Lock Screen",
-    desc_zh="锁定电脑屏幕（Win+L / macOS Ctrl+Cmd+Q）",
+    desc_zh="点击后立即锁定电脑屏幕，需要输入密码才能解锁（相当于按 Win+L）",
     desc_en="Lock the computer screen",
-    icon="🔒",
+    icon="🔐",
     execute=execute_lock_screen,
 ))
 
