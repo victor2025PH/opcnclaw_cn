@@ -1811,6 +1811,46 @@ async def ilink_start():
         return {"ok": False, "error": str(e)}
 
 
+# ── 微信双通道状态 ──
+@app.get("/api/wechat/channels")
+async def wechat_channels():
+    """微信双通道状态（iLink官方 + UIAutomation）"""
+    channels = []
+
+    # iLink 通道
+    try:
+        from .ilink_bot import get_ilink_bot
+        bot = get_ilink_bot()
+        channels.append({
+            "id": "ilink",
+            "name": "ClawBot 官方通道",
+            "type": "official",
+            "connected": bot.is_connected,
+            "running": bot.is_running,
+            "desc": "腾讯官方 iLink 协议，稳定可靠",
+        })
+    except Exception:
+        channels.append({"id": "ilink", "name": "ClawBot 官方通道", "connected": False, "running": False})
+
+    # UIAutomation 通道
+    try:
+        if _wechat_engine:
+            channels.append({
+                "id": "uia",
+                "name": "桌面自动化通道",
+                "type": "uiautomation",
+                "connected": True,
+                "running": getattr(_wechat_engine, 'enabled', False),
+                "desc": "Windows 桌面微信自动化（仅本机）",
+            })
+        else:
+            channels.append({"id": "uia", "name": "桌面自动化通道", "connected": False, "running": False})
+    except Exception:
+        channels.append({"id": "uia", "name": "桌面自动化通道", "connected": False, "running": False})
+
+    return {"channels": channels}
+
+
 # ── 定时任务 API ──
 @app.get("/api/scheduler/status")
 async def api_scheduler_status():
@@ -2122,7 +2162,8 @@ async def demo_page():
 @app.get("/qr")
 @app.get("/qr/")
 async def qr_page():
-    return FileResponse("src/client/qr.html")
+    return FileResponse("src/client/qr.html",
+                        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 @app.get("/api/qr")

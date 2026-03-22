@@ -4,6 +4,8 @@
  * 加载/保存用户画像，产品列表增删，交互计数展示
  */
 
+import { t } from '/js/state.js';
+
 const _BASE = () => window.__baseUrl || '';
 
 let _profile = null;
@@ -56,7 +58,9 @@ function fillForm(p) {
   f.forbidden.value   = (p.forbidden_words || []).join(', ');
   f.commonTerms.value = (p.common_terms || []).join(', ');
   f.competitors.value = (p.competitor_names || []).join(', ');
-  f.count.textContent = p.interaction_count || 0;
+  if (f.moatLine) {
+    f.moatLine.textContent = t('profile.moatInteractionLine', { count: String(p.interaction_count ?? 0) });
+  }
 
   renderProducts(p.products || []);
 }
@@ -66,13 +70,14 @@ function renderProducts(products) {
   const el = $('up-products-list');
   if (!el) return;
   if (!products.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0">暂无产品，请添加</div>';
+    el.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:4px 0" data-i18n="profile.productsEmpty">${t('profile.productsEmpty')}</div>`;
     return;
   }
+  const delTitle = t('profile.delProductTitle');
   el.innerHTML = products.map((p, i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-surface);border-radius:8px">
       <span style="flex:1;font-size:13px;color:var(--text-primary)">${escHtml(p.name)}</span>
-      <button class="up-product-del" data-idx="${i}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 6px" title="删除">✕</button>
+      <button class="up-product-del" data-idx="${i}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 6px" title="${escHtml(delTitle)}">✕</button>
     </div>
   `).join('');
 
@@ -123,12 +128,12 @@ async function saveProfile() {
     const res = await r.json();
     if (res.ok) {
       _profile = res.profile;
-      showStatus('画像已保存，所有 Agent 将使用最新信息', 'var(--success)');
+      showStatus(t('profile.statusSaved'), 'var(--success)');
     } else {
-      showStatus('保存失败: ' + (res.error || '未知错误'), 'var(--error)');
+      showStatus(t('profile.statusSaveErr', { msg: res.error || t('profile.statusSaveUnknown') }), 'var(--error)');
     }
   } catch (e) {
-    showStatus('保存失败: ' + e.message, 'var(--error)');
+    showStatus(t('profile.statusSaveErr', { msg: e.message || '' }), 'var(--error)');
   }
 }
 
@@ -150,7 +155,7 @@ export function initUserProfile() {
   if (saveBtn) saveBtn.addEventListener('click', saveProfile);
 
   if (resetBtn) resetBtn.addEventListener('click', async () => {
-    if (!confirm('确定要重置画像？所有已学习的信息将被清除。')) return;
+    if (!confirm(t('profile.resetConfirm'))) return;
     try {
       await fetch(`${_BASE()}/api/user/profile`, {
         method: 'PUT',
@@ -162,9 +167,9 @@ export function initUserProfile() {
         }),
       });
       await loadProfile();
-      showStatus('画像已重置', 'var(--warning)');
+      showStatus(t('profile.statusResetOk'), 'var(--warning)');
     } catch (e) {
-      showStatus('重置失败', 'var(--error)');
+      showStatus(t('profile.resetFail'), 'var(--error)');
     }
   });
 
@@ -175,7 +180,7 @@ export function initUserProfile() {
       if (!_profile) _profile = { products: [] };
       if (!_profile.products) _profile.products = [];
       if (_profile.products.some(p => p.name === name)) {
-        showStatus('该产品已存在', 'var(--warning)');
+        showStatus(t('profile.productDuplicate'), 'var(--warning)');
         return;
       }
       _profile.products.push({ name, description: '' });
@@ -199,6 +204,9 @@ export function initUserProfile() {
       }
       if (btn && btn.dataset.tab === 'tab-store') {
         loadStore();
+      }
+      if (btn && btn.dataset.tab === 'tab-wechat-bot') {
+        loadWechatBotTab();
       }
     });
   }
@@ -226,7 +234,7 @@ export function initUserProfile() {
 
   if (exportBtn) exportBtn.addEventListener('click', async () => {
     try {
-      backupStatus.textContent = '导出中...';
+      backupStatus.textContent = t('profile.backupExporting');
       backupStatus.style.color = 'var(--text-muted)';
       const r = await fetch(`${_BASE()}/api/moat/export`);
       const data = await r.json();
@@ -237,25 +245,25 @@ export function initUserProfile() {
       a.download = `moat_backup_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      backupStatus.textContent = '导出成功！';
+      backupStatus.textContent = t('profile.backupOk');
       backupStatus.style.color = 'var(--success)';
     } catch (e) {
-      backupStatus.textContent = '导出失败: ' + e.message;
+      backupStatus.textContent = t('profile.backupFail', { msg: e.message || '' });
       backupStatus.style.color = 'var(--error)';
     }
   });
 
   if (exportZipBtn) exportZipBtn.addEventListener('click', () => {
-    backupStatus.textContent = '正在打包...';
+    backupStatus.textContent = t('profile.backupZipping');
     window.location.href = `${_BASE()}/api/moat/export-zip`;
-    setTimeout(() => { backupStatus.textContent = '下载已开始'; backupStatus.style.color = 'var(--success)'; }, 1000);
+    setTimeout(() => { backupStatus.textContent = t('profile.backupDownloadStarted'); backupStatus.style.color = 'var(--success)'; }, 1000);
   });
 
   if (importInput) importInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     try {
-      backupStatus.textContent = '导入中...';
+      backupStatus.textContent = t('profile.backupImporting');
       const text = await file.text();
       const data = JSON.parse(text);
       const r = await fetch(`${_BASE()}/api/moat/import`, {
@@ -266,36 +274,50 @@ export function initUserProfile() {
       const result = await r.json();
       if (result.ok) {
         const parts = [];
-        if (result.imported?.length) parts.push('导入: ' + result.imported.join(', '));
-        if (result.skipped?.length) parts.push('跳过: ' + result.skipped.join(', '));
-        backupStatus.textContent = parts.join(' | ') || '导入完成';
+        if (result.imported?.length) parts.push(t('profile.backupImportLine', { items: result.imported.join(', ') }));
+        if (result.skipped?.length) parts.push(t('profile.backupSkippedLine', { items: result.skipped.join(', ') }));
+        backupStatus.textContent = parts.join(' | ') || t('profile.backupImportDone');
         backupStatus.style.color = 'var(--success)';
         loadProfile();
         loadMoatScore();
       } else {
-        backupStatus.textContent = '导入失败: ' + (result.error || '未知');
+        backupStatus.textContent = t('profile.backupImportErr', { msg: result.error || t('profile.statusSaveUnknown') });
         backupStatus.style.color = 'var(--error)';
       }
     } catch (e) {
-      backupStatus.textContent = '文件解析失败: ' + e.message;
+      backupStatus.textContent = t('profile.backupParseErr', { msg: e.message || '' });
       backupStatus.style.color = 'var(--error)';
     }
     importInput.value = '';
   });
 
-  // 欢迎页护城河状态条（延迟加载）
-  setTimeout(loadWelcomeMoat, 2000);
+  function refreshProfileI18n() {
+    if (_profile) fillForm(_profile);
+    loadMoatScore();
+    loadStore(_storeCategory);
+    renderAchievementBadges();
+  }
+  window.addEventListener('oc-lang-change', refreshProfileI18n);
+  window.addEventListener('oc-i18n-updated', refreshProfileI18n);
+
+  // 欢迎页护城河状态条 + 画像仪表盘（一次请求）
+  setTimeout(loadMoatScore, 2000);
 }
 
 
 // ── 护城河分数 ──
 
 async function loadMoatScore() {
+  const dashLevel = document.getElementById('moat-dash-level');
+  const dashDesc = document.getElementById('moat-dash-desc');
+  if (dashLevel) dashLevel.textContent = t('profile.moatLoading');
+  if (dashDesc) dashDesc.textContent = '';
   try {
     const r = await fetch(`${_BASE()}/api/moat-score`);
     if (!r.ok) return;
     const d = await r.json();
     renderMoatDashboard(d);
+    applyWelcomeMoat(d);
   } catch (e) {
     console.warn('[Moat] load failed:', e);
   }
@@ -343,7 +365,7 @@ function renderMoatDashboard(d) {
   // 增长任务
   const tasksEl = document.getElementById('moat-tasks');
   if (tasksEl && d.growth_tasks && d.growth_tasks.length) {
-    tasksEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px">🎯 提升护城河</div>' +
+    tasksEl.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px" data-i18n="profile.moatImproveTitle">${t('profile.moatImproveTitle')}</div>` +
       d.growth_tasks.filter(t => !t.done).slice(0, 4).map(t => `
         <div class="moat-task-item" data-action="${t.action || ''}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.15s">
           <span style="font-size:16px">${t.icon}</span>
@@ -372,31 +394,29 @@ function renderMoatDashboard(d) {
   }
 }
 
+/** 欢迎页护城河条（与画像仪表盘共用 /api/moat-score 响应） */
+function applyWelcomeMoat(d) {
+  const bar = document.getElementById('moat-bar');
+  const fill = document.getElementById('moat-fill');
+  const icon = document.getElementById('moat-icon');
+  const level = document.getElementById('moat-level');
+  const scoreText = document.getElementById('moat-score-text');
+  const desc = document.getElementById('moat-desc');
+
+  if (!bar) return;
+  bar.style.display = 'block';
+  if (fill) fill.style.width = (d.percentage || 0) + '%';
+  if (icon) icon.textContent = d.level_icon || '🌱';
+  if (level) level.textContent = d.level || t('profile.moatLevelDefault');
+  if (scoreText) scoreText.textContent = t('profile.moatScoreFmt', { n: String(d.total || 0) });
+  if (desc) desc.textContent = d.level_desc || '';
+
+  checkAchievements(d);
+  renderAchievementBadges();
+}
+
 async function loadWelcomeMoat() {
-  try {
-    const r = await fetch(`${_BASE()}/api/moat-score`);
-    if (!r.ok) return;
-    const d = await r.json();
-
-    const bar = document.getElementById('moat-bar');
-    const fill = document.getElementById('moat-fill');
-    const icon = document.getElementById('moat-icon');
-    const level = document.getElementById('moat-level');
-    const scoreText = document.getElementById('moat-score-text');
-    const desc = document.getElementById('moat-desc');
-
-    if (!bar) return;
-    bar.style.display = 'block';
-    if (fill) fill.style.width = (d.percentage || 0) + '%';
-    if (icon) icon.textContent = d.level_icon || '🌱';
-    if (level) level.textContent = d.level || '刚刚开始';
-    if (scoreText) scoreText.textContent = (d.total || 0) + '分';
-    if (desc) desc.textContent = d.level_desc || '';
-
-    // 成就检测 + 徽章展示
-    checkAchievements(d);
-    renderAchievementBadges();
-  } catch (e) { /* silent */ }
+  await loadMoatScore();
 }
 
 function renderAchievementBadges() {
@@ -410,9 +430,12 @@ function renderAchievementBadges() {
     { id: 'first_60', icon: '🥇' },
     { id: 'first_80', icon: '🏆' },
   ];
+  const tipOn = t('profile.achievement.badgeUnlocked');
+  const tipOff = t('profile.achievement.badgeLocked');
   el.innerHTML = all.map(a => {
     const done = !!achieved[a.id];
-    return `<span style="font-size:16px;opacity:${done ? 1 : 0.2};filter:${done ? 'none' : 'grayscale(1)'};transition:all 0.3s" title="${done ? '已解锁' : '未解锁'}">${a.icon}</span>`;
+    const tip = done ? tipOn : tipOff;
+    return `<span style="font-size:16px;opacity:${done ? 1 : 0.2};filter:${done ? 'none' : 'grayscale(1)'};transition:all 0.3s" title="${tip.replace(/"/g, '&quot;')}">${a.icon}</span>`;
   }).join('');
 }
 
@@ -422,11 +445,11 @@ function checkAchievements(d) {
   const total = d.total || 0;
 
   const milestones = [
-    { id: 'first_10', threshold: 10, icon: '🌱', title: '初识 AI', desc: 'AI 开始认识你了！' },
-    { id: 'first_20', threshold: 20, icon: '🥉', title: '初步了解', desc: '护城河初步建立' },
-    { id: 'first_40', threshold: 40, icon: '🥈', title: '持续积累', desc: 'AI 团队越来越懂你' },
-    { id: 'first_60', threshold: 60, icon: '🥇', title: '高度依赖', desc: '你的 AI 团队已很难被替代' },
-    { id: 'first_80', threshold: 80, icon: '🏆', title: '深度绑定', desc: '恭喜！AI 已成为你业务的核心助手' },
+    { id: 'first_10', threshold: 10, icon: '🌱' },
+    { id: 'first_20', threshold: 20, icon: '🥉' },
+    { id: 'first_40', threshold: 40, icon: '🥈' },
+    { id: 'first_60', threshold: 60, icon: '🥇' },
+    { id: 'first_80', threshold: 80, icon: '🏆' },
   ];
 
   for (const m of milestones) {
@@ -440,6 +463,9 @@ function checkAchievements(d) {
 }
 
 function showAchievementToast(m) {
+  const title = t(`profile.achievement.${m.id}.title`);
+  const desc = t(`profile.achievement.${m.id}.desc`);
+  const headline = t('profile.achievement.toastTitle', { title });
   const toast = document.createElement('div');
   toast.style.cssText = `
     position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);
@@ -449,13 +475,20 @@ function showAchievementToast(m) {
     transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
     max-width:360px;
   `;
-  toast.innerHTML = `
-    <span style="font-size:32px">${m.icon}</span>
-    <div>
-      <div style="font-size:14px;font-weight:700;color:#fff">成就解锁：${m.title}</div>
-      <div style="font-size:12px;color:var(--text-secondary,#aaa);margin-top:2px">${m.desc}</div>
-    </div>
-  `;
+  const iconSpan = document.createElement('span');
+  iconSpan.style.fontSize = '32px';
+  iconSpan.textContent = m.icon;
+  const wrap = document.createElement('div');
+  const line1 = document.createElement('div');
+  line1.style.cssText = 'font-size:14px;font-weight:700;color:#fff';
+  line1.textContent = headline;
+  const line2 = document.createElement('div');
+  line2.style.cssText = 'font-size:12px;color:var(--text-secondary,#aaa);margin-top:2px';
+  line2.textContent = desc;
+  wrap.appendChild(line1);
+  wrap.appendChild(line2);
+  toast.appendChild(iconSpan);
+  toast.appendChild(wrap);
   document.body.appendChild(toast);
 
   // 动画弹入
@@ -499,7 +532,7 @@ async function loadStore(category = '') {
 function renderStoreCategories(categories) {
   const el = $('store-categories');
   if (!el) return;
-  el.innerHTML = `<button class="store-cat-btn ${!_storeCategory ? 'active' : ''}" onclick="window._loadStoreCategory('')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:${!_storeCategory ? 'var(--accent)' : 'var(--bg-surface)'};color:${!_storeCategory ? '#fff' : 'var(--text-secondary)'};font-size:11px;cursor:pointer">全部</button>` +
+  el.innerHTML = `<button class="store-cat-btn ${!_storeCategory ? 'active' : ''}" onclick="window._loadStoreCategory('')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:${!_storeCategory ? 'var(--accent)' : 'var(--bg-surface)'};color:${!_storeCategory ? '#fff' : 'var(--text-secondary)'};font-size:11px;cursor:pointer">${t('store.catAll')}</button>` +
     categories.map(c => {
       const active = _storeCategory === c;
       return `<button class="store-cat-btn ${active ? 'active' : ''}" onclick="window._loadStoreCategory('${c}')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:${active ? 'var(--accent)' : 'var(--bg-surface)'};color:${active ? '#fff' : 'var(--text-secondary)'};font-size:11px;cursor:pointer">${c}</button>`;
@@ -510,9 +543,10 @@ function renderStoreRoles(roles) {
   const el = $('store-role-list');
   if (!el) return;
   if (!roles.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px">该分类暂无角色</div>';
+    el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px" data-i18n="store.emptyCategory">${t('store.emptyCategory')}</div>`;
     return;
   }
+  const installLabel = t('store.install');
   el.innerHTML = roles.map(r => `
     <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:10px">
       <span style="font-size:24px;flex-shrink:0">${r.avatar}</span>
@@ -523,7 +557,7 @@ function renderStoreRoles(roles) {
         </div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.4">${r.description}</div>
       </div>
-      <button onclick="window._installRole('${r.id}',this)" style="padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s">安装</button>
+      <button onclick="window._installRole('${r.id}',this)" style="padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s">${installLabel}</button>
     </div>`).join('');
 }
 
@@ -531,9 +565,10 @@ function renderInstalledRoles(roles) {
   const el = $('store-installed-list');
   if (!el) return;
   if (!roles.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px">暂无自定义角色</div>';
+    el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px" data-i18n="store.emptyCustom">${t('store.emptyCustom')}</div>`;
     return;
   }
+  const delTitle = t('profile.delProductTitle');
   el.innerHTML = roles.map(r => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-surface);border-radius:8px">
       <span style="font-size:18px">${r.avatar || '🤖'}</span>
@@ -541,37 +576,142 @@ function renderInstalledRoles(roles) {
         <div style="font-size:12px;color:var(--text-primary);font-weight:500">${r.name}</div>
         <div style="font-size:10px;color:var(--text-muted)">${(r.description || '').substring(0, 40)}</div>
       </div>
-      <button onclick="window._uninstallRole('${r.id}',this)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px" title="删除">✕</button>
+      <button onclick="window._uninstallRole('${r.id}',this)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px" title="${escHtml(delTitle)}">✕</button>
     </div>`).join('');
 }
 
 window._loadStoreCategory = function(cat) { loadStore(cat); };
 
 window._installRole = async function(roleId, btn) {
-  btn.textContent = '安装中...';
+  btn.textContent = t('store.installing');
   btn.disabled = true;
   try {
     const r = await fetch(`${_BASE()}/api/agents/store/install/${roleId}`, { method: 'POST' });
     const d = await r.json();
     if (d.ok) {
-      btn.textContent = '已安装 ✓';
+      btn.textContent = t('store.installedOk');
       btn.style.background = 'var(--success)';
       btn.style.color = '#fff';
       btn.style.borderColor = 'var(--success)';
       loadStore(_storeCategory);  // 刷新已安装列表
     } else {
-      btn.textContent = d.error?.includes('已存在') ? '已安装' : '失败';
+      btn.textContent = (d.error && (d.error.includes('已存在') || d.error.includes('exists'))) ? t('store.alreadyInstalled') : t('store.failed');
       btn.style.color = 'var(--error)';
     }
   } catch (e) {
-    btn.textContent = '失败';
+    btn.textContent = t('store.failed');
   }
 };
 
 window._uninstallRole = async function(roleId, btn) {
-  if (!confirm('确定删除该角色？')) return;
+  if (!confirm(t('store.uninstallConfirm'))) return;
   try {
     await fetch(`${_BASE()}/api/agents/roles/${roleId}`, { method: 'DELETE' });
     loadStore(_storeCategory);
-  } catch (e) { alert('删除失败'); }
+  } catch (e) { alert(t('profile.uninstallFailAlert')); }
 };
+
+
+// ── 微信 Bot 设置 tab ──
+
+async function loadWechatBotTab() {
+  // 加载通道状态
+  try {
+    const r = await fetch(`${_BASE()}/api/wechat/channels`);
+    const d = await r.json();
+    const channels = d.channels || [];
+
+    // iLink 状态
+    const ilink = channels.find(c => c.id === 'ilink');
+    const dot = document.getElementById('ilink-dot');
+    const label = document.getElementById('ilink-label');
+    const connectBtn = document.getElementById('ilink-connect-btn');
+    const disconnectBtn = document.getElementById('ilink-disconnect-btn');
+
+    if (ilink && ilink.connected) {
+      if (dot) dot.style.background = '#22c55e';
+      if (label) label.textContent = '已连接' + (ilink.running ? '（运行中）' : '');
+      if (connectBtn) connectBtn.style.display = 'none';
+      if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+    } else {
+      if (dot) dot.style.background = '#666';
+      if (label) label.textContent = '未连接';
+      if (connectBtn) connectBtn.style.display = 'inline-block';
+      if (disconnectBtn) disconnectBtn.style.display = 'none';
+    }
+
+    // UIA 状态
+    const uia = channels.find(c => c.id === 'uia');
+    const uiaEl = document.getElementById('uia-status');
+    if (uiaEl) {
+      if (uia && uia.connected) {
+        uiaEl.innerHTML = `<span style="color:var(--success)">✅ 已连接</span> — ${uia.running ? '自动回复中' : '待机'}`;
+      } else {
+        uiaEl.innerHTML = '<span style="color:var(--text-muted)">未启用（需要 Windows 桌面微信）</span>';
+      }
+    }
+
+    // 通道列表
+    const listEl = document.getElementById('wechat-channels-list');
+    if (listEl) {
+      listEl.innerHTML = channels.map(c => {
+        const statusIcon = c.connected ? (c.running ? '🟢' : '🟡') : '⚪';
+        return `<div style="padding:4px 0">${statusIcon} ${c.name} — ${c.connected ? (c.running ? '运行中' : '已连接') : '未连接'}</div>`;
+      }).join('');
+    }
+  } catch(e) {
+    console.warn('[WeChatBot] load failed:', e);
+  }
+
+  // 绑定按钮事件
+  const connectBtn = document.getElementById('ilink-connect-btn');
+  if (connectBtn && !connectBtn._bound) {
+    connectBtn._bound = true;
+    connectBtn.addEventListener('click', async () => {
+      connectBtn.textContent = '获取二维码...';
+      connectBtn.disabled = true;
+      try {
+        const r = await fetch(`${_BASE()}/api/ilink/login`, {method:'POST'});
+        const d = await r.json();
+        if (!d.ok) { connectBtn.textContent = '绑定失败: ' + (d.error||''); connectBtn.disabled = false; return; }
+
+        const qrDiv = document.getElementById('ilink-settings-qr');
+        const qrImg = document.getElementById('ilink-settings-qr-img');
+        if (qrImg && d.qrcode_img) {
+          qrImg.src = d.qrcode_img.startsWith('data:') ? d.qrcode_img : 'data:image/png;base64,' + d.qrcode_img;
+        }
+        if (qrDiv) qrDiv.style.display = 'block';
+        connectBtn.textContent = '等待扫码...';
+
+        // 轮询
+        for (let i = 0; i < 60; i++) {
+          await new Promise(r => setTimeout(r, 2000));
+          const sr = await fetch(`${_BASE()}/api/ilink/qrcode-status?qrcode_id=${encodeURIComponent(d.qrcode_id)}`);
+          const sd = await sr.json();
+          if (sd.connected) {
+            connectBtn.textContent = '✅ 绑定成功！';
+            if (qrDiv) qrDiv.style.display = 'none';
+            setTimeout(() => loadWechatBotTab(), 1000);
+            return;
+          }
+        }
+        connectBtn.textContent = '二维码过期，请重试';
+        connectBtn.disabled = false;
+        if (qrDiv) qrDiv.style.display = 'none';
+      } catch(e) {
+        connectBtn.textContent = '连接失败';
+        connectBtn.disabled = false;
+      }
+    });
+  }
+
+  const disconnectBtn = document.getElementById('ilink-disconnect-btn');
+  if (disconnectBtn && !disconnectBtn._bound) {
+    disconnectBtn._bound = true;
+    disconnectBtn.addEventListener('click', async () => {
+      if (!confirm('确定断开微信 ClawBot？')) return;
+      await fetch(`${_BASE()}/api/ilink/disconnect`, {method:'POST'});
+      loadWechatBotTab();
+    });
+  }
+}

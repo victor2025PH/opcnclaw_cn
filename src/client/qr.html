@@ -177,7 +177,10 @@ h1{font-size:26px;font-weight:800;margin-bottom:6px;
       ipList.innerHTML = ips.map(ip => `<div>http://${ip}:${port}/chat</div>`).join('');
     }
   } catch(e) {
-    document.getElementById('qr-url').textContent = `${location.origin}/chat`;
+    const fallbackUrl = `${location.origin}/chat`;
+    document.getElementById('qr-url').textContent = fallbackUrl;
+    document.getElementById('qr-url').dataset.url = fallbackUrl;
+    document.getElementById('qr-img').src = `/api/qr?url=${encodeURIComponent(fallbackUrl)}&size=160`;
   }
 
   // iLink 状态

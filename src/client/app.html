@@ -730,42 +730,223 @@ body{
 }
 #settings-modal.hidden{opacity:0;pointer-events:none}
 .settings-sheet{
-  width:100%;max-width:520px;max-height:85vh;overflow-y:auto;
+  width:100%;max-width:520px;max-height:85vh;overflow:hidden;
   background:var(--bg-secondary);border-radius:var(--radius-lg) var(--radius-lg) 0 0;
-  padding:24px 20px;padding-bottom:calc(24px + var(--safe-bottom));
+  padding:24px 20px 16px;padding-bottom:calc(16px + var(--safe-bottom));
   transform:translateY(0);transition:transform var(--ease-slow);
-  display:flex;flex-direction:column;
+  display:flex;flex-direction:column;min-height:0;
 }
 #settings-modal.hidden .settings-sheet{transform:translateY(100%)}
 .settings-header{
   display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:-24px;z-index:10;
+  flex-shrink:0;
   background:var(--bg-secondary);
-  margin:-24px -20px 20px;padding:20px 20px 16px;
+  margin:-24px -20px 12px;padding:20px 20px 14px;
   border-bottom:1px solid var(--border);
 }
 .settings-header h2{font-size:18px;font-weight:700}
 /* Settings tabs */
 .settings-tabs{
-  display:flex;gap:2px;padding:0 0 12px;margin-bottom:12px;
-  border-bottom:1px solid var(--border);overflow-x:auto;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  display:flex;flex-wrap:wrap;gap:8px 6px;padding:0 0 12px;margin-bottom:0;
+  border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;
+  background:var(--bg-secondary);
+  scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;
+  -webkit-overflow-scrolling:touch;
+  row-gap:8px;
 }
-.settings-tabs::-webkit-scrollbar{display:none}
+.settings-tabs::-webkit-scrollbar{height:4px}
+.settings-tabs::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
 .stab{
-  padding:8px 14px;border:none;background:none;color:var(--text-muted);
+  padding:7px 12px;border:none;background:transparent;color:var(--text-muted);
   font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;
-  border-radius:var(--radius-sm);transition:.2s;flex-shrink:0;
+  border-radius:999px;transition:background .15s,color .15s,box-shadow .15s;flex-shrink:0;
+  line-height:1.25;
 }
 .stab:hover{background:var(--bg-surface);color:var(--text-primary)}
-.stab.active{background:var(--accent);color:#fff;font-weight:600}
-.settings-tab-content{flex:1;overflow-y:auto}
-.stab-pane{display:none;opacity:0}
+.stab.active{
+  background:color-mix(in srgb,var(--accent) 22%,transparent);
+  color:var(--accent);
+  font-weight:600;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent);
+}
+.settings-tab-content{
+  flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;
+  padding:12px 4px 8px 0;margin-right:2px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:color-mix(in srgb,var(--text-muted) 45%,transparent) transparent;
+}
+.settings-tab-content::-webkit-scrollbar{width:6px}
+.settings-tab-content::-webkit-scrollbar-thumb{
+  background:color-mix(in srgb,var(--text-muted) 40%,transparent);
+  border-radius:6px;
+}
+.settings-tab-content::-webkit-scrollbar-thumb:hover{
+  background:color-mix(in srgb,var(--text-muted) 55%,transparent);
+}
+.settings-tab-content::-webkit-scrollbar-track{background:transparent}
+.stab-pane{display:none;opacity:0;padding-bottom:8px}
 .stab-pane.active{display:block;animation:stabFadeIn .2s ease forwards}
 @keyframes stabFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 :root[data-theme="light"] .stab{color:#7a7a9a}
 :root[data-theme="light"] .stab:hover{background:rgba(0,0,0,.04);color:#3a3a5a}
-:root[data-theme="light"] .stab.active{background:var(--accent);color:#fff}
+:root[data-theme="light"] .stab.active{
+  background:rgba(99,102,241,.12);color:var(--accent);
+  box-shadow:inset 0 0 0 1px rgba(99,102,241,.28);
+}
+.settings-sheet-footer{
+  flex-shrink:0;margin-top:10px;padding:14px 14px 4px;
+  border-top:1px solid var(--border);
+  display:flex;flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:10px;
+  background:color-mix(in srgb,var(--bg-surface) 55%,transparent);
+  border-radius:14px;
+  border:1px solid color-mix(in srgb,var(--border) 80%,transparent);
+  box-shadow:0 4px 24px rgba(0,0,0,.12);
+}
+:root[data-theme="light"] .settings-sheet-footer{
+  background:rgba(255,255,255,.72);
+  box-shadow:0 4px 20px rgba(0,0,0,.06);
+}
+/* 底部主按钮：危险操作 — 渐变描边 + 柔和投影，与次要按钮区分层次 */
+.settings-disconnect-btn{
+  flex:1 1 160px;
+  min-height:48px;
+  padding:14px 20px;
+  border-radius:12px;
+  font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;
+  color:#fff!important;
+  border:1px solid color-mix(in srgb,var(--error) 50%,#fff 12%)!important;
+  background:linear-gradient(165deg,color-mix(in srgb,var(--error) 92%,#fff) 0%,var(--error) 100%)!important;
+  box-shadow:
+    0 1px 0 color-mix(in srgb,#fff 18%,transparent) inset,
+    0 6px 20px color-mix(in srgb,var(--error) 38%,transparent);
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease;
+}
+.settings-disconnect-btn:hover{
+  filter:brightness(1.05);
+  box-shadow:
+    0 1px 0 color-mix(in srgb,#fff 22%,transparent) inset,
+    0 8px 26px color-mix(in srgb,var(--error) 48%,transparent);
+}
+.settings-disconnect-btn:active{transform:scale(0.985)}
+/* 返回：描边幽灵按钮，与主按钮同高对齐 */
+.settings-back-footer-btn{
+  flex:0 1 140px;
+  min-height:48px;
+  padding:14px 18px;
+  border-radius:12px;
+  font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  color:var(--text-primary);
+  background:var(--bg-secondary);
+  border:1px solid var(--border-strong);
+  box-shadow:0 1px 0 color-mix(in srgb,#fff 8%,transparent) inset;
+  transition:background .15s,border-color .15s,transform .14s ease;
+}
+.settings-back-footer-btn:hover{
+  background:var(--bg-surface);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.settings-back-footer-btn:active{transform:scale(0.985)}
+.settings-disconnect-btn:focus-visible,.settings-back-footer-btn:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+@media(max-width:420px){
+  .settings-sheet-footer{flex-direction:column;padding:14px 12px 6px}
+  .settings-disconnect-btn,.settings-back-footer-btn{flex:1 1 auto;width:100%;min-width:0}
+}
+/* ─── 设置弹层内：统一次要/主操作按钮（替代零散 inline style）── */
+#settings-modal .settings-sheet .settings-btn-row{
+  display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;align-items:stretch;
+}
+#settings-modal .settings-sheet .settings-btn-row > .btn,
+#settings-modal .settings-sheet .settings-btn-row > label.btn{flex:1 1 140px;min-width:0}
+#settings-modal .settings-sheet button.btn.settings-btn,
+#settings-modal .settings-sheet label.btn.settings-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  box-sizing:border-box;margin:0;
+  min-height:42px;padding:10px 16px;
+  font-size:13px;font-weight:600;font-family:inherit;line-height:1.25;
+  border-radius:10px;cursor:pointer;
+  border:1px solid var(--border-strong);
+  background:var(--bg-surface);
+  color:var(--text-primary);
+  transition:background .15s,border-color .15s,box-shadow .15s,transform .12s ease,filter .12s;
+}
+#settings-modal .settings-sheet label.settings-btn{text-align:center}
+#settings-modal .settings-sheet .settings-btn:hover{
+  border-color:var(--accent);
+  box-shadow:0 2px 12px rgba(0,0,0,.1);
+}
+#settings-modal .settings-sheet .settings-btn:active{transform:scale(0.987)}
+#settings-modal .settings-sheet .settings-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#settings-modal .settings-sheet .settings-btn--primary{
+  background:linear-gradient(165deg,color-mix(in srgb,var(--accent) 85%,#fff) 0%,var(--accent) 100%);
+  color:#fff!important;
+  border-color:color-mix(in srgb,var(--accent) 42%,var(--border));
+  box-shadow:
+    0 1px 0 color-mix(in srgb,#fff 18%,transparent) inset,
+    0 5px 16px color-mix(in srgb,var(--accent) 26%,transparent);
+}
+#settings-modal .settings-sheet .settings-btn--primary:hover{
+  filter:brightness(1.05);
+  color:#fff!important;
+  border-color:color-mix(in srgb,var(--accent) 55%,var(--border));
+}
+#settings-modal .settings-sheet .settings-btn--secondary:hover{
+  background:var(--bg-secondary);color:var(--accent);
+}
+#settings-modal .settings-sheet .settings-btn--danger{
+  background:linear-gradient(165deg,color-mix(in srgb,var(--error) 88%,#fff) 0%,var(--error) 100%);
+  color:#fff!important;
+  border-color:color-mix(in srgb,var(--error) 45%,var(--border));
+  box-shadow:
+    0 1px 0 color-mix(in srgb,#fff 14%,transparent) inset,
+    0 4px 14px color-mix(in srgb,var(--error) 32%,transparent);
+}
+#settings-modal .settings-sheet .settings-btn--danger:hover{filter:brightness(1.05);color:#fff!important}
+#settings-modal .settings-sheet .settings-btn--muted{
+  color:var(--text-secondary);font-weight:600;font-size:12px;
+  background:var(--bg-surface);
+}
+#settings-modal .settings-sheet .settings-btn--muted:hover{
+  color:var(--accent);border-color:var(--accent);background:var(--bg-secondary);
+}
+#settings-modal .settings-sheet .settings-btn--full{width:100%;flex:1 1 100%!important}
+#settings-modal .settings-sheet .settings-btn--compact{min-height:38px;padding:8px 14px;font-size:12px}
+#settings-modal .settings-sheet .settings-btn--gradient{
+  background:linear-gradient(135deg,var(--accent),#c084fc);
+  color:#fff!important;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  box-shadow:0 4px 18px color-mix(in srgb,var(--accent) 28%,transparent);
+}
+#settings-modal .settings-sheet .settings-btn--gradient:hover{filter:brightness(1.04);color:#fff!important}
+#settings-modal .settings-sheet .settings-btn--ghost{
+  min-height:36px;padding:8px 12px;font-size:11px;font-weight:500;
+  background:var(--bg-surface);color:var(--text-secondary);
+  border:1px dashed var(--border-strong);
+}
+#settings-modal .settings-sheet .settings-btn--ghost:hover{
+  color:var(--text-primary);border-style:solid;border-color:var(--accent);
+}
+#settings-modal .settings-sheet .tts-preview-btn{
+  min-height:38px;padding:8px 16px;font-size:12px;font-weight:600;
+  border-radius:10px;border:1px solid var(--border-strong);
+  background:var(--bg-surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+  font-family:inherit;
+}
+#settings-modal .settings-sheet .tts-preview-btn.playing{
+  box-shadow:0 2px 10px color-mix(in srgb,var(--error) 35%,transparent);
+}
+#tab-pet .settings-group{margin-bottom:4px}
+#tab-pet .settings-group h3{margin-top:2px;margin-bottom:12px}
+#tab-pet .settings-row{padding:14px 0;gap:10px}
+#tab-pet .pet-skin-chip-wrap{
+  margin-top:10px;padding:14px 0 18px;border-top:1px solid var(--border);
+  padding-left:0;justify-content:flex-start;
+}
 .settings-group{margin-bottom:20px}
 .settings-group h3{font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
 .settings-row{
@@ -789,6 +970,10 @@ body{
 .pet-skin-chip-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
 .settings-label{font-size:14px}
 .settings-value{font-size:13px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 连接信息允许换行，避免主机 IP 被裁成「…」 */
+#tab-general .settings-group:first-of-type .settings-value{
+  max-width:min(100%,280px);white-space:normal;word-break:break-all;text-align:right;line-height:1.4;
+}
 .qr-display{
   width:200px;height:200px;margin:12px auto;background:#fff;border-radius:var(--radius-md);
   display:flex;align-items:center;justify-content:center;
@@ -2541,7 +2726,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   .msg{max-width:65%}
   .input-area{padding:12px 12%}
   #settings-modal{align-items:center}
-  .settings-sheet{max-width:520px;border-radius:var(--radius-lg);max-height:85vh}
+  .settings-sheet{max-width:520px;border-radius:var(--radius-lg);max-height:85vh;overflow:hidden}
   .sc-grid{grid-template-columns:repeat(3,1fr)}
   /* Pro mode on desktop: hide more button since all buttons are visible */
   :root.pro-mode .header-more-btn{display:none}
@@ -3253,10 +3438,12 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <div class="settings-tabs" id="settings-tabs">
       <button class="stab active" data-tab="tab-general" data-i18n="settings.tabGeneral">🔧 通用</button>
       <button class="stab" data-tab="tab-voice" data-i18n="settings.tabVoice">🎤 语音</button>
+      <button class="stab" data-tab="tab-pet" data-i18n="settings.tabPet">桌宠</button>
       <button class="stab" data-tab="tab-expression" data-i18n="settings.tabExpression">🎭 表情控制</button>
       <button class="stab" data-tab="tab-display" data-i18n="settings.tabDisplay">🎨 显示</button>
       <button class="stab" data-tab="tab-profile" data-i18n="settings.tabProfile">🧠 我的画像</button>
       <button class="stab" data-tab="tab-data" data-i18n="settings.tabData">💾 数据</button>
+      <button class="stab" data-tab="tab-wechat-bot">💬 微信Bot</button>
       <button class="stab" data-tab="tab-store" data-i18n="settings.tabStore">🛒 角色商店</button>
       <button class="stab" data-tab="tab-advanced" data-i18n="settings.tabAdvanced">⚡ 高级</button>
     </div>
@@ -3363,32 +3550,6 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <option value="bars" data-i18n="settings.vizBars">频谱条</option>
         </select>
       </div>
-      <div class="settings-group" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-        <h3 data-i18n="settings.petDesktop">🎨 桌宠</h3>
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.45" data-i18n="settings.petHint">调节桌宠球体随麦克风/朗读音量缩放的程度（仅影响桌宠窗口）</p>
-        <div class="settings-row" style="align-items:center;gap:10px">
-          <span class="settings-label" style="min-width:100px" data-i18n="settings.petMicGain">麦克风灵敏度</span>
-          <input type="range" id="pet-mic-gain" min="0.25" max="2.5" step="0.05" value="1" style="flex:1;min-width:0">
-          <span id="pet-mic-gain-val" style="font-size:12px;color:var(--text-secondary);width:40px;text-align:right;font-variant-numeric:tabular-nums">1.00</span>
-        </div>
-        <div class="settings-row" style="align-items:center;gap:10px;margin-top:8px">
-          <span class="settings-label" style="min-width:100px" data-i18n="settings.petPlaybackGain">朗读灵敏度</span>
-          <input type="range" id="pet-playback-gain" min="0.25" max="2.5" step="0.05" value="1" style="flex:1;min-width:0">
-          <span id="pet-playback-gain-val" style="font-size:12px;color:var(--text-secondary);width:40px;text-align:right;font-variant-numeric:tabular-nums">1.00</span>
-        </div>
-        <div class="settings-row" style="align-items:center;gap:10px;margin-top:10px">
-          <span class="settings-label" style="min-width:100px" data-i18n="settings.petLevelMode">电平合并</span>
-          <select id="pet-level-mode" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0">
-            <option value="sum" data-i18n="settings.petLevelSum">相加（默认）</option>
-            <option value="max" data-i18n="settings.petLevelMax">取较大</option>
-          </select>
-        </div>
-        <div class="settings-row" style="align-items:center;gap:10px;margin-top:10px">
-          <span class="settings-label" style="min-width:100px" data-i18n="settings.petSkin">桌宠形象</span>
-          <select id="pet-skin-select" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0"></select>
-        </div>
-        <div class="pet-skin-chip-wrap" id="pet-skin-preview-chips" style="margin-top:6px;padding-left:calc(100px + 10px);padding-bottom:4px"></div>
-      </div>
     </div>
     <div class="settings-group">
       <h3 data-i18n="clone.sectionTitle">🎙️ 语音克隆</h3>
@@ -3397,9 +3558,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <input type="text" id="clone-voice-name" data-i18n="clone.namePlaceholder" data-i18n-attr="placeholder" placeholder="声音名称（如：爸爸的声音）" style="flex:1;padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button class="btn" id="clone-record-btn" data-i18n="clone.record" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px">🎤 开始录音</button>
-        <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);padding:10px;font-size:13px;border-radius:8px;cursor:pointer;text-align:center">
+      <div class="settings-btn-row">
+        <button type="button" class="btn settings-btn settings-btn--primary" id="clone-record-btn" data-i18n="clone.record">🎤 开始录音</button>
+        <label class="btn settings-btn settings-btn--secondary">
           <span data-i18n="clone.upload">📁 上传音频</span>
           <input type="file" id="clone-upload-input" accept="audio/*" style="display:none">
         </label>
@@ -3408,7 +3569,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <div id="clone-recording-ui" style="display:none;text-align:center;padding:12px;background:var(--bg-surface);border-radius:var(--radius-md);margin-top:8px">
         <div style="font-size:24px;margin-bottom:8px">🔴</div>
         <div id="clone-timer" style="font-size:18px;font-weight:700;margin-bottom:8px;font-variant-numeric:tabular-nums">00:00</div>
-        <button class="btn" id="clone-stop-btn" data-i18n="clone.stop" style="background:var(--error);color:#fff;padding:8px 24px;border-radius:8px">⏹ 停止录音</button>
+        <button type="button" class="btn settings-btn settings-btn--danger settings-btn--compact" id="clone-stop-btn" data-i18n="clone.stop">⏹ 停止录音</button>
       </div>
     </div>
     <div class="settings-group">
@@ -3419,6 +3580,35 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <p style="font-size:10px;color:var(--text-muted);margin-top:6px" data-i18n="settings.pluginHint">通过 window.ocPlugins.register() 注册插件</p>
     </div>
     </div><!-- /tab-voice -->
+    <!-- TAB: Desk pet -->
+    <div class="stab-pane" id="tab-pet">
+    <div class="settings-group">
+      <h3 data-i18n="settings.petDesktop">🎨 桌宠</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.45" data-i18n="settings.petHint">调节桌宠球体随麦克风/朗读音量缩放的程度（仅影响桌宠窗口）</p>
+      <div class="settings-row" style="align-items:center;gap:10px">
+        <span class="settings-label" style="min-width:100px" data-i18n="settings.petMicGain">麦克风灵敏度</span>
+        <input type="range" id="pet-mic-gain" min="0.25" max="2.5" step="0.05" value="1" style="flex:1;min-width:0">
+        <span id="pet-mic-gain-val" style="font-size:12px;color:var(--text-secondary);width:40px;text-align:right;font-variant-numeric:tabular-nums">1.00</span>
+      </div>
+      <div class="settings-row" style="align-items:center;gap:10px;margin-top:8px">
+        <span class="settings-label" style="min-width:100px" data-i18n="settings.petPlaybackGain">朗读灵敏度</span>
+        <input type="range" id="pet-playback-gain" min="0.25" max="2.5" step="0.05" value="1" style="flex:1;min-width:0">
+        <span id="pet-playback-gain-val" style="font-size:12px;color:var(--text-secondary);width:40px;text-align:right;font-variant-numeric:tabular-nums">1.00</span>
+      </div>
+      <div class="settings-row" style="align-items:center;gap:10px;margin-top:10px">
+        <span class="settings-label" style="min-width:100px" data-i18n="settings.petLevelMode">电平合并</span>
+        <select id="pet-level-mode" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0">
+          <option value="sum" data-i18n="settings.petLevelSum">相加（默认）</option>
+          <option value="max" data-i18n="settings.petLevelMax">取较大</option>
+        </select>
+      </div>
+      <div class="settings-row" style="align-items:center;gap:10px;margin-top:10px">
+        <span class="settings-label" style="min-width:100px" data-i18n="settings.petSkin">桌宠形象</span>
+        <select id="pet-skin-select" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0"></select>
+      </div>
+      <div class="pet-skin-chip-wrap" id="pet-skin-preview-chips"></div>
+    </div>
+    </div><!-- /tab-pet -->
     <!-- TAB: Expression Control -->
     <div class="stab-pane" id="tab-expression">
     <div class="settings-group">
@@ -3474,16 +3664,16 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <input type="range" id="gaze-dwell" min="1000" max="4000" step="250" value="2000" style="width:100px">
         <span id="gaze-dwell-val" style="font-size:12px;color:var(--text-secondary);min-width:36px;text-align:right">2.0s</span>
       </div>
-      <button class="btn" id="gaze-calibrate-btn" style="width:100%;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;margin-top:4px" data-i18n="gaze.calibrate5">🎯 开始5点校准</button>
+      <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--full" id="gaze-calibrate-btn" style="margin-top:4px" data-i18n="gaze.calibrate5">🎯 开始5点校准</button>
       <div id="gaze-status" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
-      <button class="btn" id="calib-wizard-btn" style="width:100%;background:linear-gradient(135deg,var(--accent),#c084fc);color:#fff;font-size:12px;padding:10px;margin-top:8px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer" onclick="CalibWizard.open()" data-i18n="gaze.calibWizard">🎯 完整无障碍校准向导 (3分钟)</button>
+      <button type="button" class="btn settings-btn settings-btn--gradient settings-btn--full" id="calib-wizard-btn" style="margin-top:8px" onclick="CalibWizard.open()" data-i18n="gaze.calibWizard">🎯 完整无障碍校准向导 (3分钟)</button>
     </div>
     <div class="settings-group">
       <h3><span data-i18n="workflow.sectionTitle">🔄 工作流录制</span> <span style="font-size:11px;color:var(--text-muted);font-weight:normal" data-i18n="workflow.experimental">(实验性)</span></h3>
       <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px" data-i18n="workflow.hint">录制你的操作序列，保存为可重放的工作流模板。</p>
-      <div style="display:flex;gap:8px">
-        <button class="btn" id="workflow-start-rec" style="flex:1;background:var(--error);color:#fff;font-size:12px;padding:8px" data-i18n="workflow.ariaStart" data-i18n-attr="aria-label"><span data-i18n="workflow.startRec">⏺ 开始录制</span></button>
-        <button class="btn" id="workflow-stop-rec" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;display:none" data-i18n="workflow.ariaStop" data-i18n-attr="aria-label"><span data-i18n="workflow.stopSave">⏹ 停止并保存</span></button>
+      <div class="settings-btn-row">
+        <button type="button" class="btn settings-btn settings-btn--danger settings-btn--compact" id="workflow-start-rec" data-i18n="workflow.ariaStart" data-i18n-attr="aria-label"><span data-i18n="workflow.startRec">⏺ 开始录制</span></button>
+        <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact" id="workflow-stop-rec" style="display:none" data-i18n="workflow.ariaStop" data-i18n-attr="aria-label"><span data-i18n="workflow.stopSave">⏹ 停止并保存</span></button>
       </div>
       <div id="workflow-rec-status" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
     </div>
@@ -3491,9 +3681,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <h3 data-i18n="expr.liveTitle">实时监测</h3>
       <div id="expr-live-monitor" style="font-size:12px;color:var(--text-secondary)" data-i18n="expr.liveHint">开启摄像头后显示实时数据...</div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn" id="expr-save" style="flex:1;background:var(--accent);color:#fff;font-size:12px;padding:8px" data-i18n="expr.saveBtn">💾 保存配置</button>
-      <button class="btn" id="expr-reset" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px" data-i18n="expr.resetBtn">↩️ 恢复默认</button>
+    <div class="settings-btn-row" style="margin-top:8px">
+      <button type="button" class="btn settings-btn settings-btn--primary settings-btn--compact" id="expr-save" data-i18n="expr.saveBtn">💾 保存配置</button>
+      <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact" id="expr-reset" data-i18n="expr.resetBtn">↩️ 恢复默认</button>
     </div>
     </div><!-- /tab-expression -->
     <!-- TAB: Display -->
@@ -3519,7 +3709,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <p style="font-size:11px;color:var(--text-muted);margin-top:2px;margin-bottom:8px" data-i18n="settings.uiModeHint">简洁模式隐藏高级功能按钮，更适合日常使用</p>
       <div class="settings-row">
         <span class="settings-label" data-i18n="settings.fullscreen">全屏</span>
-        <button class="btn" id="fullscreen-settings-btn" data-i18n="settings.enterFs" style="padding:6px 16px;background:var(--bg-surface);color:var(--text-primary);font-size:13px">进入全屏</button>
+        <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact" id="fullscreen-settings-btn" data-i18n="settings.enterFs">进入全屏</button>
       </div>
       <p style="font-size:11px;color:var(--text-muted);margin-top:4px" data-i18n="settings.iosTip">iOS 提示：在 Safari 中点击分享 → 添加到主屏幕，可实现永久全屏</p>
     </div>
@@ -3550,7 +3740,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <div id="up-products-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
       <div style="display:flex;gap:6px">
         <input type="text" id="up-product-new" data-i18n="profile.phProduct" data-i18n-attr="placeholder" placeholder="添加产品名称" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-        <button class="btn" id="up-product-add" style="background:var(--accent);color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;white-space:nowrap" data-i18n="profile.productAdd">+ 添加</button>
+        <button type="button" class="btn settings-btn settings-btn--primary settings-btn--compact" id="up-product-add" style="white-space:nowrap;flex:0 0 auto" data-i18n="profile.productAdd">+ 添加</button>
       </div>
     </div>
     <div class="settings-group">
@@ -3573,20 +3763,20 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <h3 data-i18n="profile.sectionCompetitors">🏷️ 竞品</h3>
       <input type="text" id="up-competitors" data-i18n="profile.phCompetitors" data-i18n-attr="placeholder" placeholder="竞品名称（逗号分隔）" style="width:100%;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px;padding-bottom:16px">
-      <button class="btn" id="up-save" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px" data-i18n="profile.saveBtn">💾 保存画像</button>
-      <button class="btn" id="up-reset" style="background:var(--bg-surface);color:var(--text-secondary);padding:10px 16px;font-size:12px;border-radius:8px" data-i18n="profile.resetBtn">重置</button>
+    <div class="settings-btn-row" style="margin-top:12px;padding-bottom:16px">
+      <button type="button" class="btn settings-btn settings-btn--primary" id="up-save" data-i18n="profile.saveBtn">💾 保存画像</button>
+      <button type="button" class="btn settings-btn settings-btn--muted" id="up-reset" data-i18n="profile.resetBtn">重置</button>
     </div>
     <div id="up-status" style="font-size:11px;color:var(--success);min-height:16px;text-align:center"></div>
     <!-- 数据备份 -->
     <div class="settings-group" style="margin-top:12px">
       <h3 data-i18n="profile.backupTitle">💾 数据备份</h3>
-      <div style="display:flex;gap:8px">
-        <button class="btn" id="moat-export-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px" data-i18n="profile.exportJson">📤 导出 JSON</button>
-        <button class="btn" id="moat-export-zip-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px" data-i18n="profile.exportZip">📦 导出 ZIP</button>
+      <div class="settings-btn-row">
+        <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact" id="moat-export-btn" data-i18n="profile.exportJson">📤 导出 JSON</button>
+        <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact" id="moat-export-zip-btn" data-i18n="profile.exportZip">📦 导出 ZIP</button>
       </div>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px;cursor:pointer;text-align:center">
+      <div class="settings-btn-row" style="margin-top:6px">
+        <label class="btn settings-btn settings-btn--secondary settings-btn--compact">
           <span data-i18n="profile.importData">📥 导入数据</span>
           <input type="file" id="moat-import-input" accept=".json" style="display:none">
         </label>
@@ -3623,22 +3813,56 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <span class="settings-label" data-i18n="settings.chatHistoryLabel">对话历史</span>
         <span id="history-count" style="font-size:13px;color:var(--text-secondary)">—</span>
       </div>
-      <button class="btn" id="clear-memory-btn" style="margin-top:8px;background:var(--bg-surface);color:var(--text-primary);width:100%" data-i18n="settings.clearMemoryBtn">
+      <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--full" id="clear-memory-btn" style="margin-top:8px" data-i18n="settings.clearMemoryBtn">
         🗑️ 清除记忆
       </button>
     </div>
     <div class="settings-group">
       <h3 data-i18n="settings.dataTitle">数据</h3>
-      <div style="display:flex;gap:8px">
-        <button class="btn" id="settings-export" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px" data-i18n="settings.export">📤 导出设置</button>
-        <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;cursor:pointer;text-align:center" data-i18n="settings.import">
-          📥 导入设置
+      <div class="settings-btn-row">
+        <button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact" id="settings-export" data-i18n="settings.export">📤 导出设置</button>
+        <label class="btn settings-btn settings-btn--secondary settings-btn--compact">
+          <span data-i18n="settings.import">📥 导入设置</span>
           <input type="file" id="settings-import" accept=".json" style="display:none">
         </label>
       </div>
       <p style="font-size:10px;color:var(--text-muted);margin-top:4px" data-i18n="settings.dataHint">导出/导入主题、收藏、历史等本地设置</p>
     </div>
     </div><!-- /tab-data -->
+    <!-- TAB: WeChat Bot -->
+    <div class="stab-pane" id="tab-wechat-bot">
+    <div class="settings-group">
+      <h3>💬 微信 ClawBot（官方通道）</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">通过腾讯官方 iLink 协议，在微信中直接使用 AI 工作队</p>
+      <div id="ilink-settings-status" style="padding:10px 12px;background:var(--bg-surface);border-radius:8px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="ilink-dot" style="width:8px;height:8px;border-radius:50%;background:#666"></span>
+          <span id="ilink-label" style="font-size:13px">检查中...</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="ilink-connect-btn" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px">💬 绑定微信</button>
+        <button class="btn" id="ilink-disconnect-btn" style="background:var(--bg-surface);color:var(--error);padding:10px 16px;font-size:12px;border-radius:8px;display:none">断开</button>
+      </div>
+      <div id="ilink-settings-qr" style="display:none;text-align:center;margin-top:10px">
+        <div style="display:inline-block;padding:8px;background:#fff;border-radius:10px">
+          <img id="ilink-settings-qr-img" src="" style="width:160px;height:160px">
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px">用微信扫码绑定</p>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>🖥️ 桌面自动化通道</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">通过 Windows 桌面微信自动化（仅本机可用）</p>
+      <div id="uia-status" style="padding:10px 12px;background:var(--bg-surface);border-radius:8px">
+        <span style="font-size:12px;color:var(--text-secondary)">检查中...</span>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>📊 通道状态</h3>
+      <div id="wechat-channels-list" style="font-size:12px;color:var(--text-secondary)">加载中...</div>
+    </div>
+    </div><!-- /tab-wechat-bot -->
     <!-- TAB: Agent Store -->
     <div class="stab-pane" id="tab-store">
     <div class="settings-group">
@@ -3665,7 +3889,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <input id="qa-add-icon" placeholder="📌" style="max-width:36px;text-align:center" maxlength="4">
         <input id="qa-add-name" data-i18n="settings.qaNamePlaceholder" data-i18n-attr="placeholder" placeholder="名称">
         <input id="qa-add-skill" data-i18n="settings.qaSkillPlaceholder" data-i18n-attr="placeholder" placeholder="技能 ID">
-        <button class="mp-btn mp-btn-install" id="qa-add-btn" style="font-size:10px;padding:4px 10px;flex-shrink:0" data-i18n="settings.qaAdd">添加</button>
+        <button type="button" class="btn settings-btn settings-btn--primary settings-btn--compact" id="qa-add-btn" style="flex-shrink:0" data-i18n="settings.qaAdd">添加</button>
       </div>
     </div>
     <div class="settings-group">
@@ -3688,15 +3912,17 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <input type="range" class="font-slider" id="font-slider" min="12" max="20" value="14" step="1">
         <span id="font-size-val" style="font-size:12px;color:var(--text-muted);min-width:30px">14px</span>
       </div>
-      <button class="btn" id="theme-reset" style="margin-top:8px;background:var(--bg-surface);color:var(--text-secondary);font-size:11px;width:100%;padding:6px" data-i18n="settings.resetTheme">重置为默认</button>
+      <button type="button" class="btn settings-btn settings-btn--ghost settings-btn--full" id="theme-reset" style="margin-top:8px" data-i18n="settings.resetTheme">重置为默认</button>
     </div>
     </div><!-- /tab-advanced -->
     </div><!-- /settings-tab-content -->
-    <button class="btn btn-primary" id="disconnect-btn" data-i18n="settings.disconnect" style="background:var(--error);margin-top:8px">断开连接</button>
-    <button class="btn" id="settings-back-btn" style="margin-top:12px;background:var(--bg-surface);color:var(--text-primary)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-      <span data-i18n="settings.back">返回</span>
-    </button>
+    <div class="settings-sheet-footer">
+      <button type="button" class="settings-disconnect-btn" id="disconnect-btn" data-i18n="settings.disconnect">断开连接</button>
+      <button type="button" class="settings-back-footer-btn" id="settings-back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        <span data-i18n="settings.back">返回</span>
+      </button>
+    </div>
   </div>
 </div>
 

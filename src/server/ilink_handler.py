@@ -106,30 +106,50 @@ async def _handle_team_task(bot, from_user: str, text: str, context_token: str):
 
 
 async def _wait_and_notify(bot, from_user: str, team_id: str, context_token: str):
-    """等待团队完成并推送结果到微信"""
+    """等待团队完成，实时推送进度到微信"""
     from .agent_team import get_team
     max_wait = 300  # 最多等 5 分钟
-    interval = 10   # 每 10 秒检查一次
+    interval = 8    # 每 8 秒检查一次
+    last_done_count = 0
+    notified_agents = set()
 
     for _ in range(max_wait // interval):
         await asyncio.sleep(interval)
         team = get_team(team_id)
         if not team:
             break
+
+        # 实时进度推送：每完成一个 Agent 通知一次
+        if team.status == "executing":
+            done_tasks = [t for t in team.tasks if t.status == "done"]
+            if len(done_tasks) > last_done_count:
+                for t in done_tasks:
+                    if t.agent_id not in notified_agents:
+                        notified_agents.add(t.agent_id)
+                        agent = team.agents.get(t.agent_id)
+                        name = agent.role.name if agent else t.agent_id
+                        avatar = agent.role.avatar if agent else "🤖"
+                        preview = (t.result or "")[:100].replace("\n", " ")
+                        await bot.send_text(
+                            from_user,
+                            f"{avatar} {name} 完成！\n{preview}...",
+                            context_token,
+                        )
+                last_done_count = len(done_tasks)
+
         if team.status == "done":
-            # 发送结果摘要
+            # 最终结果
             summary = team.final_result or "(无结果)"
             if len(summary) > 1800:
-                summary = summary[:1750] + "\n\n... (完整报告请在电脑端查看)"
+                summary = summary[:1750] + "\n\n(完整报告请在电脑端查看)"
 
-            # 添加分享链接
             project_id = ""
             if hasattr(team, '_project') and team._project:
                 project_id = team._project.project_id
 
-            result_msg = f"✅ 团队任务完成！\n\n{summary}"
+            result_msg = f"✅ 全部完成！\n\n{summary}"
             if project_id:
-                result_msg += f"\n\n📄 完整报告：查看电脑端 /report/{project_id}"
+                result_msg += f"\n\n📄 完整报告：/report/{project_id}"
 
             await bot.send_text(from_user, result_msg, context_token)
             logger.info(f"[iLink] 团队结果已推送: {team_id}")
@@ -139,5 +159,4 @@ async def _wait_and_notify(bot, from_user: str, team_id: str, context_token: str
             await bot.send_text(from_user, "❌ 团队执行出错，请在电脑端查看详情", context_token)
             return
 
-    # 超时
-    await bot.send_text(from_user, "⏰ 任务执行超时（5分钟），请在电脑端查看进度", context_token)
+    await bot.send_text(from_user, "⏰ 任务超时（5分钟），请在电脑端查看进度", context_token)
