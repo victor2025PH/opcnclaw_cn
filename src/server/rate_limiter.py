@@ -28,9 +28,9 @@ from loguru import logger
 
 @dataclass
 class RateLimitConfig:
-    requests_per_minute: int = 120
-    requests_per_hour: int = 3000
-    burst_size: int = 30       # 突发请求数
+    requests_per_minute: int = 300    # 提高限额（Agent 团队会大量调用）
+    requests_per_hour: int = 10000
+    burst_size: int = 50       # 突发请求数
     whitelist: List[str] = field(default_factory=lambda: ["127.0.0.1", "::1", "localhost"])
 
 

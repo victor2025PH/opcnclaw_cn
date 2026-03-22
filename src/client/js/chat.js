@@ -229,7 +229,11 @@ async function sendTextMessage(text) {
       body: JSON.stringify(body),
     });
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      if (resp.status === 429) throw new Error('AI 正在忙，请稍等几秒再试');
+      if (resp.status === 401) throw new Error('需要配置 AI，请到设置中填写 API Key');
+      throw new Error('连接异常，请检查网络');
+    }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -272,10 +276,10 @@ async function sendTextMessage(text) {
     }
   } catch (e) {
     console.error('Chat error:', e);
-    aiMsg.content = t('error.prefix', {msg: e.message});
+    aiMsg.content = '⚠️ ' + (e.message || '出了点问题，请稍后再试');
     finalizeStreamingEl(aiEl, aiMsg.content);
     petSetVisualState('error');
-    petSetSubtitle(aiMsg.content.slice(0, 120));
+    petSetSubtitle('');
   }
 
   S.isSending = false;
@@ -512,10 +516,10 @@ async function sendDesktopCommand(text) {
 
   } catch (e) {
     console.error('Desktop cmd error:', e);
-    aiMsg.content = t('error.prefix', {msg: e.message});
+    aiMsg.content = '⚠️ ' + (e.message || '出了点问题，请稍后再试');
     finalizeStreamingEl(aiEl, aiMsg.content);
     petSetVisualState('error');
-    petSetSubtitle(aiMsg.content.slice(0, 120));
+    petSetSubtitle('');
   }
 
   if (statusEl) statusEl.remove();
@@ -721,7 +725,7 @@ function updateSendBtn() {
 
 function autoResize(textarea) {
   textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+  textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
 }
 
 function openLightbox(src) {
@@ -1212,14 +1216,14 @@ export function init() {
     if (btn) removeAttachment(parseInt(btn.dataset.i));
   });
 
-  // Settings
-  dom.settingsToggle.addEventListener('click', () => dom.settingsModal.classList.remove('hidden'));
-  dom.settingsClose.addEventListener('click', () => dom.settingsModal.classList.add('hidden'));
-  document.getElementById('settings-back-btn').addEventListener('click', () => dom.settingsModal.classList.add('hidden'));
-  dom.settingsModal.addEventListener('click', (e) => {
+  // Settings（使用可选链，避免缺省节点时整段初始化失败导致「设置打不开」）
+  dom.settingsToggle?.addEventListener('click', () => dom.settingsModal?.classList.remove('hidden'));
+  dom.settingsClose?.addEventListener('click', () => dom.settingsModal?.classList.add('hidden'));
+  document.getElementById('settings-back-btn')?.addEventListener('click', () => dom.settingsModal?.classList.add('hidden'));
+  dom.settingsModal?.addEventListener('click', (e) => {
     if (e.target === dom.settingsModal) dom.settingsModal.classList.add('hidden');
   });
-  dom.disconnectBtn.addEventListener('click', () => {
+  dom.disconnectBtn?.addEventListener('click', () => {
     localStorage.removeItem('oc_server');
     localStorage.removeItem('oc_token');
     S.serverUrl = '';

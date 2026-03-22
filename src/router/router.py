@@ -226,7 +226,7 @@ class AIRouter:
 
             if not candidates:
                 logger.error("所有 AI 平台均不可用，请检查网络和 API Key")
-                yield ("（所有 AI 平台暂时不可用，请稍后重试）", "error")
+                yield ("抱歉，AI 引擎暂时繁忙。请稍等几秒再试，或到设置中检查 API Key 是否正确。", "error")
                 return
 
             if mode == "speed_first" and len(candidates) >= 2:

@@ -290,6 +290,13 @@ body{
 .trc-actions button{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface,#252542);color:var(--text-primary,#eee);font-size:12px;cursor:pointer;transition:all 0.15s}
 .trc-actions button:hover{border-color:var(--accent);background:rgba(108,99,255,0.15)}
 
+/* 加载和动画 */
+.loading-dots::after{content:'';animation:dots 1.5s infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+.page-loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-muted);flex-direction:column;gap:12px}
+.page-loading .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* 新手引导 */
 .onboarding{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center}
 .ob-card{background:var(--bg-card,#1a1a2e);border:1px solid var(--border);border-radius:20px;padding:40px;max-width:420px;text-align:center;color:var(--text-primary,#eee)}
@@ -438,15 +445,21 @@ body{
 .input-row{display:flex;align-items:flex-end;gap:6px}
 .input-actions{display:flex;gap:2px;padding-bottom:4px}
 .input-wrapper{
-  flex:1;display:flex;align-items:flex-end;
-  background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-xl);
-  padding:4px 4px 4px 16px;min-height:48px;transition:border-color var(--transition);
+  flex:1;display:flex;align-items:flex-end;gap:2px;
+  background:transparent;border:none;border-radius:var(--radius-xl);
+  padding:2px 4px 2px 10px;min-height:48px;
+  transition:background .2s ease,box-shadow .2s ease;
+  box-shadow:none;
 }
-.input-wrapper:focus-within{border-color:var(--accent)}
+.input-wrapper:focus-within{
+  background:rgba(255,255,255,.03);
+  box-shadow:none;
+}
 #msg-input{
   flex:1;border:none;background:transparent;color:var(--text-primary);
-  font-size:14px;font-family:inherit;line-height:1.5;resize:none;
-  outline:none;max-height:120px;padding:8px 0;
+  font-size:14px;font-family:inherit;line-height:1.55;resize:none;
+  outline:none;max-height:200px;padding:10px 4px 10px 2px;
+  scrollbar-width:thin;
 }
 #msg-input::placeholder{color:var(--text-muted)}
 .send-btn-wrap{padding:4px}
@@ -953,8 +966,8 @@ body{
 :root[data-theme="light"] .msg.ai .msg-text{background:#f0f0f5;color:#1a1a2e;border:1px solid rgba(0,0,0,.06)}
 :root[data-theme="light"] .msg-meta{color:#7a7a9a}
 /* input area */
-:root[data-theme="light"] .input-wrapper{background:#f0f0f5;border-color:rgba(0,0,0,.1)}
-:root[data-theme="light"] .input-wrapper:focus-within{border-color:var(--accent);background:#fff}
+:root[data-theme="light"] .input-wrapper{background:transparent;box-shadow:none}
+:root[data-theme="light"] .input-wrapper:focus-within{background:rgba(0,0,0,.04);box-shadow:none}
 :root[data-theme="light"] #msg-input{color:#1a1a2e}
 :root[data-theme="light"] #msg-input::placeholder{color:#9a9ab0}
 :root[data-theme="light"] .input-actions .icon-btn{color:#7a7a9a}
@@ -2725,6 +2738,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
+      <button type="button" class="icon-btn" id="theme-quick-toggle" title="切换浅色/深色主题" aria-label="切换浅色/深色主题"></button>
       <button class="icon-btn" id="settings-toggle" data-i18n="header.settings" data-i18n-attr="title" title="设置" style="position:relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span class="update-badge hidden" id="update-badge"></span>
@@ -3380,6 +3394,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <option value="light">☀️ 浅色</option>
         </select>
       </div>
+      <p style="font-size:11px;color:var(--text-muted);margin:0 0 10px;line-height:1.5" data-i18n="settings.themeQuickHint">提示：顶部栏右侧也有 🌙/☀️ 按钮，可一键切换主题（与此处选项同步）。</p>
       <div class="settings-row">
         <span class="settings-label">界面模式</span>
         <select id="ui-mode-select" style="padding:5px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
