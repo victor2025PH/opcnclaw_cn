@@ -485,6 +485,14 @@ async def _startup(app: FastAPI):
     except Exception as e:
         logger.debug(f"IntentFusion 启动跳过: {e}")
 
+    # 启动智能建议引擎
+    try:
+        from .smart_suggest import get_suggest_engine
+        get_suggest_engine()
+        logger.info("✅ SmartSuggest 引擎已启动")
+    except Exception as e:
+        logger.debug(f"SmartSuggest 启动跳过: {e}")
+
     logger.info("✅ Phase 1 complete — server accepting requests")
 
     # ── Phase 2: heavy model loading (background) ─────────────

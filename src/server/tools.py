@@ -1164,11 +1164,18 @@ async def team_morning_brief() -> Dict[str, Any]:
         for r in reports[:10]:
             brief_text += f"**{r['avatar']} {r['name']}**：{r['report']}\n\n"
 
+        # TTS 播报文本（用于语音输出）
+        tts_text = f"团队早会开始。"
+        for r in reports[:5]:
+            tts_text += f"{r['name']}说：{r['report'][:50]}。"
+        tts_text += "以上是今日团队汇报。"
+
         return {
-            "message": "请用自然语言把每个 Agent 的汇报逐一展示给用户（用上面的内容），像真人开会一样。",
+            "message": "请用自然语言把每个 Agent 的汇报逐一展示给用户（用上面的内容），像真人开会一样。每个人说完后换行。",
             "team_name": latest.get("name", ""),
             "reports": reports,
             "brief_text": brief_text,
+            "tts_text": tts_text,
             "has_teams": True,
         }
     except Exception as e:

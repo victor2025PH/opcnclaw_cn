@@ -3,6 +3,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>项目工作空间 — 十三香 AI 工作队</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){mermaid.initialize({startOnLoad:false,theme:'dark'})});</script>
 <style>
 :root{--bg:#0b0d14;--bg2:#1a1a2e;--bg3:#252542;--text:#eee;--dim:#888;--accent:#6c63ff;--green:#22c55e;--border:#333}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -192,11 +194,19 @@ async function previewFile(filename) {
       .replace(/^\d+\. (.*$)/gm, '<li>$1</li>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
+      .replace(/```mermaid\n([\s\S]*?)```/g, '<div class="mermaid">$1</div>')
+      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="code-block"><code>$2</code></pre>')
       .replace(/\n\n/g, '</p><p>')
       .replace(/\n/g, '<br>');
 
-    preview.innerHTML = '<p>' + html + '</p>';
+    // HTML 文件直接 iframe 预览
+    if (filename.endsWith('.html')) {
+      preview.innerHTML = '<iframe srcdoc="' + text.replace(/"/g, '&quot;') + '" style="width:100%;height:calc(100vh - 200px);border:1px solid var(--border);border-radius:8px"></iframe>';
+    } else {
+      preview.innerHTML = '<p>' + html + '</p>';
+      // 渲染 Mermaid 图表
+      try { mermaid.run({nodes: preview.querySelectorAll('.mermaid')}); } catch(e) {}
+    }
   } catch(e) {
     document.getElementById('preview').innerHTML = '<div class="preview-empty">加载失败</div>';
   }

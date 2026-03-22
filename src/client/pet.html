@@ -611,6 +611,15 @@ try {
       if (type === 'system_event') {
         showNotification('📢', (d.data || {}).message || '系统通知');
       }
+
+      // 智能建议（AI 主动帮忙）
+      if (type === 'smart_suggest') {
+        var sug = d.data || {};
+        showNotification(sug.icon || '💡', sug.message || '需要帮忙吗？', function() {
+          // 点击后将建议发送到聊天
+          window.open('/app?msg=' + encodeURIComponent(sug.action || ''), '_blank');
+        });
+      }
     } catch(e) {}
   };
 } catch(e) {}
