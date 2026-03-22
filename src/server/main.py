@@ -170,6 +170,12 @@ async def _global_exception_handler(request: Request, exc: Exception):
 async def rate_limit_middleware(request: Request, call_next):
     """API rate limiting middleware"""
     path = request.url.path
+    # 关键 API 不限速（健康检查、状态、配置）
+    _NO_LIMIT = ("/api/ping", "/api/ai/status", "/api/setup/status", "/api/metrics",
+                 "/api/client/info", "/api/system/network-status", "/api/daily-brief",
+                 "/api/events/stream", "/api/pet/")
+    if any(path.startswith(p) for p in _NO_LIMIT):
+        return await call_next(request)
     if path.startswith("/api/"):
         try:
             from .rate_limiter import check_rate_limit
