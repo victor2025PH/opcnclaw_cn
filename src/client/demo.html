@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#6366f1">
-<title>十三香小龙虾 AI — 在线体验</title>
+<title data-dk="doc_title">十三香小龙虾 AI — 在线体验</title>
 <style>
 :root{
   --bg:#0b0d14;--card:#12151f;--border:#2a2f42;--text:#e8eaf0;--muted:#8b92a8;
@@ -15,6 +15,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','PingFang SC',sans-serif;bac
 .bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
 .g1{position:absolute;width:420px;height:420px;background:var(--accent);filter:blur(120px);opacity:.12;top:-120px;left:-80px}
 .g2{position:absolute;width:300px;height:300px;background:var(--accent2);filter:blur(100px);opacity:.1;bottom:-60px;right:-40px}
+.lang-bar{
+  position:fixed;top:12px;right:12px;z-index:20;display:flex;gap:6px;align-items:center;font-size:12px;
+  background:rgba(18,21,31,.9);border:1px solid var(--border);padding:6px 10px;border-radius:999px;
+  backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.25)
+}
+.lang-bar button{background:transparent;border:none;color:var(--muted);cursor:pointer;font:inherit;padding:2px 6px;border-radius:6px}
+.lang-bar button:hover{color:var(--text)}
+.lang-bar button.active{color:var(--accent2);font-weight:700}
+.ver-pill{margin-left:4px;padding:2px 8px;border-radius:6px;font-size:10px;color:var(--muted);border:1px solid var(--border);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wrap{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:32px 20px 60px}
 .hero{text-align:center;padding:28px 0 36px}
 .hero h1{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.5px}
@@ -57,96 +66,253 @@ th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--border)}
 th{color:var(--muted);font-weight:600}
 .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:rgba(34,197,94,.15);color:#86efac}
 .badge.warn{background:rgba(245,158,11,.15);color:#fcd34d}
+.media-hint{
+  margin-top:28px;padding:14px 16px;border:1px dashed var(--border);border-radius:var(--radius);
+  font-size:12px;color:var(--muted);text-align:center;background:rgba(255,255,255,.02)
+}
 footer{text-align:center;margin-top:48px;font-size:11px;color:var(--muted)}
 footer a{color:var(--accent2)}
 @media(max-width:600px){
   .hero{padding-top:12px}
+  .lang-bar{left:10px;right:10px;justify-content:center;top:8px}
 }
 </style>
 </head>
 <body>
+<div class="lang-bar" role="toolbar" aria-label="Language">
+  <button type="button" id="langZh" class="active">中文</button>
+  <span style="opacity:.35">|</span>
+  <button type="button" id="langEn">EN</button>
+  <span class="ver-pill" id="demoVer" title="">—</span>
+</div>
 <div class="bg"><div class="g1"></div><div class="g2"></div></div>
 <div class="wrap">
   <div class="hero">
-    <h1><span>十三香小龙虾 AI</span></h1>
-    <p>本地优先的语音 · 微信 · 桌面控制一体化助手。以下为<strong>纯前端演示</strong>，不连接真实后端。</p>
+    <h1><span data-dk="hero_title">十三香小龙虾 AI</span></h1>
+    <p data-dk="hero_sub">本地优先的语音 · 微信 · 桌面控制一体化助手。以下为<strong>纯前端演示</strong>，不连接真实后端。</p>
     <div class="cta">
-      <a class="primary" href="/app">打开全功能版</a>
-      <a class="ghost" href="/setup">配置向导</a>
-      <a class="ghost" href="https://github.com/victor2025PH/opcnclaw_cn" target="_blank" rel="noopener">GitHub ⭐</a>
+      <a class="primary" href="https://github.com/victor2025PH/opcnclaw_cn/releases/latest" target="_blank" rel="noopener">📥 下载安装包 (v5.4.0)</a>
+      <a class="ghost" id="ctaBaidu" href="#" target="_blank" rel="noopener">☁️ 百度网盘下载</a>
+      <a class="ghost" href="/app" data-dk="cta_full">打开全功能版</a>
+      <a class="ghost" id="ctaGithub" href="https://github.com/victor2025PH/opcnclaw_cn" target="_blank" rel="noopener" data-dk="cta_github">GitHub ⭐</a>
     </div>
   </div>
 
   <div class="grid">
-    <div class="card"><h3>🎙️ 语音对话</h3><p>流式对话、唤醒词、连续模式，与多 STT/TTS 后端对接。</p></div>
-    <div class="card"><h3>💬 微信自动回复</h3><p>白名单、静默时段、人工审核与操作日志。</p></div>
-    <div class="card"><h3>🖥️ 远程桌面</h3><p>手势与语音指令驱动桌面自动化，人机协作 CoworkBus。</p></div>
-    <div class="card"><h3>🧠 意图融合</h3><p>多通道信号时间窗融合，紧急停止与置信度决策。</p></div>
+    <div class="card"><h3 data-dk="c1h">🎙️ 语音对话</h3><p data-dk="c1p">流式对话、唤醒词、连续模式，与多 STT/TTS 后端对接。</p></div>
+    <div class="card"><h3 data-dk="c2h">💬 微信自动回复</h3><p data-dk="c2p">白名单、静默时段、人工审核与操作日志。</p></div>
+    <div class="card"><h3 data-dk="c3h">🖥️ 远程桌面</h3><p data-dk="c3p">手势与语音指令驱动桌面自动化，人机协作 CoworkBus。</p></div>
+    <div class="card"><h3 data-dk="c4h">🧠 意图融合</h3><p data-dk="c4p">多通道信号时间窗融合，紧急停止与置信度决策。</p></div>
   </div>
 
   <div class="section">
-    <h2>交互式模拟聊天</h2>
+    <h2 data-dk="sec_chat">交互式模拟聊天</h2>
     <div class="chat-demo" id="chatDemo">
-      <div class="msg"><div class="av">🦞</div><div class="bubble">你好！我是演示模式。输入任意文字，我会用本地规则回复（无需网络）。</div></div>
+      <div class="msg"><div class="av">🦞</div><div class="bubble" id="welcomeBubble" data-dk="chat_welcome">你好！我是演示模式。输入任意文字，我会用本地规则回复（无需网络）。</div></div>
       <div class="msg user"><div class="av">👤</div><div class="bubble" id="demoUserEcho" style="display:none"></div></div>
       <div class="msg" id="demoAiRow" style="display:none"><div class="av">🦞</div><div class="bubble" id="demoAiReply"></div></div>
       <div class="row">
-        <input id="demoInput" type="text" placeholder="试试：你好 / 功能 / 笑话" maxlength="200" autocomplete="off">
-        <button type="button" id="demoSend">发送</button>
+        <input id="demoInput" type="text" data-dk-ph="inp_ph" placeholder="试试：你好 / 功能 / 笑话" maxlength="200" autocomplete="off">
+        <button type="button" id="demoSend" data-dk="btn_send">发送</button>
       </div>
     </div>
   </div>
 
   <div class="section">
-    <h2>功能对比（示意）</h2>
+    <h2 data-dk="sec_cmp">功能对比（示意）</h2>
     <table>
-      <thead><tr><th>能力</th><th>本方案</th><th>纯云端助手</th><th>单一自动化</th></tr></thead>
+      <thead><tr>
+        <th data-dk="th_cap">能力</th><th data-dk="th_us">本方案</th><th data-dk="th_cloud">纯云端助手</th><th data-dk="th_auto">单一自动化</th>
+      </tr></thead>
       <tbody>
-        <tr><td>本地数据与隐私</td><td><span class="badge">优先本地</span></td><td>依赖云端</td><td>视工具而定</td></tr>
-        <tr><td>微信深度集成</td><td><span class="badge">支持</span></td><td class="badge warn">通常无</td><td>部分</td></tr>
-        <tr><td>桌面 / 多模态</td><td><span class="badge">融合意图</span></td><td>有限</td><td>脚本级</td></tr>
-        <tr><td>离线控制台 (PWA)</td><td><span class="badge">QR 缓存</span></td><td>否</td><td>否</td></tr>
+        <tr>
+          <td data-dk="r1a">本地数据与隐私</td>
+          <td><span class="badge" data-dk="r1b">优先本地</span></td>
+          <td data-dk="r1c">依赖云端</td>
+          <td data-dk="r1d">视工具而定</td>
+        </tr>
+        <tr>
+          <td data-dk="r2a">微信深度集成</td>
+          <td><span class="badge" data-dk="r2b">支持</span></td>
+          <td><span class="badge warn" data-dk="r2c">通常无</span></td>
+          <td data-dk="r2d">部分</td>
+        </tr>
+        <tr>
+          <td data-dk="r3a">桌面 / 多模态</td>
+          <td><span class="badge" data-dk="r3b">融合意图</span></td>
+          <td data-dk="r3c">有限</td>
+          <td data-dk="r3d">脚本级</td>
+        </tr>
+        <tr>
+          <td data-dk="r4a">离线控制台 (PWA)</td>
+          <td><span class="badge" data-dk="r4b">QR 缓存</span></td>
+          <td data-dk="r4c">否</td>
+          <td data-dk="r4d">否</td>
+        </tr>
       </tbody>
     </table>
-    <p style="font-size:11px;color:var(--muted);margin-top:10px">* 对比为产品向示意，不代表第三方商标或具体产品。</p>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px" data-dk="cmp_note">* 对比为产品向示意，不代表第三方商标或具体产品。</p>
   </div>
 
+  <p class="media-hint" data-dk="media_hint">视频 / GIF 演示位：可将资源放在 CDN 或静态目录后嵌入此处（可选）。</p>
+
   <footer>
-    <a href="/qr">控制台</a> · <a href="/admin">管理后台</a> · <a href="/chat">简洁聊天</a>
-    <div style="margin-top:8px">© 十三香小龙虾 AI 演示页</div>
+    <a href="/qr" data-dk="ft_qr">控制台</a> · <a href="/admin" data-dk="ft_admin">管理后台</a> · <a href="/chat" data-dk="ft_chat">简洁聊天</a>
+    <div style="margin-top:8px"><span data-dk="ft_copy">© 十三香小龙虾 AI 演示页</span> · <span data-dk="ft_ver_label">服务版本</span>: <strong id="demoVerFoot">—</strong></div>
   </footer>
 </div>
 <script>
 (function(){
-  const inp=document.getElementById('demoInput');
-  const btn=document.getElementById('demoSend');
-  const uRow=document.getElementById('demoUserEcho');
-  const aiRow=document.getElementById('demoAiRow');
-  const ai=document.getElementById('demoAiReply');
-  function reply(text){
-    const t=text.trim().toLowerCase();
-    if(/你好|hello|hi/.test(t)) return '你好！演示模式：可去「全功能版」体验语音与摄像头。';
-    if(/功能|能做什么/.test(t)) return '支持聊天、微信自动回复、远程桌面、意图融合、MCP 工具等模块（需连接本机服务）。';
-    if(/笑话|段子/.test(t)) return '演示笑话：为什么程序员爱黑暗模式？因为 Bug 怕光。';
-    return '（演示）已收到：「'+text.slice(0,80)+'」。连接主机后可使用真实 AI 回复。';
+  var STR = {
+    zh: {
+      doc_title: '十三香小龙虾 AI — 在线体验',
+      hero_title: '十三香小龙虾 AI',
+      hero_sub: '本地优先的语音 · 微信 · 桌面控制一体化助手。以下为<strong>纯前端演示</strong>，不连接真实后端。',
+      cta_full: '打开全功能版',
+      cta_setup: '配置向导',
+      cta_github: 'GitHub ⭐',
+      cta_releases: '版本发布',
+      c1h: '🎙️ 语音对话', c1p: '流式对话、唤醒词、连续模式，与多 STT/TTS 后端对接。',
+      c2h: '💬 微信自动回复', c2p: '白名单、静默时段、人工审核与操作日志。',
+      c3h: '🖥️ 远程桌面', c3p: '手势与语音指令驱动桌面自动化，人机协作 CoworkBus。',
+      c4h: '🧠 意图融合', c4p: '多通道信号时间窗融合，紧急停止与置信度决策。',
+      sec_chat: '交互式模拟聊天',
+      chat_welcome: '你好！我是演示模式。输入任意文字，我会用本地规则回复（无需网络）。',
+      inp_ph: '试试：你好 / 功能 / 笑话',
+      btn_send: '发送',
+      sec_cmp: '功能对比（示意）',
+      th_cap: '能力', th_us: '本方案', th_cloud: '纯云端助手', th_auto: '单一自动化',
+      r1a: '本地数据与隐私', r1b: '优先本地', r1c: '依赖云端', r1d: '视工具而定',
+      r2a: '微信深度集成', r2b: '支持', r2c: '通常无', r2d: '部分',
+      r3a: '桌面 / 多模态', r3b: '融合意图', r3c: '有限', r3d: '脚本级',
+      r4a: '离线控制台 (PWA)', r4b: 'QR 缓存', r4c: '否', r4d: '否',
+      cmp_note: '* 对比为产品向示意，不代表第三方商标或具体产品。',
+      media_hint: '视频 / GIF 演示位：可将资源放在 CDN 或静态目录后嵌入此处（可选）。',
+      ft_qr: '控制台', ft_admin: '管理后台', ft_chat: '简洁聊天',
+      ft_copy: '© 十三香小龙虾 AI 演示页', ft_ver_label: '服务版本',
+      thinking: '思考中…',
+      r_hi: '你好！演示模式：可去「全功能版」体验语音与摄像头。',
+      r_feat: '支持聊天、微信自动回复、远程桌面、意图融合、MCP 工具等模块（需连接本机服务）。',
+      r_joke: '演示笑话：为什么程序员爱黑暗模式？因为 Bug 怕光。',
+      r_def: '（演示）已收到：「{0}」。连接主机后可使用真实 AI 回复。'
+    },
+    en: {
+      doc_title: 'OpenClaw AI — Demo',
+      hero_title: 'OpenClaw AI',
+      hero_sub: 'Local-first voice, WeChat & desktop automation. This page is a <strong>static demo</strong> — no live backend.',
+      cta_full: 'Open full app',
+      cta_setup: 'Setup wizard',
+      cta_github: 'GitHub ⭐',
+      cta_releases: 'Releases',
+      c1h: '🎙️ Voice', c1p: 'Streaming chat, wake word, continuous mode; STT/TTS backends.',
+      c2h: '💬 WeChat auto-reply', c2p: 'Allowlist, quiet hours, review & action logs.',
+      c3h: '🖥️ Remote desktop', c3p: 'Voice/gesture-driven automation & CoworkBus.',
+      c4h: '🧠 Intent fusion', c4p: 'Multi-channel windowing, emergency stop & confidence.',
+      sec_chat: 'Playground chat',
+      chat_welcome: 'Demo mode: type anything; replies use local rules (no network).',
+      inp_ph: 'Try: hello / features / joke',
+      btn_send: 'Send',
+      sec_cmp: 'Comparison (illustrative)',
+      th_cap: 'Capability', th_us: 'This stack', th_cloud: 'Cloud-only', th_auto: 'Automation only',
+      r1a: 'Local data & privacy', r1b: 'Local-first', r1c: 'Cloud-dependent', r1d: 'Varies',
+      r2a: 'WeChat integration', r2b: 'Yes', r2c: 'Rarely', r2d: 'Partial',
+      r3a: 'Desktop / multimodal', r3b: 'Fused intent', r3c: 'Limited', r3d: 'Script-level',
+      r4a: 'Offline console (PWA)', r4b: 'QR cache', r4c: 'No', r4d: 'No',
+      cmp_note: '* Illustrative only; not an endorsement of third-party marks.',
+      media_hint: 'Video / GIF slot: embed from CDN or static path when ready (optional).',
+      ft_qr: 'Console', ft_admin: 'Admin', ft_chat: 'Chat',
+      ft_copy: '© OpenClaw AI demo', ft_ver_label: 'Server version',
+      thinking: 'Thinking…',
+      r_hi: 'Hi! Open the full app for voice & camera.',
+      r_feat: 'Chat, WeChat reply, desktop, intent fusion, MCP tools (needs local service).',
+      r_joke: 'Why do devs use dark mode? Bugs are afraid of light.',
+      r_def: '(Demo) Got: “{0}”. Connect the host for real AI replies.'
+    }
+  };
+
+  function getLang(){
+    var s = localStorage.getItem('oc-lang') || localStorage.getItem('oc_lang') || 'zh';
+    return s === 'en' ? 'en' : 'zh';
+  }
+  function setLang(lang){
+    lang = lang === 'en' ? 'en' : 'zh';
+    localStorage.setItem('oc-lang', lang);
+    localStorage.setItem('oc_lang', lang);
+    apply(lang);
+  }
+  function apply(lang){
+    var L = STR[lang];
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+    document.title = L.doc_title;
+    document.querySelectorAll('[data-dk]').forEach(function(el){
+      var k = el.getAttribute('data-dk');
+      if (L[k] != null) el.innerHTML = L[k];
+    });
+    document.querySelectorAll('[data-dk-ph]').forEach(function(el){
+      var k = el.getAttribute('data-dk-ph');
+      if (L[k]) el.placeholder = L[k];
+    });
+    document.getElementById('langZh').classList.toggle('active', lang === 'zh');
+    document.getElementById('langEn').classList.toggle('active', lang === 'en');
+    window.__demoLang = lang;
+  }
+
+  document.getElementById('langZh').onclick = function(){ setLang('zh'); };
+  document.getElementById('langEn').onclick = function(){ setLang('en'); };
+
+  var inp = document.getElementById('demoInput');
+  var btn = document.getElementById('demoSend');
+  var uRow = document.getElementById('demoUserEcho');
+  var aiRow = document.getElementById('demoAiRow');
+  var ai = document.getElementById('demoAiReply');
+
+  function replyText(text){
+    var lang = window.__demoLang || getLang();
+    var L = STR[lang];
+    var t = text.trim().toLowerCase();
+    if (/你好|hello|hi|hey/.test(t)) return L.r_hi;
+    if (/功能|能做什么|feature|what can/.test(t)) return L.r_feat;
+    if (/笑话|段子|joke/.test(t)) return L.r_joke;
+    var slice = text.slice(0, 80);
+    return L.r_def.replace('{0}', slice);
   }
   function go(){
-    const v=inp.value.trim();
-    if(!v)return;
-    uRow.style.display='';
-    uRow.textContent=v;
-    aiRow.style.display='';
-    ai.textContent='思考中…';
-    inp.value='';
-    btn.disabled=true;
+    var v = inp.value.trim();
+    if (!v) return;
+    uRow.style.display = '';
+    uRow.textContent = v;
+    aiRow.style.display = '';
+    var L = STR[window.__demoLang || getLang()];
+    ai.textContent = L.thinking;
+    inp.value = '';
+    btn.disabled = true;
     setTimeout(function(){
-      ai.textContent=reply(v);
-      btn.disabled=false;
+      ai.textContent = replyText(v);
+      btn.disabled = false;
       inp.focus();
-    },320+Math.random()*400);
+    }, 320 + Math.random() * 400);
   }
-  btn.addEventListener('click',go);
-  inp.addEventListener('keydown',function(e){if(e.key==='Enter')go()});
+  btn.addEventListener('click', go);
+  inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') go(); });
+
+  function bindVersion(ver){
+    if (!ver) return;
+    var pill = document.getElementById('demoVer');
+    var foot = document.getElementById('demoVerFoot');
+    if (pill) { pill.textContent = 'v' + String(ver).replace(/^v/i, ''); pill.title = ver; }
+    if (foot) foot.textContent = ver;
+  }
+
+  apply(getLang());
+
+  fetch('/api/server-info', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+    .then(function(d){
+      if (d && d.version) bindVersion(d.version);
+    })
+    .catch(function(){
+      /* 离线打开 demo 文件或 API 不可用时保持 — */
+    });
 })();
 </script>
 </body>
