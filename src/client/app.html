@@ -2974,8 +2974,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
       <a href="/qr" class="back-btn" title="返回首页" style="text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>首页
       </a>
-      <button class="icon-btn" id="sessions-toggle" title="会话">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <button class="back-btn" id="sessions-toggle" title="会话列表" style="padding:4px 8px;font-size:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>会话
       </button>
       <div class="profile-switcher" id="profile-switcher"></div>
     </div>
@@ -3027,12 +3027,12 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
         <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
       <button type="button" class="icon-btn" id="theme-quick-toggle" title="切换浅色/深色主题" aria-label="切换浅色/深色主题"></button>
-      <button class="icon-btn" id="settings-toggle" data-i18n="header.settings" data-i18n-attr="title" title="设置" style="position:relative">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <button class="back-btn" id="settings-toggle" title="设置" style="padding:4px 8px;font-size:12px;position:relative">
+        ⚙️ 设置
         <span class="update-badge hidden" id="update-badge"></span>
       </button>
-      <button class="icon-btn header-more-btn" id="header-more-toggle" data-i18n="header.more" data-i18n-attr="title" title="更多">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+      <button class="back-btn header-more-btn" id="header-more-toggle" title="更多功能" style="padding:4px 8px;font-size:12px">
+        ⋯ 更多
       </button>
     </div>
     <div class="header-overflow-menu" id="header-overflow-menu">
@@ -4765,8 +4765,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 </div>
 
 <!-- Fullscreen Button -->
-<button class="fullscreen-btn hidden" id="fullscreen-btn" data-i18n="fullscreen.toggle" data-i18n-attr="title" title="切换全屏">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+<button class="fullscreen-btn hidden" id="fullscreen-btn" data-i18n="fullscreen.toggle" data-i18n-attr="title" title="切换全屏" style="width:auto;padding:4px 10px;gap:4px;font-size:11px;font-family:inherit">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>全屏
 </button>
 
 <!-- PIP Camera (shown when camera panel is minimized) -->
