@@ -499,6 +499,14 @@ async def _startup(app: FastAPI):
     except Exception as e:
         logger.debug(f"SmartSuggest 启动跳过: {e}")
 
+    # 定时任务调度器
+    try:
+        from .scheduler import get_scheduler
+        get_scheduler().start()
+        logger.info("✅ 定时任务调度器已启动")
+    except Exception as e:
+        logger.debug(f"调度器启动跳过: {e}")
+
     logger.info("✅ Phase 1 complete — server accepting requests")
 
     # ── Phase 2: heavy model loading (background) ─────────────
@@ -1722,6 +1730,39 @@ async def set_mode(request: Request):
     os.environ["OPENCLAW_MODE"] = mode
     logger.info(f"Mode switched to: {mode}")
     return {"mode": mode, "ai_available": mode == "full"}
+
+
+# ── 定时任务 API ──
+@app.get("/api/scheduler/status")
+async def api_scheduler_status():
+    """定时任务状态"""
+    try:
+        from .scheduler import get_scheduler
+        s = get_scheduler()
+        return {
+            "running": s._running,
+            "tasks": [{"name": t["name"], "hour": t["hour"], "minute": t["minute"],
+                       "weekday": t["weekday"], "last_run": t["last_run"]} for t in s._tasks],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/scheduler/trigger/{task_name}")
+async def api_trigger_task(task_name: str):
+    """手动触发定时任务"""
+    try:
+        from .scheduler import get_scheduler
+        s = get_scheduler()
+        for t in s._tasks:
+            if task_name in t["name"]:
+                result = t["func"]()
+                if hasattr(result, '__await__'):
+                    await result
+                return {"ok": True, "name": t["name"]}
+        return {"ok": False, "error": "任务不存在"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ── 护城河数据导出/导入 API ──

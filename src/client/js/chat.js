@@ -1271,7 +1271,7 @@ export function init() {
       if (r.ok) {
         const d = await r.json();
         const el = document.getElementById('history-count');
-        if (el) el.textContent = `${d.count} 条消息`;
+        if (el) el.textContent = t('settings.historyCount', { n: String(d.count ?? 0) });
       }
     } catch (_) {}
   });
@@ -1280,23 +1280,23 @@ export function init() {
   document.getElementById('clear-memory-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('clear-memory-btn');
     const orig = btn.textContent;
-    btn.textContent = '清除中...';
+    btn.textContent = t('settings.clearingMemory');
     btn.disabled = true;
     try {
       const sess = await _getActiveSession();
       const r = await fetch(`/api/history?session=${encodeURIComponent(sess)}`, {method: 'DELETE'});
       const d = await r.json();
       if (d.ok) {
-        btn.textContent = '✅ 已清除';
+        btn.textContent = t('settings.memoryCleared');
         const el = document.getElementById('history-count');
-        if (el) el.textContent = '0 条消息';
+        if (el) el.textContent = t('settings.historyCount', { n: '0' });
         setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
       } else {
-        btn.textContent = '❌ 失败';
+        btn.textContent = t('settings.clearFailed');
         setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
       }
     } catch (_) {
-      btn.textContent = '❌ 网络错误';
+      btn.textContent = t('settings.clearNetworkErr');
       setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
     }
   });
@@ -1306,7 +1306,7 @@ export function init() {
     const statusRow = document.getElementById('stt-model-status-row');
     const statusEl = document.getElementById('stt-model-status');
     statusRow.style.display = 'flex';
-    statusEl.textContent = `正在加载 ${model} 模型...`;
+    statusEl.textContent = t('stt.statusLoading', { model });
     statusEl.style.color = 'var(--text-muted)';
     try {
       const r = await fetch('/api/stt-model', {
@@ -1316,14 +1316,14 @@ export function init() {
       });
       const d = await r.json();
       if (d.ok) {
-        statusEl.textContent = `✅ ${model} 已加载 (${d.backend})`;
+        statusEl.textContent = t('stt.statusReady', { model, backend: d.backend || '' });
         statusEl.style.color = 'var(--success, #22c55e)';
       } else {
-        statusEl.textContent = `❌ 失败: ${d.error}`;
+        statusEl.textContent = t('stt.statusFail', { msg: d.error || '' });
         statusEl.style.color = 'var(--error)';
       }
     } catch (err) {
-      statusEl.textContent = `❌ 网络错误`;
+      statusEl.textContent = t('stt.statusNetworkErr');
       statusEl.style.color = 'var(--error)';
     }
   });
@@ -1462,19 +1462,33 @@ export function init() {
           if (detail) {
             const agents = Object.values(team.agents || {});
             // 直播式：显示每个 Agent 的实时工作内容
-            let html = '';
-            for (const a of agents) {
-              const task = tasks.find(t => t.agent_id === (a.id || ''));
-              const icon = a.status === 'done' ? '✅' : a.status === 'working' ? '🔄' : '⏳';
-              const partial = task?.partial_result || task?.result || '';
-              const preview = partial ? partial.substring(0, 60).replace(/[#*\n]/g, ' ') + '...' : '';
-
-              html += `<div class="tpc-agent-live">
-                <span class="tpc-al-head">${a.avatar} ${a.name} ${icon}</span>
-                ${a.status === 'working' && preview ? `<div class="tpc-al-typing">${preview}<span class="tpc-cursor">|</span></div>` : ''}
-                ${a.status === 'done' && preview ? `<div class="tpc-al-done">${preview}</div>` : ''}
-              </div>`;
+            // 按 DAG 层分组显示
+            const layers = _buildDAGLayers(tasks, agents);
+            let html = '<div class="tpc-dag">';
+            for (let li = 0; li < layers.length; li++) {
+              const layer = layers[li];
+              html += `<div class="tpc-dag-layer">`;
+              if (li > 0) html += '<div class="tpc-dag-arrow">↓</div>';
+              html += '<div class="tpc-dag-nodes">';
+              for (const { agent: a, task } of layer) {
+                const tStatus = task?.status || 'pending';
+                const icon = tStatus === 'done' ? '✅' : tStatus === 'working' ? '🔄' : '⏳';
+                const partial = task?.partial_result || task?.result || '';
+                const preview = partial ? partial.substring(0, 50).replace(/[#*\n]/g, ' ') : '';
+                const nodeClass = tStatus === 'done' ? 'done' : tStatus === 'working' ? 'working' : '';
+                html += `<div class="tpc-dag-node ${nodeClass}">
+                  <span class="tpc-dag-head">${a.avatar} ${a.name} ${icon}</span>
+                  ${tStatus === 'working' && preview ? `<div class="tpc-dag-typing">${preview}<span class="tpc-cursor">|</span></div>` : ''}
+                  ${tStatus === 'done' && preview ? `<div class="tpc-dag-done">${preview}...</div>` : ''}
+                </div>`;
+              }
+              html += '</div></div>';
             }
+            // CEO 审核指示
+            if (layers.length > 1 && done > 0 && done < tasks.length) {
+              html += '<div style="text-align:center;font-size:10px;color:var(--accent);margin:4px 0">💡 CEO 正在审核并协调后续任务</div>';
+            }
+            html += '</div>';
             detail.innerHTML = html;
             scrollToBottom();
           }
@@ -1537,6 +1551,47 @@ export function init() {
       }
     } catch (e) { /* silent */ }
   }, 4000);
+}
+
+// ── DAG 分层构建 ──
+function _buildDAGLayers(tasks, agents) {
+  if (!tasks.length) return [];
+  // 构建依赖图
+  const taskMap = {};
+  for (const t of tasks) taskMap[t.agent_id] = t;
+
+  const completed = new Set();
+  const layers = [];
+  const remaining = [...tasks];
+  let maxIter = 10;
+
+  while (remaining.length > 0 && maxIter-- > 0) {
+    const layer = [];
+    const nextRemaining = [];
+    for (const t of remaining) {
+      const deps = t.depends_on || [];
+      if (deps.every(d => completed.has(d))) {
+        const a = agents[t.agent_id] || Object.values(agents).find(a => a.id === t.agent_id) || { avatar: '🤖', name: t.agent_id };
+        layer.push({ agent: a, task: t });
+      } else {
+        nextRemaining.push(t);
+      }
+    }
+    if (layer.length === 0) {
+      // deadlock — push all remaining
+      for (const t of nextRemaining) {
+        const a = agents[t.agent_id] || { avatar: '🤖', name: t.agent_id };
+        layer.push({ agent: a, task: t });
+      }
+      layers.push(layer);
+      break;
+    }
+    layers.push(layer);
+    for (const { task: t } of layer) completed.add(t.agent_id);
+    remaining.length = 0;
+    remaining.push(...nextRemaining);
+  }
+  return layers;
 }
 
 // ── 团队反馈系统 ──

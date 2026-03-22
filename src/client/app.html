@@ -280,6 +280,18 @@ body{
 .tpc-cursor{animation:blink 0.6s infinite;color:#f59e0b;font-weight:bold}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
+/* DAG 协作视图 */
+.tpc-dag{display:flex;flex-direction:column;gap:2px}
+.tpc-dag-layer{display:flex;flex-direction:column;align-items:center}
+.tpc-dag-arrow{font-size:12px;color:var(--accent,#6c63ff);margin:2px 0;opacity:0.5}
+.tpc-dag-nodes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:100%}
+.tpc-dag-node{flex:1;min-width:100px;max-width:200px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--border,#333);transition:all 0.3s}
+.tpc-dag-node.working{border-color:#f59e0b;background:rgba(245,158,11,0.05)}
+.tpc-dag-node.done{border-color:#22c55e;background:rgba(34,197,94,0.05)}
+.tpc-dag-head{font-size:11px;font-weight:500;display:block;margin-bottom:2px}
+.tpc-dag-typing{font-size:10px;color:#f59e0b;font-family:monospace;line-height:1.3}
+.tpc-dag-done{font-size:10px;color:var(--text-secondary,#aaa);line-height:1.3}
+
 /* 团队结果卡片 */
 .team-result-card{background:var(--bg-card,#1a1a2e);border:1px solid var(--accent);border-radius:12px;padding:16px;max-width:500px}
 .trc-header{font-size:16px;font-weight:700;margin-bottom:10px;color:var(--accent)}
@@ -3705,17 +3717,17 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px" data-i18n="mcp.presetQuick">快速选择预置：</div>
           <div id="mcp-presets" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-            <button class="mcp-preset-btn" data-name="desktop-control" data-transport="stdio" data-cmd="python -m src.mcp.desktop_server" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">\u{1F5A5}\uFE0F 桌面控制</button>
-            <button class="mcp-preset-btn" data-name="wechat-tools" data-transport="stdio" data-cmd="python -m src.mcp.wechat_server" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">\u{1F4AC} 微信工具</button>
-            <button class="mcp-preset-btn" data-name="filesystem" data-transport="stdio" data-cmd="npx @anthropic/mcp-filesystem" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">\u{1F4C1} 文件系统</button>
-            <button class="mcp-preset-btn" data-name="web-search" data-transport="http" data-cmd="https://mcp.example.com/search" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">\u{1F50D} Web搜索</button>
+            <button type="button" class="mcp-preset-btn" data-name="desktop-control" data-transport="stdio" data-cmd="python -m src.mcp.desktop_server" data-i18n="mcp.presetDesktop" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">🖥️ 桌面控制</button>
+            <button type="button" class="mcp-preset-btn" data-name="wechat-tools" data-transport="stdio" data-cmd="python -m src.mcp.wechat_server" data-i18n="mcp.presetWechat" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">💬 微信工具</button>
+            <button type="button" class="mcp-preset-btn" data-name="filesystem" data-transport="stdio" data-cmd="npx @anthropic/mcp-filesystem" data-i18n="mcp.presetFilesystem" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">📁 文件系统</button>
+            <button type="button" class="mcp-preset-btn" data-name="web-search" data-transport="http" data-cmd="https://mcp.example.com/search" data-i18n="mcp.presetWebSearch" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer">🔍 Web搜索</button>
           </div>
-          <input id="mcp-srv-name" placeholder="名称 (如 weather-server)" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
+          <input id="mcp-srv-name" data-i18n="mcp.srvNamePh" data-i18n-attr="placeholder" placeholder="名称（如 weather-server）" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
           <select id="mcp-srv-transport" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
-            <option value="stdio">STDIO (本地进程)</option>
-            <option value="http">HTTP / SSE (远程)</option>
+            <option value="stdio" data-i18n="mcp.transportStdio">STDIO（本地进程）</option>
+            <option value="http" data-i18n="mcp.transportHttp">HTTP / SSE（远程）</option>
           </select>
-          <input id="mcp-srv-cmd" placeholder="命令 (stdio) 或 URL (http)" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
+          <input id="mcp-srv-cmd" data-i18n="mcp.srvCmdPh" data-i18n-attr="placeholder" placeholder="命令（stdio）或 URL（http）" style="padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;outline:none">
           <button class="mp-btn mp-btn-install" id="mcp-add-srv-btn" style="padding:8px;width:100%" data-i18n="mcp.addServerBtn">添加服务器</button>
         </div>
       </details>

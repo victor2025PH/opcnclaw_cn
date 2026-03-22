@@ -5,7 +5,7 @@ Agent 团队引擎 — 一键部署多 Agent 协作
 核心设计：
   - Agent: 单个 AI 角色（名称+模型+系统提示+工具权限）
   - Team: Agent 集合 + 消息总线 + 任务调度
-  - 执行流程: CEO 接收需求 → 拆解子任务 → 分发 → 并行执行 → 汇总
+  - 执行流程: CEO 接收需求 → 拆解子任务 → 分层并行（DAG）→ 波次结束后「请教」补全 → 汇总
 
 与现有系统集成：
   - AI 路由器: 每个 Agent 可绑定不同平台
@@ -17,11 +17,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -82,7 +83,8 @@ class SubTask:
     description: str = ""
     status: str = "pending"         # pending / working / done / error
     result: str = ""
-    depends_on: List[str] = field(default_factory=list)  # 依赖的子任务 ID
+    depends_on: List[str] = field(default_factory=list)  # 依赖的成员 agent_id（同轮并行 DAG）
+    allow_runtime_consult: bool = False  # CEO 拆解为 true 时，波次结束后可做「请教」补全
     started_at: float = 0.0
     finished_at: float = 0.0
 
@@ -94,6 +96,7 @@ class SubTask:
             "result": self.result[:200] if self.result else "",
             "partial_result": partial[:300] if partial else "",
             "depends_on": self.depends_on,
+            "allow_runtime_consult": self.allow_runtime_consult,
         }
 
 
@@ -473,15 +476,16 @@ class AgentTeam:
 请将需求拆解为子任务（DAG 依赖图），每个子任务分配给一个成员。
 输出 JSON 数组格式（不要多余文字）：
 [
-  {{"agent": "成员ID", "task": "具体任务描述", "depends_on": []}},
-  {{"agent": "成员ID", "task": "具体任务描述", "depends_on": ["上一步的agent ID"]}},
+  {{"agent": "成员ID", "task": "具体任务描述", "depends_on": [], "consult_runtime": false}},
+  {{"agent": "成员ID", "task": "具体任务描述", "depends_on": ["data_analyst"], "consult_runtime": true}},
   ...
 ]
 
 规则：
 - depends_on 为空 = 第一批执行（无依赖）
-- depends_on 含某个 agent = 等它完成后才开始
+- depends_on 含某个 agent = 等该成员**本轮产出**完成后，下游才开始（硬依赖）
 - 无依赖的任务会并行执行
+- **consult_runtime**（可选）：设为 true 时，该成员在并行波次结束后，若初稿仍缺其他同事的数据/结论，系统可自动代为「请教」对应成员并整合（适合 CMO 需数据分析师补数等场景）
 - 任务描述要具体可执行
 - 最多 {max_tasks} 个子任务"""
 
@@ -519,6 +523,7 @@ class AgentTeam:
                             agent_id=agent_id,
                             description=item.get("task", ""),
                             depends_on=deps,
+                            allow_runtime_consult=bool(item.get("consult_runtime", False)),
                         )
                         self.tasks.append(task)
                         self._add_message("ceo", agent_id, "task", item.get("task", ""))
@@ -541,6 +546,213 @@ class AgentTeam:
         logger.info(f"[Team:{self.name}] 拆解为 {len(self.tasks)} 个子任务")
         return plan_text
 
+    @staticmethod
+    def _extract_json_object(text: str) -> Optional[dict]:
+        """从模型输出中取出第一个完整 JSON 对象（支持嵌套花括号）"""
+        start = text.find("{")
+        if start < 0:
+            return None
+        depth = 0
+        for i in range(start, len(text)):
+            c = text[i]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[start : i + 1])
+                    except Exception:
+                        return None
+        return None
+
+    def _persist_task_artifact(self, agent: Agent, task: SubTask) -> None:
+        """子任务完成后写入项目空间（请教修订后会再次调用以覆盖）"""
+        if not hasattr(self, "_project") or not self._project or not task.result:
+            return
+        try:
+            self._project.save_artifact(
+                agent_name=agent.role.name,
+                agent_avatar=agent.role.avatar,
+                filename=task.description[:30],
+                content=task.result,
+                file_type="md",
+            )
+            for cf in getattr(task, "_code_files", []):
+                self._project.save_artifact(
+                    agent_name=agent.role.name,
+                    agent_avatar=agent.role.avatar,
+                    filename=f"代码_{cf['lang']}",
+                    content=cf["code"],
+                    file_type=cf["ext"],
+                )
+        except Exception:
+            pass
+
+    def _enriched_context_for_task(self, task: SubTask) -> Dict[str, Any]:
+        """构建单个子任务的协作上下文（依赖成员成果 + 共享成果板）"""
+        enriched_ctx = dict(self.context)
+
+        for dep_id in task.depends_on:
+            dep_task = next((t for t in self.tasks if t.agent_id == dep_id), None)
+            if dep_task and dep_task.result:
+                dep_agent = self.agents.get(dep_id)
+                dep_name = dep_agent.role.name if dep_agent else dep_id
+                enriched_ctx[f"[{dep_name}的成果]"] = dep_task.result[:800]
+
+        peer_summaries = []
+        for t in self.tasks:
+            if t.agent_id != task.agent_id and t.status == "done" and t.result:
+                if t.agent_id not in task.depends_on:
+                    peer = self.agents.get(t.agent_id)
+                    name = peer.role.name if peer else t.agent_id
+                    peer_summaries.append(f"- {name}：{t.result[:150]}")
+        if peer_summaries:
+            enriched_ctx["[其他成员已完成的工作]"] = "\n".join(peer_summaries[:5])
+        return enriched_ctx
+
+    def _should_attempt_runtime_consult(self, task: SubTask) -> bool:
+        """是否值得做「请教」检测（避免每任务多一次 LLM）"""
+        if getattr(task, "_consult_round", 0) >= 1:
+            return False
+        if task.allow_runtime_consult:
+            return True
+        r = task.result or ""
+        if len(r) > 2800:
+            return False
+        hints = (
+            "待补充", "数据不足", "需要具体", "需向", "请教", "分析师",
+            "待确认", "缺少数据", "暂无数据", "需要数据", "待核实",
+        )
+        return any(h in r for h in hints) or len(r) < 180
+
+    async def _detect_runtime_consult(self, agent: Agent, task: SubTask) -> Optional[Tuple[str, str]]:
+        """返回 (被请教成员 agent_id, 追问内容) 或 None"""
+        roster = "\n".join(
+            f"- {aid}: {self.agents[aid].role.name}"
+            for aid in sorted(self.agents.keys())
+            if aid not in ("ceo", agent.role.id)
+        )
+        peer_results = []
+        for t in self.tasks:
+            if t.agent_id == agent.role.id or t is task or not t.result:
+                continue
+            a = self.agents.get(t.agent_id)
+            nm = a.role.name if a else t.agent_id
+            peer_results.append(f"- {nm}({t.agent_id}): {t.result[:400]}")
+        peer_blob = "\n".join(peer_results[:8]) if peer_results else "(本团队本轮尚无其他成员产出)"
+
+        prompt = f"""你是多 Agent 协作调度器。判断：这名成员的初稿是否还需要**向另一名同事单独追问**才能得到完整结论？
+
+当前成员: {agent.role.name} (id={agent.role.id})
+任务: {task.description[:600]}
+初稿:
+{(task.result or '')[:1400]}
+
+团队中其他成员（可选请教对象，必选 id 或 none）:
+{roster}
+
+本轮已有成员产出摘要:
+{peer_blob}
+
+若初稿已充分，或仅缺的信息已在「已有产出」里（只需整合），输出严格 JSON:
+{{"need": false}}
+
+若必须向某人追问**新的事实/数据**（追问应简短明确），输出:
+{{"need": true, "agent_id": "<成员id>", "question": "<向该成员的一句话追问>"}}
+
+只输出 JSON，不要 markdown。"""
+        messages = [{"role": "user", "content": prompt}]
+        try:
+            text = await asyncio.wait_for(self._ai_call(messages), timeout=25)
+        except Exception:
+            return None
+        try:
+            data = self._extract_json_object(text)
+            if not data:
+                return None
+            if not data.get("need"):
+                return None
+            aid = (data.get("agent_id") or "").strip()
+            q = (data.get("question") or "").strip()
+            if not aid or aid not in self.agents or aid == agent.role.id or not q:
+                return None
+            return (aid, q[:1200])
+        except Exception:
+            return None
+
+    async def _maybe_runtime_consult(self, agent: Agent, task: SubTask) -> None:
+        """波次结束后：必要时向同伴请教并修订原成员产出（同一 Agent 实例串行，安全）"""
+        consult = await self._detect_runtime_consult(agent, task)
+        if not consult:
+            return
+        peer_id, question = consult
+        peer = self.agents[peer_id]
+        peer_name = peer.role.name
+
+        peer_task = next(
+            (
+                t for t in self.tasks
+                if t.agent_id == peer_id and t is not task and t.status == "done" and t.result
+            ),
+            None,
+        )
+        base_ctx = self._enriched_context_for_task(task)
+        self._add_message(agent.role.id, peer_id, "question", question)
+
+        if peer_task:
+            payload = peer_task.result[:2200]
+            self._add_message(peer_id, agent.role.id, "result", f"[已有产出摘要] {payload[:400]}…")
+            merge = dict(base_ctx)
+            merge[f"[{peer_name} 的可参考产出]"] = payload
+            merge["[你的初稿]"] = (task.result or "")[:1800]
+            merge["[整合说明]"] = (
+                f"请结合「{peer_name}」的已有产出，修订你的结论；若仍有缺口，在文末用一句说明缺什么。"
+            )
+            task._consult_round = 1
+            task.partial_result = ""
+            task.status = "working"
+            await agent.execute(task, merge, self._ai_call)
+            self._persist_task_artifact(agent, task)
+            return
+
+        consult_task = SubTask(
+            agent_id=peer_id,
+            description=f"【同事请教】{agent.role.name} 需要你补充：{question}",
+        )
+        peer_ctx = dict(self.context)
+        peer_ctx["[请教背景]"] = f"用户总需求摘要：{self.context.get('user_request', '')[:500]}"
+        await peer.execute(consult_task, peer_ctx, self._ai_call)
+        ans = consult_task.result or ""
+        self._add_message(peer_id, agent.role.id, "answer", ans[:2000])
+
+        merge = dict(base_ctx)
+        merge[f"[{peer_name} 对请教的答复]"] = ans[:2200]
+        merge["[整合说明]"] = (
+            f"你已产出初稿。请根据「{peer_name}」的答复输出**修订后的最终版本**，突出新增信息。"
+        )
+        merge["[你的初稿]"] = (task.result or "")[:1800]
+        task._consult_round = 1
+        task.partial_result = ""
+        task.status = "working"
+        await agent.execute(task, merge, self._ai_call)
+        self._persist_task_artifact(agent, task)
+
+    async def _post_wave_runtime_consult(self, wave_tasks: List[SubTask]) -> None:
+        """本波所有任务并行结束后执行，避免与同伴执行冲突"""
+        for task in wave_tasks:
+            if task.status != "done" or not task.result:
+                continue
+            agent = self.agents.get(task.agent_id)
+            if not agent or agent.role.id == "ceo":
+                continue
+            if not self._should_attempt_runtime_consult(task):
+                continue
+            try:
+                await self._maybe_runtime_consult(agent, task)
+            except Exception as e:
+                logger.debug(f"[Team] runtime consult 跳过: {e}")
+
     async def _execute_tasks(self):
         """DAG 分层并行执行：无依赖的先跑，依赖完成的再跑"""
 
@@ -551,54 +763,13 @@ class AgentTeam:
                 task.result = f"Agent {task.agent_id} 不存在"
                 return
             try:
-                # ── 协作上下文注入 ──
-                enriched_ctx = dict(self.context)
-
-                # 1. 直接依赖：完整结果（最多 800 字）
-                for dep_id in task.depends_on:
-                    dep_task = next((t for t in self.tasks if t.agent_id == dep_id), None)
-                    if dep_task and dep_task.result:
-                        dep_agent = self.agents.get(dep_id)
-                        dep_name = dep_agent.role.name if dep_agent else dep_id
-                        enriched_ctx[f"[{dep_name}的成果]"] = dep_task.result[:800]
-
-                # 2. 共享成果板：其他已完成 Agent 的摘要（每人 150 字）
-                peer_summaries = []
-                for t in self.tasks:
-                    if t.agent_id != task.agent_id and t.status == "done" and t.result:
-                        if t.agent_id not in task.depends_on:  # 避免重复
-                            peer = self.agents.get(t.agent_id)
-                            name = peer.role.name if peer else t.agent_id
-                            peer_summaries.append(f"- {name}：{t.result[:150]}")
-                if peer_summaries:
-                    enriched_ctx["[其他成员已完成的工作]"] = "\n".join(peer_summaries[:5])
+                enriched_ctx = self._enriched_context_for_task(task)
 
                 await asyncio.wait_for(
                     agent.execute(task, enriched_ctx, self._ai_call),
                     timeout=self.TASK_TIMEOUT,
                 )
-                # Agent 完成后保存文件到项目空间
-                if hasattr(self, '_project') and self._project and task.result:
-                    try:
-                        # 保存主文档
-                        self._project.save_artifact(
-                            agent_name=agent.role.name,
-                            agent_avatar=agent.role.avatar,
-                            filename=task.description[:30],
-                            content=task.result,
-                            file_type="md",
-                        )
-                        # 如果有代码文件，额外保存
-                        for cf in getattr(task, '_code_files', []):
-                            self._project.save_artifact(
-                                agent_name=agent.role.name,
-                                agent_avatar=agent.role.avatar,
-                                filename=f"代码_{cf['lang']}",
-                                content=cf['code'],
-                                file_type=cf['ext'],
-                            )
-                    except Exception:
-                        pass
+                self._persist_task_artifact(agent, task)
             except asyncio.TimeoutError:
                 task.status = "error"
                 task.result = "超时"
@@ -632,6 +803,9 @@ class AgentTeam:
             for t in ready:
                 if t.status == "done":
                     completed_agents.add(t.agent_id)
+
+            # 运行时「请教」：本波全部结束后串行处理，避免与同伴执行冲突
+            await self._post_wave_runtime_consult(ready)
 
             # CEO 中间审核（第一层完成后，为后续层补充协作指引）
             if wave == 0 and len(completed_agents) >= 2:
