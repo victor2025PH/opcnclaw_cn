@@ -708,12 +708,15 @@ async def _startup_models_deferred(app: FastAPI):
             try:
                 from .wechat_monitor import _wechat_is_running
                 if _wechat_is_running():
-                    # 只初始化，不开启自动回复
+                    # 只初始化引擎对象，不启动监控线程
+                    # init_wechat_v2 内部会调用 engine.start()，所以初始化后立即停止
                     _, engine = init_wechat_v2(ai_backend=backend, desktop=desktop)
                     if engine:
-                        # 默认关闭自动回复，用户需要在设置中手动开启
                         engine.update_config({"enabled": False, "reply_all": False})
-                        logger.info("ℹ️ 微信引擎已初始化（自动回复默认关闭，需手动开启）")
+                        # 停止监控线程（init 时被 start 了）
+                        if hasattr(engine, 'stop'):
+                            engine.stop()
+                        logger.info("ℹ️ 微信引擎已初始化（监控默认关闭，需手动开启）")
                 else:
                     logger.info("ℹ️ 微信未运行")
             except Exception as e:
