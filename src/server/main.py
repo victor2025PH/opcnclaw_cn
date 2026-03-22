@@ -507,6 +507,18 @@ async def _startup(app: FastAPI):
     except Exception as e:
         logger.debug(f"调度器启动跳过: {e}")
 
+    # iLink (微信 ClawBot) 自动恢复
+    try:
+        from .ilink_bot import get_ilink_bot
+        bot = get_ilink_bot()
+        if bot.is_connected:
+            from .ilink_handler import handle_wechat_message
+            bot.set_message_handler(handle_wechat_message)
+            asyncio.create_task(bot.start_polling())
+            logger.info("✅ 微信 ClawBot (iLink) 已自动恢复连接")
+    except Exception as e:
+        logger.debug(f"iLink 启动跳过: {e}")
+
     logger.info("✅ Phase 1 complete — server accepting requests")
 
     # ── Phase 2: heavy model loading (background) ─────────────
@@ -877,8 +889,6 @@ location.replace('/chat');
 @app.get("/app")
 @app.get("/app/")
 async def app_page(request: Request):
-    if _is_mobile(request):
-        return RedirectResponse("/chat#more")
     return FileResponse("src/client/app.html",
                         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
@@ -1162,7 +1172,9 @@ async def get_auto_open_qr():
 @app.get("/chat")
 @app.get("/chat/")
 async def chat_page():
-    return FileResponse("src/client/chat.html")
+    # 统一使用 app.html（chat.html 是旧版，不再维护）
+    return FileResponse("src/client/app.html",
+                        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 @app.get("/setup")
@@ -1730,6 +1742,73 @@ async def set_mode(request: Request):
     os.environ["OPENCLAW_MODE"] = mode
     logger.info(f"Mode switched to: {mode}")
     return {"mode": mode, "ai_available": mode == "full"}
+
+
+# ── 微信 ClawBot (iLink) API ──
+@app.get("/api/ilink/status")
+async def ilink_status():
+    """iLink 连接状态"""
+    try:
+        from .ilink_bot import get_ilink_bot
+        return get_ilink_bot().get_status()
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
+@app.post("/api/ilink/login")
+async def ilink_login():
+    """获取 iLink 登录二维码"""
+    try:
+        from .ilink_bot import get_ilink_bot
+        bot = get_ilink_bot()
+        qr = await bot.get_login_qrcode()
+        return {"ok": True, **qr}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/ilink/qrcode-status")
+async def ilink_qrcode_status(qrcode_id: str):
+    """检查二维码扫描状态"""
+    try:
+        from .ilink_bot import get_ilink_bot
+        bot = get_ilink_bot()
+        result = await bot.check_qrcode_status(qrcode_id)
+        if result.get("connected"):
+            # 绑定成功，启动消息轮询
+            from .ilink_handler import handle_wechat_message
+            bot.set_message_handler(handle_wechat_message)
+            asyncio.create_task(bot.start_polling())
+        return result
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
+@app.post("/api/ilink/disconnect")
+async def ilink_disconnect():
+    """断开 iLink 连接"""
+    try:
+        from .ilink_bot import get_ilink_bot
+        get_ilink_bot().disconnect()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/ilink/start")
+async def ilink_start():
+    """手动启动 iLink 轮询（已有 token 时）"""
+    try:
+        from .ilink_bot import get_ilink_bot
+        from .ilink_handler import handle_wechat_message
+        bot = get_ilink_bot()
+        if not bot.is_connected:
+            return {"ok": False, "error": "未绑定微信，请先扫码登录"}
+        bot.set_message_handler(handle_wechat_message)
+        asyncio.create_task(bot.start_polling())
+        return {"ok": True, "message": "iLink 轮询已启动"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ── 定时任务 API ──

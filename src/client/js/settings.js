@@ -1857,14 +1857,26 @@ window.ocPlugins = ocPlugins;
     item.addEventListener('click', () => {
       menu.classList.remove('open');
 
-      // data-action 自定义动作（手机简洁版、初始设置、我的画像）
+      // data-action 自定义动作
       const action = item.dataset.action;
       if (action === 'open-chat') {
-        window.location.href = '/chat';
+        // 用 HTTP 打开简洁版（避免 HTTPS 证书问题）
+        const httpPort = location.port === '8765' ? '8766' : location.port;
+        const chatUrl = 'http://' + location.hostname + ':' + httpPort + '/chat';
+        try { window.open(chatUrl, '_blank'); } catch(e) { window.location.href = '/chat'; }
         return;
       }
       if (action === 'open-setup') {
-        window.location.href = '/setup?force';
+        // 在当前页面触发 onboarding（不跳转）
+        const ob = document.getElementById('onboarding');
+        if (ob) {
+          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
+          var step1 = document.getElementById('ob-step-1');
+          if (step1) step1.style.display = 'block';
+          ob.style.display = 'flex';
+        } else {
+          window.location.href = '/setup?force';
+        }
         return;
       }
       if (action === 'open-profile') {

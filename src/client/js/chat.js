@@ -1,5 +1,14 @@
 import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, setLang, currentLang } from '/js/state.js';
-import { petSetVisualState, petSetSubtitle } from '/js/pet-bridge.js';
+import { petSetVisualState, petSetSubtitle, petGetSkin } from '/js/pet-bridge.js';
+
+/** 与桌面指令 / 桌宠皮肤一致：默认 eve 用品牌 🦞，换皮后用机器人系区分 */
+function assistantAvatarEmoji(isDesktop) {
+  if (isDesktop) return '🖥️';
+  const skin = petGetSkin();
+  if (skin === 'walle') return '🦾';
+  if (skin === 'orbit') return '🛰️';
+  return '🦞';
+}
 
 // ═══════════════════════════════════════════════════
 // CONNECTION & SETUP
@@ -150,6 +159,8 @@ async function _fetchRetry(url, opts, retries = 2, delay = 800) {
     try {
       lastResp = await fetch(url, opts);
       if (lastResp.ok || lastResp.status < 500) return lastResp;
+      // 503 是永久性错误（后端未配置），不重试
+      if (lastResp.status === 503) return lastResp;
       if (i < retries) await new Promise(r => setTimeout(r, delay * (i + 1)));
     } catch (err) {
       if (i >= retries) throw err;
@@ -231,7 +242,7 @@ async function sendTextMessage(text) {
   const aiEl = appendMessage(aiMsg, true);
 
   try {
-    const body = { messages: buildMessages(), model: 'deepseek-chat', stream: true };
+    const body = { messages: buildMessages(), stream: true };
     const resp = await _fetchRetry(`${getBaseUrl()}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -241,7 +252,15 @@ async function sendTextMessage(text) {
     if (!resp.ok) {
       if (resp.status === 429) throw new Error('AI 正在忙，请稍等几秒再试');
       if (resp.status === 401) throw new Error('需要配置 AI，请到设置中填写 API Key');
-      throw new Error('连接异常，请检查网络');
+      // 尝试读取服务端错误信息
+      let errMsg = '连接异常，请检查网络';
+      try {
+        const errBody = await resp.json();
+        if (errBody.error) errMsg = errBody.error;
+        else if (errBody.detail) errMsg = errBody.detail;
+      } catch (_) {}
+      if (resp.status === 503) errMsg = errMsg === '连接异常，请检查网络' ? '服务正在启动，请稍后再试' : errMsg;
+      throw new Error(errMsg);
     }
 
     const reader = resp.body.getReader();
@@ -680,7 +699,7 @@ function appendMessage(msg, streaming = false) {
   div.className = `msg ${msg.role === 'user' ? 'user' : 'ai'}`;
 
   const safe = _safeContent(msg.content);
-  const avatar = msg.role === 'user' ? '👤' : (msg.desktop ? '🖥️' : '🦞');
+  const avatar = msg.role === 'user' ? '👤' : assistantAvatarEmoji(!!msg.desktop);
   let attachHtml = '';
   if (msg.imageData) {
     attachHtml = '<div class="msg-attachments">' +
@@ -1338,15 +1357,20 @@ export function init() {
     if (label) label.style.opacity = e.target.checked ? '1' : '0';
   });
 
-  // Paste images
+  // Paste images (only intercept if clipboard has NO text, otherwise let text paste through)
   document.addEventListener('paste', (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
+    // Check if clipboard contains text
+    const hasText = Array.from(items).some(i => i.type === 'text/plain');
     for (const item of items) {
       if (item.type.startsWith('image/')) {
-        e.preventDefault();
         const file = item.getAsFile();
-        if (file) addAttachment(file);
+        if (file) {
+          addAttachment(file);
+          // Only prevent default if no text content (pure image paste)
+          if (!hasText) e.preventDefault();
+        }
       }
     }
   });
@@ -1445,7 +1469,7 @@ export function init() {
           progressEl.id = `team-progress-${tid}`;
           progressEl.className = 'msg ai';
           progressEl.innerHTML = `
-            <div class="msg-avatar">🦞</div>
+            <div class="msg-avatar">${assistantAvatarEmoji(false)}</div>
             <div class="msg-body">
               <div class="team-progress-card">
                 <div class="tpc-header">👔 ${team.name} · ${Object.keys(team.agents||{}).length}人团队</div>
@@ -1530,7 +1554,7 @@ export function init() {
           const card = document.createElement('div');
           card.className = 'msg ai';
           card.innerHTML = `
-            <div class="msg-avatar">🦞</div>
+            <div class="msg-avatar">${assistantAvatarEmoji(false)}</div>
             <div class="msg-body">
               <div class="team-result-card">
                 <div class="trc-header">✅ ${team.name}完成！</div>

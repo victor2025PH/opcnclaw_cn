@@ -498,11 +498,11 @@ def main():
 
     # 始终打开浏览器（页面有自己的加载屏，可以等待模型就绪）
     if not args.nogui:
-        setup_done = os.environ.get("OPENCLAW_SETUP_DONE", "").lower() == "true"
-        if cfg.first_run or args.setup or not setup_done:
-            webbrowser.open(f"https://localhost:{cfg.https_port}/setup")
+        # 打开入口页（/qr 是极简引导页，点击"开始使用"进入 /app）
+        if args.setup:
+            webbrowser.open(f"http://localhost:{cfg.http_port}/setup")
         else:
-            webbrowser.open(f"https://localhost:{cfg.https_port}/app")
+            webbrowser.open(f"http://localhost:{cfg.http_port}/qr")
             # 启动桌宠（小窗口）
             try:
                 import threading
