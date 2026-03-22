@@ -2195,6 +2195,113 @@ async def clipboard_sync(request: Request):
             return {"ok": False, "error": str(e)}
 
 
+# ── AI 状态检查 + 快速配置 + 设备识别 ─────────────────────
+
+@app.get("/api/ai/status")
+async def ai_status():
+    """AI 配置状态——前端用来决定是否显示配置引导"""
+    import os
+    configured = False
+    platform_name = ""
+    platform_id = ""
+
+    try:
+        from src.router.config import RouterConfig
+        rc = RouterConfig()
+        for p in rc.all_providers_meta():
+            pid = p["id"]
+            key = rc.get_provider_key(pid)
+            if key and len(key) > 5:
+                configured = True
+                platform_name = p.get("name_short", p.get("name", pid))
+                platform_id = pid
+                break
+    except Exception:
+        pass
+
+    # 也检查环境变量
+    if not configured:
+        for env_key, name in [("ZHIPU_API_KEY", "智谱"), ("DEEPSEEK_API_KEY", "DeepSeek")]:
+            if os.environ.get(env_key, ""):
+                configured = True
+                platform_name = name
+                break
+
+    return {
+        "configured": configured,
+        "platform": platform_name,
+        "platform_id": platform_id,
+        "can_chat": backend is not None,
+    }
+
+
+@app.post("/api/ai/quick-setup")
+async def ai_quick_setup(request: Request):
+    """一键配置 AI（输入 API Key 自动识别平台）"""
+    import os
+    body = await request.json()
+    api_key = body.get("api_key", "").strip()
+    if not api_key or len(api_key) < 5:
+        return {"ok": False, "error": "API Key 不能为空"}
+
+    # 自动识别平台
+    platform = "unknown"
+    env_key = ""
+    if "." in api_key and len(api_key.split(".")) == 2:
+        platform = "智谱 GLM-4-Flash（免费）"
+        env_key = "ZHIPU_API_KEY"
+    elif api_key.startswith("sk-"):
+        # 可能是 DeepSeek 或 OpenAI
+        if len(api_key) > 40:
+            platform = "OpenAI"
+            env_key = "OPENAI_API_KEY"
+        else:
+            platform = "DeepSeek"
+            env_key = "DEEPSEEK_API_KEY"
+    else:
+        # 默认当智谱处理
+        platform = "智谱 GLM-4-Flash"
+        env_key = "ZHIPU_API_KEY"
+
+    # 保存到 .env
+    try:
+        os.environ[env_key] = api_key
+        env_path = Path(".env")
+        lines = env_path.read_text(encoding="utf-8").split("\n") if env_path.exists() else []
+        # 替换或追加
+        found = False
+        for i, line in enumerate(lines):
+            if line.startswith(f"{env_key}="):
+                lines[i] = f"{env_key}={api_key}"
+                found = True
+                break
+        if not found:
+            lines.append(f"{env_key}={api_key}")
+        env_path.write_text("\n".join(lines), encoding="utf-8")
+
+        os.environ["OPENCLAW_SETUP_DONE"] = "true"
+        return {"ok": True, "platform": platform, "message": f"已配置 {platform}，可以开始使用了！"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/client/info")
+async def client_info(request: Request):
+    """识别客户端类型（设备/浏览器/网络）"""
+    ua = request.headers.get("user-agent", "")
+    host = request.client.host if request.client else ""
+
+    is_mobile = any(k in ua.lower() for k in ["mobile", "android", "iphone", "ipad"])
+    is_tauri = "tauri" in ua.lower()
+
+    return {
+        "device": "mobile" if is_mobile else "desktop",
+        "client": "tauri" if is_tauri else "browser",
+        "network": "local" if host in ("127.0.0.1", "::1") else ("lan" if host.startswith(("192.168.", "10.", "172.")) else "remote"),
+        "user_agent": ua[:100],
+    }
+
+
 # ── 项目工作空间 API ─────────────────────────────────────────
 
 @app.get("/api/projects")

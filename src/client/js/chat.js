@@ -907,8 +907,23 @@ export function init() {
   dom.sendBtn.addEventListener('click', () => sendTextMessage(dom.msgInput.value));
 
   $$('.suggestion').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const text = btn.dataset.msg;
+      if (!text) return; // onclick 按钮没有 data-msg
+
+      // 检查 AI 是否配置
+      try {
+        const r = await fetch(getBaseUrl() + '/api/ai/status');
+        const d = await r.json();
+        if (!d.configured) {
+          // 弹出配置提示
+          if (confirm('⚠️ 还没有配置 AI 引擎！\n\n推荐使用智谱 GLM-4-Flash（永久免费）\n\n点击"确定"前往设置页面配置')) {
+            window.open('/setup', '_blank');
+          }
+          return;
+        }
+      } catch (e) { /* 网络错误时仍尝试发送 */ }
+
       dom.msgInput.value = text;
       sendTextMessage(text);
     });
