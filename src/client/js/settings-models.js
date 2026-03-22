@@ -29,8 +29,16 @@ export function initModelPanel() {
         fetch(getBaseUrl() + '/api/system/gpu').then(r => r.json()).catch(() => ({})),
         fetch(getBaseUrl() + '/api/system/disk').then(r => r.json()).catch(() => ({})),
       ]);
-      $id('mp-gpu-name').textContent = gpuR.available ? gpuR.name : t('model.noGpu');
-      $id('mp-vram').textContent = gpuR.available ? gpuR.vram_gb + ' GB' : '—';
+      const gpuEl = $id('mp-gpu-name');
+      const vramEl = $id('mp-vram');
+      gpuEl.textContent = gpuR.available ? gpuR.name : t('model.noGpu');
+      if (gpuR.available) {
+        vramEl.textContent = gpuR.vram_gb + ' GB';
+      } else {
+        vramEl.textContent = 'CPU 模式';
+        vramEl.style.fontSize = '14px';
+        vramEl.style.color = 'var(--text-muted)';
+      }
       $id('mp-disk').textContent = diskR.free_gb ? diskR.free_gb + ' GB' : '—';
     } catch(e) { console.warn('model sys info:', e); }
   }

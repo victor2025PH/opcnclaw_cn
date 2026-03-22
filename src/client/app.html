@@ -1691,8 +1691,8 @@ kbd{
 #skill-chain-panel.hidden{transform:translateX(100%);pointer-events:none}
 .sc-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg-secondary)}
 .sc-header h2{flex:1;font-size:16px;font-weight:700}
-.sc-body{flex:1;display:flex;overflow:hidden}
-.sc-sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch}
+#skill-chain-panel .sc-body{flex:1;display:flex;overflow:hidden}
+#skill-chain-panel .sc-sidebar{width:180px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch}
 .sc-skill-item{
   padding:6px 8px;margin-bottom:4px;font-size:11px;border-radius:6px;cursor:grab;
   background:var(--bg-surface);border:1px solid var(--border);transition:all .15s;
@@ -2312,8 +2312,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 /* 面板打开时隐藏全屏按钮（避免和返回按钮重叠）*/
 body:has(.mp-container:not(.hidden)) .fullscreen-btn,
 body:has(#mcp-panel:not(.hidden)) .fullscreen-btn,
-body:has(#perf-panel.open) .fullscreen-btn,
-body:has(#vcmd-panel.open) .fullscreen-btn,
+body:has(#model-panel:not(.hidden)) .fullscreen-btn,
+body:has(#perf-panel:not(.hidden)) .fullscreen-btn,
+body:has(#voice-cmd-panel:not(.hidden)) .fullscreen-btn,
 body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 
 /* Animations */
@@ -4620,6 +4621,9 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
       <div class="perf-card" id="perf-stt"><div class="perf-val" id="perf-stt-val">—</div><div class="perf-label" data-i18n="perf.sttTime">STT 识别</div></div>
       <div class="perf-card" id="perf-ai"><div class="perf-val" id="perf-ai-val">—</div><div class="perf-label" data-i18n="perf.aiTime">AI 响应</div></div>
       <div class="perf-card" id="perf-tts"><div class="perf-val" id="perf-tts-val">—</div><div class="perf-label" data-i18n="perf.ttsTime">TTS 首包</div></div>
+    </div>
+    <div id="perf-hint" style="text-align:center;padding:12px;font-size:12px;color:var(--text-muted);background:var(--bg-surface);border-radius:8px;margin-bottom:12px">
+      💡 开始与 AI 对话后，这里会实时显示性能数据
     </div>
     <div class="perf-section-title" data-i18n="perf.timeline">请求时间线 (最近 30 次)</div>
     <div class="perf-chart"><canvas id="perf-canvas"></canvas></div>
