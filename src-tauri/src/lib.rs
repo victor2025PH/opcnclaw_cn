@@ -318,7 +318,7 @@ pub fn run() {
 
             // ── 系统托盘 ──────────────────────────────
             // 统一托盘菜单（与 Python launcher 一致）
-            let title = MenuItem::with_id(app, "title", "🦞 十三香 AI 工作队", false, None::<&str>)?;
+            let title = MenuItem::with_id(app, "title", "🦞 十三香小龙虾 AI 工作队", false, None::<&str>)?;
             let sep1 = PredefinedMenuItem::separator(app)?;
             let show = MenuItem::with_id(app, "show", "🖥️ 显示主窗口", true, None::<&str>)?;
             let browser = MenuItem::with_id(app, "browser", "🌐 浏览器打开", true, None::<&str>)?;

@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a0a14">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
 <link rel="manifest" href="/manifest.json">
-<title>十三香 AI 工作队 — 52个AI帮你干活</title>
+<title>十三香小龙虾 AI 工作队 — 52个AI帮你干活</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
 <script>
 (function(){
@@ -533,7 +533,7 @@ body{
 .camera-header span{font-weight:600;font-size:15px}
 .camera-body{flex:1;position:relative;overflow:hidden;background:#000}
 .camera-body video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-.camera-body canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
+.camera-body canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);pointer-events:none}
 .gesture-tags{
   display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;min-height:36px;flex-shrink:0;
 }
@@ -2792,7 +2792,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         <!-- 步骤 1：欢迎 -->
         <div class="ob-step" id="ob-step-1">
           <div style="font-size:48px;margin-bottom:16px">🦞</div>
-          <h2>欢迎使用十三香 AI 工作队</h2>
+          <h2>欢迎使用十三香小龙虾 AI 工作队</h2>
           <p>这不是普通的聊天工具——<br>你有 <strong>52 个 AI 员工</strong>，随时待命</p>
           <button class="ob-btn" onclick="obNext(2)">了解一下 →</button>
         </div>
@@ -2902,7 +2902,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
     <div class="welcome" id="welcome-screen">
       <div class="welcome-icon">🦞</div>
-      <h2>十三香 AI 工作队</h2>
+      <h2>十三香小龙虾 AI 工作队</h2>
       <p style="color:var(--text-secondary);margin-bottom:20px">说一句话，52个AI帮你干活</p>
 
       <!-- AI 团队快捷任务 -->
@@ -2952,52 +2952,6 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
   </div>
 
-  <!-- Camera Backdrop + Panel -->
-  <div id="camera-backdrop" class="hidden" onclick="document.getElementById('camera-close').click()"></div>
-  <div id="camera-panel" class="hidden">
-    <div class="drag-handle"></div>
-    <div class="camera-header">
-      <button class="icon-btn panel-back" onclick="document.getElementById('camera-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
-      <span data-i18n="camera.title">摄像头和手势</span>
-      <button class="icon-btn" id="camera-close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="camera-body">
-      <video id="camera-video" autoplay playsinline muted></video>
-      <canvas id="gesture-canvas"></canvas>
-    </div>
-    <div class="gesture-tags" id="gesture-tags"></div>
-    <div class="camera-actions">
-      <button class="btn btn-primary" id="capture-btn" data-i18n="camera.capture" style="background:var(--bg-surface);color:var(--text-primary)">📸 拍照</button>
-    </div>
-  </div>
-
-  <!-- Voice Overlay (full-screen, when camera is off) -->
-  <div id="voice-overlay" class="hidden">
-    <div id="voice-profile-badge" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:none"></div>
-    <div class="voice-circle">
-      <div class="voice-ring"></div>
-      <div class="voice-ring r2"></div>
-      <div class="voice-ring r3"></div>
-      <div class="voice-level" id="voice-level"></div>
-      <div class="voice-icon">🎙️</div>
-    </div>
-    <canvas id="audio-viz-canvas" class="hidden" width="320" height="60"></canvas>
-    <p id="voice-status" data-i18n="voice.listening">正在聆听...</p>
-    <p id="voice-transcript"></p>
-    <p id="voice-continuous-label" data-i18n="voice.continuous" style="color:var(--accent);font-size:12px;margin-top:4px;opacity:0">连续模式</p>
-    <button class="voice-stop" id="voice-stop" data-i18n="voice.tapToEnd">点击结束</button>
-  </div>
-
-  <!-- Voice Bar (compact bottom bar, when camera is ON) -->
-  <div id="voice-bar" class="hidden">
-    <div class="vbar-pulse" id="vbar-pulse"></div>
-    <span class="vbar-status" id="vbar-status">正在聆听...</span>
-    <span class="vbar-transcript" id="vbar-transcript"></span>
-    <button class="vbar-stop" id="vbar-stop" data-i18n="voice.tapToEnd">⏹ 结束</button>
-  </div>
-
   <!-- Input Area -->
   <footer class="input-area">
     <div class="quick-actions" id="quick-actions"></div>
@@ -3040,7 +2994,51 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
   </footer>
   </div><!-- /.chat-main-col -->
-</div>
+</div><!-- /#chat-page -->
+
+  <!-- Camera / Voice：必须在 #chat-page 外。打开摄像头时 Panel Manager 会给 #chat-page 设 inert，若面板在内部则子元素也会被禁用，导致返回/关闭/拍照全无响应。 -->
+  <div id="camera-backdrop" class="hidden" onclick="document.getElementById('camera-close').click()"></div>
+  <div id="camera-panel" class="hidden">
+    <div class="drag-handle"></div>
+    <div class="camera-header">
+      <button type="button" class="icon-btn panel-back" onclick="document.getElementById('camera-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <span data-i18n="camera.title">摄像头和手势</span>
+      <button type="button" class="icon-btn" id="camera-close" aria-label="关闭摄像头">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="camera-body">
+      <video id="camera-video" autoplay playsinline muted></video>
+      <canvas id="gesture-canvas"></canvas>
+    </div>
+    <div class="gesture-tags" id="gesture-tags"></div>
+    <div class="camera-actions">
+      <button type="button" class="btn btn-primary" id="capture-btn" data-i18n="camera.capture" style="background:var(--bg-surface);color:var(--text-primary)">📸 拍照</button>
+    </div>
+  </div>
+
+  <div id="voice-overlay" class="hidden">
+    <div id="voice-profile-badge" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:none"></div>
+    <div class="voice-circle">
+      <div class="voice-ring"></div>
+      <div class="voice-ring r2"></div>
+      <div class="voice-ring r3"></div>
+      <div class="voice-level" id="voice-level"></div>
+      <div class="voice-icon">🎙️</div>
+    </div>
+    <canvas id="audio-viz-canvas" class="hidden" width="320" height="60"></canvas>
+    <p id="voice-status" data-i18n="voice.listening">正在聆听...</p>
+    <p id="voice-transcript"></p>
+    <p id="voice-continuous-label" data-i18n="voice.continuous" style="color:var(--accent);font-size:12px;margin-top:4px;opacity:0">连续模式</p>
+    <button type="button" class="voice-stop" id="voice-stop" data-i18n="voice.tapToEnd">点击结束</button>
+  </div>
+
+  <div id="voice-bar" class="hidden">
+    <div class="vbar-pulse" id="vbar-pulse"></div>
+    <span class="vbar-status" id="vbar-status">正在聆听...</span>
+    <span class="vbar-transcript" id="vbar-transcript"></span>
+    <button type="button" class="vbar-stop" id="vbar-stop" data-i18n="voice.tapToEnd">⏹ 结束</button>
+  </div>
 
 <!-- Profile Management Panel — 必须放在 #chat-page 外，否则横屏 Grid 会与 .chat-main-col 抢占栅格导致排版错乱 -->
 <div id="profile-panel" role="dialog" aria-label="Profiles">

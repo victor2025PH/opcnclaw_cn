@@ -68,7 +68,7 @@ class TrayIcon:
         import pystray
         _hp = self.https_port
         return pystray.Menu(
-            pystray.MenuItem("🦞 十三香 AI 工作队", None, enabled=False),
+            pystray.MenuItem("🦞 十三香小龙虾 AI 工作队", None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("🖥️ 显示主窗口",
                 lambda _: webbrowser.open(f"https://localhost:{_hp}/app")),

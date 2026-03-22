@@ -568,7 +568,7 @@ class AgentTeam:
             html = f"""<!DOCTYPE html>
 <html lang="zh"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{task[:30]} — 十三香AI工作队</title>
+<title>{task[:30]} — 十三香小龙虾 AI 工作队</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{font-family:-apple-system,sans-serif;background:#0b0d14;color:#eee;padding:0}}
@@ -589,7 +589,7 @@ strong{{color:#fff}}
 </style></head><body>
 <div class="header">
 <h1>{task[:50]}</h1>
-<p>由 {self.name}（{len(self.agents)}人）完成 · 十三香 AI 工作队</p>
+<p>由 {self.name}（{len(self.agents)}人）完成 · 十三香小龙虾 AI 工作队</p>
 </div>
 <div class="content">
 <p>{html_body}</p>
@@ -598,7 +598,7 @@ strong{{color:#fff}}
 <div class="team-grid">{agent_cards}</div>
 </div>
 </div>
-<div class="footer">由十三香 AI 工作队自动生成 · shisanxiang.ai</div>
+<div class="footer">由十三香小龙虾 AI 工作队自动生成 · shisanxiang.ai</div>
 </body></html>"""
 
             self._project.save_artifact(
