@@ -2880,17 +2880,22 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
     // 首次或未配置时显示引导
     (async function(){
-      if(localStorage.getItem('oc_onboarded'))return;
+      var onboarded = localStorage.getItem('oc_onboarded');
       try{
         var r=await fetch('/api/ai/status');
         var d=await r.json();
         if(!d.configured){
+          // AI 未配置：无论是否 onboarded 都显示配置引导
+          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
+          document.getElementById('ob-step-ai').style.display='block';
           document.getElementById('onboarding').style.display='flex';
-        }else if(!localStorage.getItem('oc_onboarded')){
+        }else if(!onboarded){
+          // AI 已配置但首次使用：显示完整引导
           document.getElementById('onboarding').style.display='flex';
         }
+        // AI 已配置且已 onboarded：不显示
       }catch(e){
-        document.getElementById('onboarding').style.display='flex';
+        if(!onboarded) document.getElementById('onboarding').style.display='flex';
       }
     })();
     </script>

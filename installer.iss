@@ -173,7 +173,11 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 Type: filesandordirs; Name: "{app}\src\__pycache__"
 Type: filesandordirs; Name: "{app}\skills\__pycache__"
 Type: filesandordirs; Name: "{app}\python\__pycache__"
-; 保留用户数据（注释掉以下行则卸载时保留）
+Type: filesandordirs; Name: "{app}\data\projects"
+Type: filesandordirs; Name: "{app}\data\transfers"
+Type: filesandordirs; Name: "{app}\certs"
+Type: filesandordirs; Name: "{app}\logs"
+; 保留核心用户数据
 ; Type: filesandordirs; Name: "{app}\data"
 ; Type: filesandordirs; Name: "{app}\.env"
 
