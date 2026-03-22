@@ -773,6 +773,20 @@ body{
   padding:12px 0;border-bottom:1px solid var(--border);
 }
 .settings-row:last-child{border-bottom:none}
+.pet-skin-chip-wrap{display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:0}
+.pet-skin-chip{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;
+  border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);
+  font-size:12px;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s;
+}
+.pet-skin-chip:hover{background:var(--bg-secondary);border-color:var(--border-strong)}
+.pet-skin-chip.active{
+  border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);
+  background:rgba(99,102,241,.08);
+}
+:root[data-theme="light"] .pet-skin-chip.active{background:rgba(99,102,241,.1)}
+.pet-skin-chip-emoji{font-size:16px;line-height:1}
+.pet-skin-chip-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
 .settings-label{font-size:14px}
 .settings-value{font-size:13px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qr-display{
@@ -2779,10 +2793,10 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="hom-item" data-target="summary-btn"><span class="hom-icon">📋</span><span data-i18n="menu.summary">对话摘要</span></button>
       <button class="hom-item" data-target="export-toggle"><span class="hom-icon">📥</span><span data-i18n="menu.export">导出</span></button>
       <button class="hom-item" data-target="bookmark-toggle"><span class="hom-icon">⭐</span><span data-i18n="menu.bookmark">收藏</span></button>
-      <button class="hom-item" id="hom-profile" onclick="document.getElementById('settings-toggle').click();setTimeout(()=>{const b=document.querySelector('.stab[data-tab=tab-profile]');if(b)b.click()},200)"><span class="hom-icon">🧠</span><span data-i18n="menu.profile">我的画像</span></button>
+      <button class="hom-item" id="hom-profile" data-action="open-profile"><span class="hom-icon">🧠</span><span data-i18n="menu.profile">我的画像</span></button>
       <div class="hom-sep"></div>
-      <button class="hom-item" onclick="try{window.open(location.origin+'/chat','_blank')}catch(e){location.href='/chat'}"><span class="hom-icon">📱</span><span data-i18n="menu.mobileLite">手机简洁版</span></button>
-      <button class="hom-item" onclick="try{window.open(location.origin+'/setup?force','_blank')}catch(e){location.href='/setup?force'}"><span class="hom-icon">⚙️</span><span data-i18n="menu.setup">初始设置</span></button>
+      <button class="hom-item" data-action="open-chat"><span class="hom-icon">📱</span><span data-i18n="menu.mobileLite">手机简洁版</span></button>
+      <button class="hom-item" data-action="open-setup"><span class="hom-icon">⚙️</span><span data-i18n="menu.setup">初始设置</span></button>
     </div>
     <!-- Export dropdown (top-level so it works in both simple/pro mode) -->
     <div class="export-menu" id="export-menu">
@@ -3373,6 +3387,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <span class="settings-label" style="min-width:100px" data-i18n="settings.petSkin">桌宠形象</span>
           <select id="pet-skin-select" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0"></select>
         </div>
+        <div class="pet-skin-chip-wrap" id="pet-skin-preview-chips" style="margin-top:6px;padding-left:calc(100px + 10px);padding-bottom:4px"></div>
       </div>
     </div>
     <div class="settings-group">

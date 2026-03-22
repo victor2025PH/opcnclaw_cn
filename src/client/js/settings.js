@@ -1855,19 +1855,37 @@ window.ocPlugins = ocPlugins;
   });
   menu.querySelectorAll('.hom-item').forEach(item => {
     item.addEventListener('click', () => {
-      const targetId = item.dataset.target;
-      if (!targetId) {
-        // 无 data-target 的按钮（如手机简洁版、初始设置）由 onclick 处理
-        menu.classList.remove('open');
+      menu.classList.remove('open');
+
+      // data-action 自定义动作（手机简洁版、初始设置、我的画像）
+      const action = item.dataset.action;
+      if (action === 'open-chat') {
+        window.location.href = '/chat';
         return;
       }
+      if (action === 'open-setup') {
+        window.location.href = '/setup?force';
+        return;
+      }
+      if (action === 'open-profile') {
+        const st = document.getElementById('settings-toggle');
+        if (st) st.click();
+        setTimeout(() => {
+          const btn = document.querySelector('.stab[data-tab="tab-profile"]');
+          if (btn) btn.click();
+        }, 200);
+        return;
+      }
+
+      // data-target 标准动作（触发对应按钮）
+      const targetId = item.dataset.target;
+      if (!targetId) return;
       if (targetId === 'export-toggle' && typeof window._openExportMenu === 'function') {
         window._openExportMenu(moreBtn);
       } else {
         const target = document.getElementById(targetId);
         if(target) target.click();
       }
-      menu.classList.remove('open');
     });
   });
   document.addEventListener('click', e => {
@@ -2546,27 +2564,62 @@ function initPetGainSliders() {
 
 function initPetSkinSelect() {
   const sel = document.getElementById('pet-skin-select');
+  const chipWrap = document.getElementById('pet-skin-preview-chips');
   if (!sel) return;
+
+  const CHIP_EMOJI = { eve: '🦞', walle: '🦾', orbit: '🛰️' };
+
   function rebuildOptions() {
     sel.innerHTML = PET_SKIN_IDS.map((id) => {
       const key = PET_SKIN_I18N_KEYS[id] || 'settings.petSkin';
       return `<option value="${id}">${escapeHtml(t(key))}</option>`;
     }).join('');
   }
+
+  function renderChips() {
+    if (!chipWrap) return;
+    chipWrap.innerHTML = PET_SKIN_IDS.map((id) => {
+      const key = PET_SKIN_I18N_KEYS[id] || 'settings.petSkin';
+      const label = escapeHtml(t(key));
+      const emoji = CHIP_EMOJI[id] || '🦞';
+      return `<button type="button" class="pet-skin-chip" data-skin="${id}" title="${label}" aria-label="${label}"><span class="pet-skin-chip-emoji" aria-hidden="true">${emoji}</span><span class="pet-skin-chip-text">${label}</span></button>`;
+    }).join('');
+  }
+
+  function highlightChips() {
+    if (!chipWrap) return;
+    const v = petGetSkin();
+    chipWrap.querySelectorAll('.pet-skin-chip').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.skin === v);
+    });
+  }
+
   function applyToUi() {
     const v = petGetSkin();
     if (sel.value !== v) sel.value = v;
+    highlightChips();
   }
+
   function refreshFromI18n() {
     rebuildOptions();
+    renderChips();
     applyToUi();
   }
+
   rebuildOptions();
+  renderChips();
   applyToUi();
   window.addEventListener('oc-lang-change', refreshFromI18n);
   window.addEventListener('oc-i18n-updated', refreshFromI18n);
   sel.addEventListener('change', () => {
     petSetSkin(sel.value);
+    applyToUi();
+  });
+  chipWrap?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pet-skin-chip');
+    if (!btn?.dataset?.skin) return;
+    petSetSkin(btn.dataset.skin);
+    applyToUi();
   });
   window.addEventListener('storage', (e) => {
     if (e.key === 'oc_pet_skin' || e.key === 'petSkin') applyToUi();
