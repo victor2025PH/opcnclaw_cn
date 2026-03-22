@@ -594,9 +594,9 @@ function renderMarkdown(text) {
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  html = html.replace(/^### (.+)$/gm, '<strong style="font-size:1.05em">$1</strong>');
-  html = html.replace(/^## (.+)$/gm, '<strong style="font-size:1.1em">$1</strong>');
-  html = html.replace(/^# (.+)$/gm, '<strong style="font-size:1.2em">$1</strong>');
+  html = html.replace(/^### (.+)$/gm, '<h4 style="margin:12px 0 4px;font-size:13px">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 style="margin:14px 0 6px;font-size:14px;color:var(--accent,#6c63ff)">$1</h3>');
+  html = html.replace(/^# (.+)$/gm, '<h2 style="margin:16px 0 8px;font-size:16px">$1</h2>');
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
   html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
@@ -1432,9 +1432,10 @@ export function init() {
             <div class="msg-avatar">🦞</div>
             <div class="msg-body">
               <div class="team-progress-card">
-                <div class="tpc-header">👔 ${team.name} 工作中...</div>
+                <div class="tpc-header">👔 ${team.name} · ${Object.keys(team.agents||{}).length}人团队</div>
                 <div class="tpc-bar"><div class="tpc-fill" style="width:0%"></div></div>
-                <div class="tpc-detail" id="tpc-detail-${tid}">准备中...</div>
+                <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">预计 1-3 分钟完成，每个成员的工作进度实时显示 ↓</div>
+                <div class="tpc-detail" id="tpc-detail-${tid}">正在分配任务...</div>
               </div>
             </div>`;
           dom.messages.appendChild(progressEl);
@@ -1502,7 +1503,8 @@ export function init() {
             <div class="msg-body">
               <div class="team-result-card">
                 <div class="trc-header">✅ ${team.name}完成！</div>
-                <div class="trc-summary">${renderMarkdown(result.substring(0, 600))}</div>
+                <div class="trc-summary" id="trc-sum-${tid}">${renderMarkdown(result.substring(0, 600))}</div>
+                ${result.length > 600 ? `<button class="trc-expand" onclick="var el=document.getElementById('trc-sum-${tid}');if(!el.classList.contains('expanded')){el.innerHTML=this.dataset.full;el.classList.add('expanded');this.textContent='收起 ↑'}else{el.innerHTML=this.dataset.short;el.classList.remove('expanded');this.textContent='展开全文 ↓'}" data-short="${renderMarkdown(result.substring(0,600)).replace(/"/g,'&quot;')}" data-full="${renderMarkdown(result).replace(/"/g,'&quot;')}">展开全文 ↓ (${result.length}字)</button>` : ''}
                 ${filesHtml}
                 <div class="trc-actions">
                   ${downloadUrl ? `<button onclick="window.location.href='${downloadUrl}'">📥 下载 ZIP</button>` : ''}

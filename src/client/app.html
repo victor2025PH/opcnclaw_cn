@@ -283,7 +283,9 @@ body{
 /* 团队结果卡片 */
 .team-result-card{background:var(--bg-card,#1a1a2e);border:1px solid var(--accent);border-radius:12px;padding:16px;max-width:500px}
 .trc-header{font-size:16px;font-weight:700;margin-bottom:10px;color:var(--accent)}
-.trc-summary{font-size:13px;line-height:1.6;max-height:200px;overflow-y:auto;margin-bottom:12px;color:var(--text-secondary,#ccc)}
+.trc-summary{font-size:13px;line-height:1.6;max-height:200px;overflow:hidden;margin-bottom:4px;color:var(--text-secondary,#ccc);position:relative}
+.trc-summary.expanded{max-height:none;overflow:visible}
+.trc-expand{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;margin-bottom:8px;display:block}
 .trc-files{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
 .trc-file{font-size:11px;padding:3px 8px;background:var(--bg-surface,#252542);border-radius:6px;color:var(--text-secondary,#aaa)}
 .trc-actions{display:flex;gap:8px;flex-wrap:wrap}
