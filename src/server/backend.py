@@ -102,12 +102,19 @@ class AIBackend:
     # ── Session / history helpers ──────────────────────────
     @property
     def conversation_history(self) -> List[Dict]:
-        """Lazy-load history from SQLite on first access."""
+        """Lazy-load history from SQLite on first access, auto-compress if too long."""
         if self._history_cache is None:
             if _MEMORY_ENABLED:
                 self._history_cache = _memory.get_history(self.session_id, limit=40)
             else:
                 self._history_cache = []
+            # 自动压缩过长历史
+            try:
+                from .memory_compressor import should_compress, compress_history
+                if should_compress(self._history_cache):
+                    self._history_cache = compress_history(self._history_cache)
+            except Exception:
+                pass
         return self._history_cache
 
     @conversation_history.setter

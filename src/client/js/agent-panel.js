@@ -194,24 +194,69 @@ async function _loadAgentResults() {
 }
 
 async function _chatWithAgent(agentId, agentName) {
-  const msg = prompt(`对 ${agentName} 说：`);
-  if (!msg) return;
-  try {
-    const r = await fetch(`${BASE}/api/agents/team/${_agentPanelTeamId}/agent/${agentId}/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg }),
-    });
-    const d = await r.json();
-    if (d.ok) {
-      alert(`${agentName} 回复：\n\n${d.reply?.substring(0, 500) || '(无回复)'}`);
-      _loadAgentResults();
-    } else {
-      alert(`对话失败：${d.error}`);
-    }
-  } catch (e) {
-    alert(`网络错误：${e.message}`);
+  // 在面板底部显示内联对话框
+  const panel = document.getElementById('agent-side-panel');
+  if (!panel) return;
+
+  let chatBox = document.getElementById('asp-chat-box');
+  if (!chatBox) {
+    chatBox = document.createElement('div');
+    chatBox.id = 'asp-chat-box';
+    chatBox.className = 'asp-chat-box';
+    panel.appendChild(chatBox);
   }
+
+  chatBox.innerHTML = `
+    <div class="asp-chat-header">
+      <span>💬 对 ${agentName} 说</span>
+      <button onclick="document.getElementById('asp-chat-box').style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer">✕</button>
+    </div>
+    <div class="asp-chat-msgs" id="asp-chat-msgs"></div>
+    <div class="asp-chat-input">
+      <input type="text" id="asp-chat-input" placeholder="输入消息..." />
+      <button id="asp-chat-send">发送</button>
+    </div>
+  `;
+  chatBox.style.display = 'flex';
+  chatBox.dataset.agentId = agentId;
+  chatBox.dataset.agentName = agentName;
+
+  const input = document.getElementById('asp-chat-input');
+  const sendBtn = document.getElementById('asp-chat-send');
+  input.focus();
+
+  const doSend = async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+
+    const msgsEl = document.getElementById('asp-chat-msgs');
+    msgsEl.innerHTML += `<div class="asp-chat-msg asp-chat-user">${text}</div>`;
+    msgsEl.innerHTML += `<div class="asp-chat-msg asp-chat-ai" id="asp-chat-loading">思考中...</div>`;
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+
+    try {
+      const r = await fetch(`${BASE}/api/agents/team/${_agentPanelTeamId}/agent/${agentId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const d = await r.json();
+      const loadingEl = document.getElementById('asp-chat-loading');
+      if (loadingEl) {
+        loadingEl.id = '';
+        loadingEl.textContent = d.ok ? (d.reply || '(无回复)') : `错误: ${d.error}`;
+      }
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      _loadAgentResults();
+    } catch (e) {
+      const loadingEl = document.getElementById('asp-chat-loading');
+      if (loadingEl) { loadingEl.id = ''; loadingEl.textContent = `网络错误`; }
+    }
+  };
+
+  sendBtn.addEventListener('click', doSend);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
 }
 
 // 全局暴露
@@ -278,6 +323,19 @@ function _injectStyles() {
     .asp-result{font-size:10px;color:var(--text-secondary,#aaa);margin-top:3px;line-height:1.3;
       background:rgba(255,255,255,0.04);padding:4px 6px;border-radius:4px}
     .asp-deps{font-size:9px;color:var(--accent,#6c63ff);margin-top:2px;opacity:0.7}
+    /* 内联对话框 */
+    .asp-chat-box{
+      display:none;flex-direction:column;border-top:1px solid var(--border,#333);
+      max-height:250px;flex-shrink:0;
+    }
+    .asp-chat-header{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:11px;color:var(--text-secondary,#aaa)}
+    .asp-chat-msgs{flex:1;overflow-y:auto;padding:4px 8px;min-height:60px}
+    .asp-chat-msg{padding:4px 8px;border-radius:6px;margin-bottom:4px;font-size:11px;line-height:1.4;max-width:90%;word-break:break-word}
+    .asp-chat-user{background:var(--accent,#6c63ff);color:#fff;margin-left:auto}
+    .asp-chat-ai{background:var(--bg-primary,#0b0d14);color:var(--text-primary,#eee);border:1px solid var(--border,#333)}
+    .asp-chat-input{display:flex;gap:4px;padding:6px 8px}
+    .asp-chat-input input{flex:1;padding:6px 8px;background:var(--bg-surface,#252542);color:var(--text-primary,#eee);border:1px solid var(--border,#333);border-radius:6px;font-size:11px;font-family:inherit}
+    .asp-chat-input button{padding:6px 12px;background:var(--accent,#6c63ff);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer}
     /* 进化显示 */
     .asp-evo{display:flex;align-items:center;gap:4px;margin-top:3px}
     .asp-evo-stars{font-size:8px;color:#f59e0b;letter-spacing:-1px}
