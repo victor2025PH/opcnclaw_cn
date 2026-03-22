@@ -145,6 +145,13 @@ class Agent:
 
             logger.info(f"[Agent:{self.role.name}] 完成: {task.description[:30]}")
 
+            # 保存记忆（越用越聪明）
+            try:
+                from .agent_memory import save_agent_memory
+                save_agent_memory(self.role.id, self.role.name, task.description, result)
+            except Exception:
+                pass
+
             # 根据角色类型执行实际操作
             await self._post_execute(task, result)
 
@@ -202,6 +209,14 @@ class Agent:
 
     def _build_prompt(self, task: SubTask, context: dict) -> str:
         parts = [f"## 你的任务\n{task.description}"]
+        # 注入历史记忆（让 Agent 越用越聪明）
+        try:
+            from .agent_memory import get_agent_context
+            memory_ctx = get_agent_context(self.role.id)
+            if memory_ctx:
+                parts.append(memory_ctx)
+        except Exception:
+            pass
         if context:
             parts.append(f"\n## 项目背景\n{json.dumps(context, ensure_ascii=False, indent=2)}")
         if self._history:

@@ -550,6 +550,72 @@ try {
   };
 } catch(e) {}
 
+// ── 拖拽文件到桌宠 ──
+wrap.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  wrap.style.filter = 'brightness(1.3)';
+  statusBar.textContent = '松开发送文件...';
+  setMode('wave');
+});
+wrap.addEventListener('dragleave', function(e) {
+  e.preventDefault();
+  wrap.style.filter = '';
+  statusBar.textContent = '就绪';
+  setMode('idle');
+});
+wrap.addEventListener('drop', async function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  wrap.style.filter = '';
+  setMode('scan');
+
+  var files = e.dataTransfer.files;
+  if (!files.length) {
+    // 拖拽的是文本
+    var text = e.dataTransfer.getData('text/plain');
+    if (text) {
+      statusBar.textContent = '分析文本中...';
+      showNotification('📝', '收到文本，正在分析...', function() {
+        window.open('/app?msg=' + encodeURIComponent('帮我分析以下内容：' + text.substring(0, 200)), '_blank');
+      });
+      setTimeout(function() { setMode('idle'); statusBar.textContent = '就绪'; }, 3000);
+    }
+    return;
+  }
+
+  // 上传文件
+  for (var i = 0; i < files.length && i < 3; i++) {
+    var file = files[i];
+    statusBar.textContent = '上传 ' + file.name + '...';
+
+    var form = new FormData();
+    form.append('file', file);
+    try {
+      var r = await fetch('/api/files/upload', {method: 'POST', body: form});
+      var d = await r.json();
+      if (d.ok) {
+        // 根据文件类型给建议
+        var ext = file.name.split('.').pop().toLowerCase();
+        var suggestion = '已上传到电脑桌面';
+        if (['jpg','jpeg','png','gif','webp'].indexOf(ext) >= 0) {
+          suggestion = '图片已上传，要我帮你分析吗？';
+        } else if (['doc','docx','txt','md','pdf'].indexOf(ext) >= 0) {
+          suggestion = '文档已上传，要我帮你润色或总结吗？';
+        } else if (['xls','xlsx','csv'].indexOf(ext) >= 0) {
+          suggestion = '表格已上传，要我帮你分析数据吗？';
+        } else if (['py','js','html','css','java','cpp'].indexOf(ext) >= 0) {
+          suggestion = '代码已上传，要我帮你审查吗？';
+        }
+        showNotification('📁', file.name + ' — ' + suggestion);
+      }
+    } catch(err) {
+      showNotification('❌', '上传失败: ' + err.message);
+    }
+  }
+  setTimeout(function() { setMode('idle'); statusBar.textContent = '就绪'; }, 2000);
+});
+
 // ── AI 主动通知（监听 EventBus 事件）──
 var _notifQueue = [];
 var _showingNotif = false;
