@@ -96,21 +96,25 @@ function _renderTeam(data) {
   const keys = Object.keys(agents);
   list.innerHTML = keys.map(aid => {
     const a = agents[aid];
-    const s = a.status || 'idle';
+    // 用 task 状态（更准确）而不是 agent 状态
     const task = tasks.find(t => t.agent_id === aid);
-    const icon = s === 'done' ? '✅' : s === 'working' ? '🔄' : '⏳';
-    const taskDesc = task ? task.description?.substring(0, 30) || '' : '';
-    const resultPreview = task && task.result ? task.result.substring(0, 60) : '';
+    const taskStatus = task ? task.status : (a.status || 'idle');
+    const icon = taskStatus === 'done' ? '✅' : taskStatus === 'working' ? '🔄' : '⏳';
+    const cssClass = taskStatus === 'done' ? 'done' : taskStatus === 'working' ? 'working' : '';
+    const taskDesc = task ? (task.description || '').substring(0, 30) : '';
+    // 显示成果或实时输出
+    const preview = task?.result || task?.partial_result || '';
+    const previewText = preview.substring(0, 80).replace(/[#*\n]/g, ' ');
 
     return `
-      <div class="asp-agent ${s}" onclick="window.__agentPanel.chat('${aid}','${(a.name||aid).replace(/'/g,'')}')" title="点击与${a.name}对话">
+      <div class="asp-agent ${cssClass}" onclick="window.__agentPanel.chat('${aid}','${(a.name||aid).replace(/'/g,'')}')" title="点击与${a.name}对话">
         <div class="asp-agent-header">
           <span class="asp-avatar">${a.avatar || '🤖'}</span>
           <span class="asp-name">${a.name || aid}</span>
           <span class="asp-status">${icon}</span>
         </div>
         ${taskDesc ? `<div class="asp-task">${taskDesc}</div>` : ''}
-        ${resultPreview ? `<div class="asp-result">${resultPreview}...</div>` : ''}
+        ${previewText ? `<div class="asp-result">${previewText}${preview.length > 80 ? '...' : ''}</div>` : ''}
       </div>`;
   }).join('');
 }
