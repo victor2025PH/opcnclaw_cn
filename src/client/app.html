@@ -2183,6 +2183,14 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
 /* ─── Panel back button (unified) ─── */
 .panel-back{flex-shrink:0;margin-right:6px}
+/* 统一返回按钮样式 */
+.back-btn{
+  display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
+  border:none;border-radius:6px;background:none;color:var(--text-secondary);
+  font-size:13px;font-family:inherit;cursor:pointer;transition:all .15s;flex-shrink:0;
+}
+.back-btn:hover{background:var(--bg-surface-hover);color:var(--text-primary)}
+.back-btn svg{width:16px;height:16px}
 /* ─── Drag handle for bottom sheets ─── */
 .drag-handle{width:36px;height:4px;border-radius:2px;background:var(--text-muted);opacity:.35;margin:8px auto 0;flex-shrink:0;cursor:grab}
 .drag-handle:active{opacity:.6;cursor:grabbing}
@@ -2963,8 +2971,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
   <!-- Header -->
   <header class="chat-header">
     <div class="header-left">
-      <a href="/chat" class="icon-btn" title="返回" style="text-decoration:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      <a href="/qr" class="back-btn" title="返回首页" style="text-decoration:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>首页
       </a>
       <button class="icon-btn" id="sessions-toggle" title="会话">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -3368,11 +3376,11 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
   <div id="camera-panel" class="hidden">
     <div class="drag-handle"></div>
     <div class="camera-header">
-      <button type="button" class="icon-btn panel-back" onclick="document.getElementById('camera-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
-      <span data-i18n="camera.title">摄像头和手势</span>
-      <button type="button" class="icon-btn" id="camera-close" aria-label="关闭摄像头">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button type="button" class="back-btn" onclick="document.getElementById('camera-close').click()" aria-label="返回">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
       </button>
+      <span data-i18n="camera.title">📷 摄像头</span>
+      <button type="button" class="icon-btn" id="camera-close" aria-label="关闭" style="display:none">✕</button>
     </div>
     <div class="camera-body">
       <video id="camera-video" autoplay playsinline muted></video>
@@ -3489,9 +3497,9 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
   <div class="settings-sheet">
     <div class="drag-handle"></div>
     <div class="settings-header">
-      <button class="icon-btn panel-back" onclick="document.getElementById('settings-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <button class="back-btn" onclick="document.getElementById('settings-close').click()" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回</button>
       <h2 data-i18n="settings.title">设置</h2>
-      <button class="icon-btn" id="settings-close" aria-label="Close settings">
+      <button class="icon-btn" id="settings-close" aria-label="Close settings" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -3990,8 +3998,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ MODEL MANAGEMENT ═══════════════ -->
 <div id="model-panel" class="hidden" role="dialog" aria-label="Model Management" tabindex="-1">
   <div class="mp-header">
-    <button class="icon-btn" id="mp-back" aria-label="Close model panel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <button class="back-btn" id="mp-back" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
     </button>
     <h2 data-i18n="model.title">📦 模型管理</h2>
     <button id="mp-mode-badge" style="font-size:11px;padding:4px 12px;border-radius:10px;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:all .2s" title="切换显示模式">—</button>
@@ -4023,8 +4031,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ MCP TOOLS PANEL ═══════════════ -->
 <div id="mcp-panel" class="hidden" role="dialog" aria-label="MCP Tools" tabindex="-1">
   <div class="mcp-header">
-    <button class="icon-btn" id="mcp-back" aria-label="Close MCP panel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <button class="back-btn" id="mcp-back" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
     </button>
     <h2 data-i18n="mcp.title">🔌 MCP 工具</h2>
     <span id="mcp-tools-count" style="font-size:12px;color:var(--text-muted)"></span>
@@ -4096,8 +4104,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ SKILLS CENTER ═══════════════ -->
 <div id="skills-center" class="hidden">
   <div class="sc-header">
-    <button class="icon-btn" id="sc-back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <button class="back-btn" id="sc-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
     </button>
     <h2 data-i18n="skills.centerTitle">🧩 技能中心</h2>
     <span id="sc-total-badge" style="font-size:12px;color:var(--text-muted)"></span>
@@ -4172,8 +4180,10 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ DESKTOP REMOTE ═══════════════ -->
 <div id="desktop-panel" class="hidden">
   <div class="desktop-header">
-    <button class="icon-btn panel-back" onclick="document.getElementById('desktop-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
-    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> <span data-i18n="desktop.title">远程桌面</span></span>
+    <button class="back-btn" onclick="document.getElementById('desktop-close').click()" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
+    </button>
+    <span>🖥️ <span data-i18n="desktop.title">远程桌面</span></span>
     <div class="desktop-controls">
       <span class="desktop-fps-badge" id="desktop-fps-badge">10 FPS</span>
       <button class="icon-btn" id="desktop-gesture-ctrl" data-i18n="desktop.gestureCtrl" data-i18n-attr="title" title="手势控制" style="color:var(--text-muted)">
@@ -4610,8 +4620,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ PERFORMANCE PANEL ═══════════════ -->
 <div id="perf-panel" class="hidden" role="dialog" aria-label="Performance" tabindex="-1">
   <div class="perf-header">
-    <button class="icon-btn" id="perf-back" aria-label="Close performance panel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <button class="back-btn" id="perf-back" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
     </button>
     <h2 data-i18n="perf.title">📊 性能监控</h2>
   </div>
@@ -4638,8 +4648,8 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ VOICE COMMANDS PANEL ═══════════════ -->
 <div id="voice-cmd-panel" class="hidden" role="dialog" aria-label="Voice Commands" tabindex="-1">
   <div class="vcmd-header">
-    <button class="icon-btn" id="vcmd-back" aria-label="Close voice commands">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <button class="back-btn" id="vcmd-back" aria-label="返回">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回
     </button>
     <h2 data-i18n="vcmd.title">🗣️ 语音指令</h2>
     <button class="mp-btn" id="sc-open" style="font-size:10px;padding:3px 10px;background:var(--bg-surface);color:var(--accent)" data-i18n="sc.open">🔗 技能链</button>
@@ -4704,9 +4714,9 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 <!-- ═══════════════ BOOKMARK PANEL ═══════════════ -->
 <div id="bookmark-panel" role="dialog" aria-label="Bookmarks">
   <div class="bm-header">
-    <button class="icon-btn panel-back" onclick="document.getElementById('bookmark-close').click()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button class="back-btn" onclick="document.getElementById('bookmark-close').click()" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>返回</button>
     <h3 data-i18n="bm.title">⭐ 收藏</h3>
-    <button class="icon-btn" id="bookmark-close" aria-label="Close bookmarks" style="font-size:14px">✕</button>
+    <button class="icon-btn" id="bookmark-close" aria-label="关闭" style="display:none">✕</button>
   </div>
   <div class="bm-list" id="bm-list">
     <div class="bm-empty" data-i18n="bm.empty">暂无收藏消息</div>
