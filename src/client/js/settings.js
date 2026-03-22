@@ -561,12 +561,12 @@ function initVoiceClone() {
         const active = d.active_path?.includes(v.name);
         const safeName = escapeHtml(v.name);
         return `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-surface);border-radius:8px;margin-bottom:6px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'}">
-          <span style="font-size:18px">🎭</span>
-          <span style="flex:1;font-size:13px;font-weight:500">${safeName}</span>
-          <span style="font-size:11px;color:var(--text-muted)">${v.duration ? `${v.duration}s` : ''}</span>
-          <button type="button" onclick="_cloneActivate(${JSON.stringify(v.name)})" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">${escapeHtml(active ? t('clone.inUse') : t('clone.use'))}</button>
-          <button type="button" onclick="_cloneDelete(${JSON.stringify(v.name)})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:14px" title="${escapeHtml(t('clone.delete'))}">✕</button>
+        <div class="clone-voice-card${active ? ' clone-voice-card--active' : ''}">
+          <span class="clone-voice-icon" aria-hidden="true">🎭</span>
+          <span class="clone-voice-meta">${safeName}</span>
+          <span class="clone-voice-dur">${v.duration ? `${v.duration}s` : ''}</span>
+          <button type="button" class="btn settings-btn settings-btn--primary settings-btn--compact" onclick="_cloneActivate(${JSON.stringify(v.name)})">${escapeHtml(active ? t('clone.inUse') : t('clone.use'))}</button>
+          <button type="button" class="settings-icon-btn" onclick="_cloneDelete(${JSON.stringify(v.name)})" aria-label="${escapeHtml(t('clone.delete'))}">✕</button>
         </div>`;
       }).join('');
     } catch (e) {
@@ -1196,7 +1196,7 @@ function initExpressionSettings() {
     $id('expr-head-list').innerHTML = head.map(e => renderExprItem(e.name, e, e.type)).join('');
 
     $id('expr-presets').innerHTML = Object.entries(EXPR_PRESETS).map(([key, p]) =>
-      `<button class="btn" data-preset="${escapeHtml(key)}" style="background:var(--bg-surface);color:var(--text-primary);font-size:11px;padding:6px 10px" title="${escapeHtml(presetDesc(key, p))}">${escapeHtml(presetLabel(key, p))}</button>`
+      `<button type="button" class="btn settings-btn settings-btn--secondary settings-btn--compact expr-preset-btn" data-preset="${escapeHtml(key)}" title="${escapeHtml(presetDesc(key, p))}">${escapeHtml(presetLabel(key, p))}</button>`
     ).join('');
   }
 
@@ -1860,23 +1860,14 @@ window.ocPlugins = ocPlugins;
       // data-action 自定义动作
       const action = item.dataset.action;
       if (action === 'open-chat') {
-        // 用 HTTP 打开简洁版（避免 HTTPS 证书问题）
-        const httpPort = location.port === '8765' ? '8766' : location.port;
-        const chatUrl = 'http://' + location.hostname + ':' + httpPort + '/chat';
-        try { window.open(chatUrl, '_blank'); } catch(e) { window.location.href = '/chat'; }
+        // 跳转到 QR 页面（手机扫码使用）
+        window.location.href = '/qr';
         return;
       }
       if (action === 'open-setup') {
-        // 在当前页面触发 onboarding（不跳转）
-        const ob = document.getElementById('onboarding');
-        if (ob) {
-          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-          var step1 = document.getElementById('ob-step-1');
-          if (step1) step1.style.display = 'block';
-          ob.style.display = 'flex';
-        } else {
-          window.location.href = '/setup?force';
-        }
+        // 打开设置面板
+        const st = document.getElementById('settings-toggle');
+        if (st) st.click();
         return;
       }
       if (action === 'open-profile') {
@@ -1889,14 +1880,42 @@ window.ocPlugins = ocPlugins;
         return;
       }
 
-      // data-target 标准动作（触发对应按钮）
+      // data-target 标准动作 — 直接调用功能函数而非 .click() 隐藏按钮
       const targetId = item.dataset.target;
       if (!targetId) return;
-      if (targetId === 'export-toggle' && typeof window._openExportMenu === 'function') {
-        window._openExportMenu(moreBtn);
-      } else {
-        const target = document.getElementById(targetId);
-        if(target) target.click();
+
+      if (targetId === 'summary-btn') {
+        // 对话摘要：直接调用 summary-btn 的 click handler
+        const btn = document.getElementById('summary-btn');
+        if (btn) { btn.style.display = 'inline-flex'; btn.click(); btn.style.display = ''; }
+        return;
+      }
+      if (targetId === 'export-toggle') {
+        // 导出菜单
+        if (typeof window._openExportMenu === 'function') {
+          window._openExportMenu(moreBtn);
+        }
+        return;
+      }
+      if (targetId === 'bookmark-toggle') {
+        // 收藏面板
+        const bp = document.getElementById('bookmark-panel');
+        if (bp) bp.classList.toggle('open');
+        return;
+      }
+
+      // 其他 data-target 按钮
+      const target = document.getElementById(targetId);
+      if (target) {
+        // 临时显示 → 点击 → 恢复
+        const origDisplay = target.style.display;
+        if (getComputedStyle(target).display === 'none') {
+          target.style.display = 'inline-flex';
+          target.click();
+          target.style.display = origDisplay;
+        } else {
+          target.click();
+        }
       }
     });
   });

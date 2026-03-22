@@ -678,7 +678,13 @@ async function loadWechatBotTab() {
         const qrDiv = document.getElementById('ilink-settings-qr');
         const qrImg = document.getElementById('ilink-settings-qr-img');
         if (qrImg && d.qrcode_img) {
-          qrImg.src = d.qrcode_img.startsWith('data:') ? d.qrcode_img : 'data:image/png;base64,' + d.qrcode_img;
+          if (d.qrcode_img.startsWith('http')) {
+            qrImg.src = '/api/qr?url=' + encodeURIComponent(d.qrcode_img) + '&size=160';
+          } else if (d.qrcode_img.startsWith('data:')) {
+            qrImg.src = d.qrcode_img;
+          } else {
+            qrImg.src = 'data:image/png;base64,' + d.qrcode_img;
+          }
         }
         if (qrDiv) qrDiv.style.display = 'block';
         connectBtn.textContent = '等待扫码...';
