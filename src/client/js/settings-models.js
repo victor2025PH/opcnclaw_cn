@@ -14,7 +14,7 @@ export function initModelPanel() {
     $id('model-panel').classList.remove('hidden');
     if (!_modelsLoaded) {
       _modelsLoaded = true;
-      $id('mp-models-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">加载中…</div>';
+      $id('mp-models-list').innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">${t('model.loading')}</div>`;
       await Promise.all([loadModels(), loadSystemInfo()]);
     }
   }
@@ -29,7 +29,7 @@ export function initModelPanel() {
         fetch(getBaseUrl() + '/api/system/gpu').then(r => r.json()).catch(() => ({})),
         fetch(getBaseUrl() + '/api/system/disk').then(r => r.json()).catch(() => ({})),
       ]);
-      $id('mp-gpu-name').textContent = gpuR.available ? gpuR.name : '无 GPU';
+      $id('mp-gpu-name').textContent = gpuR.available ? gpuR.name : t('model.noGpu');
       $id('mp-vram').textContent = gpuR.available ? gpuR.vram_gb + ' GB' : '—';
       $id('mp-disk').textContent = diskR.free_gb ? diskR.free_gb + ' GB' : '—';
     } catch(e) { console.warn('model sys info:', e); }
@@ -39,11 +39,15 @@ export function initModelPanel() {
     try {
       const r = await fetch(getBaseUrl() + '/api/models');
       const d = await r.json();
-      $id('mp-mode-badge').textContent = d.mode === 'full' ? '完整模式' : '极简模式';
-      $id('mp-mode-badge').style.color = d.mode === 'full' ? 'var(--success)' : 'var(--text-muted)';
+      const badge = $id('mp-mode-badge');
+      if (badge) {
+        badge.dataset.mode = d.mode === 'full' ? 'full' : 'min';
+        badge.textContent = d.mode === 'full' ? t('model.fullMode') : t('model.minMode');
+        badge.style.color = d.mode === 'full' ? 'var(--success)' : 'var(--text-muted)';
+      }
       renderModels(d.models || []);
     } catch(e) {
-      $id('mp-models-list').innerHTML = '<div class="mcp-empty">无法加载模型列表</div>';
+      $id('mp-models-list').innerHTML = `<div class="mcp-empty">${t('model.loadFailed')}</div>`;
     }
   }
 
@@ -56,20 +60,21 @@ export function initModelPanel() {
     });
     _batchSelected.clear();
     updateBatchBar();
-    const catNames = { stt: '🎤 语音识别', runtime: '⚡ 运行时', vad: '🔊 语音检测', vision: '👁️ 视觉控制' };
+    const catNames = { stt: 'model.cat.stt', runtime: 'model.cat.runtime', vad: 'model.cat.vad', vision: 'model.cat.vision' };
     let html = '';
     for (const [cat, list] of Object.entries(cats)) {
-      html += `<div class="mp-cat-title">${catNames[cat] || cat}</div>`;
+      const catLabel = catNames[cat] ? t(catNames[cat]) : cat;
+      html += `<div class="mp-cat-title">${catLabel}</div>`;
       list.forEach(m => {
-        const gpuTag = m.requires_gpu ? `<span style="color:var(--warning)">🖥 GPU ${m.min_vram_gb}GB+</span>` : '<span>CPU</span>';
+        const gpuTag = m.requires_gpu ? `<span style="color:var(--warning)">🖥 GPU ${m.min_vram_gb}GB+</span>` : `<span>${t('mcp.cpuTag')}</span>`;
         let btn;
         if (m.installed) {
-          btn = `<button class="mp-btn mp-btn-installed">✓ 已安装</button>
-                 <button class="mp-btn mp-btn-bench" data-id="${m.id}" style="margin-left:4px;font-size:10px" data-i18n="model.bench">⚡ 测试</button>
-                 <button class="mp-btn mp-btn-uninstall" data-id="${m.id}" style="margin-left:4px">卸载</button>`;
+          btn = `<button class="mp-btn mp-btn-installed" data-i18n="model.installed">${t('model.installed')}</button>
+                 <button class="mp-btn mp-btn-bench" data-id="${m.id}" style="margin-left:4px;font-size:10px" data-i18n="model.bench">${t('model.bench')}</button>
+                 <button class="mp-btn mp-btn-uninstall" data-id="${m.id}" style="margin-left:4px" data-i18n="model.uninstall">${t('model.uninstall')}</button>`;
         } else {
           btn = `<input type="checkbox" class="mp-check mp-batch-check" data-id="${m.id}">
-                 <button class="mp-btn mp-btn-install" data-id="${m.id}">安装</button>`;
+                 <button class="mp-btn mp-btn-install" data-id="${m.id}" data-i18n="model.install">${t('model.install')}</button>`;
         }
         html += `<div class="mp-model-card" id="mp-card-${m.id}">
           <div class="mp-model-info">
@@ -140,7 +145,7 @@ export function initModelPanel() {
     const bar = $id('mp-batch-bar');
     if (_batchSelected.size > 0) {
       bar.classList.add('visible');
-      $id('mp-batch-count').textContent = `已选 ${_batchSelected.size} 个模型`;
+      $id('mp-batch-count').textContent = t('model.batchSelected', { n: String(_batchSelected.size) });
     } else {
       bar.classList.remove('visible');
     }
@@ -153,13 +158,13 @@ export function initModelPanel() {
     status.style.display = 'block';
     $id('mp-batch-install').disabled = true;
     for (let i = 0; i < ids.length; i++) {
-      status.textContent = `队列进度: ${i + 1}/${ids.length} — 正在安装 ${ids[i]}…`;
+      status.textContent = t('model.queueProgress', { i: String(i + 1), n: String(ids.length), id: ids[i] });
       const card = $id('mp-card-' + ids[i]);
       const btn = card?.querySelector('.mp-btn-install');
       if (btn) await installModel(ids[i], btn);
     }
-    status.textContent = `✓ 队列完成: ${ids.length} 个模型`;
-    window.ocToast?.success('批量安装完成: ' + ids.length + ' 个模型');
+    status.textContent = t('model.queueDone', { n: String(ids.length) });
+    window.ocToast?.success(t('toast.batchDone', { n: String(ids.length) }));
     $id('mp-batch-install').disabled = false;
     _batchSelected.clear();
     updateBatchBar();
@@ -175,11 +180,32 @@ export function initModelPanel() {
   $id('mp-batch-install')?.addEventListener('click', batchInstall);
   $id('mp-batch-clear')?.addEventListener('click', clearBatchSelection);
 
+  // 极简/完整模式切换
+  let _showInstalled = false;
+  $id('mp-mode-badge')?.addEventListener('click', () => {
+    _showInstalled = !_showInstalled;
+    const badge = $id('mp-mode-badge');
+    if (_showInstalled) {
+      badge.textContent = t('model.fullMode');
+      badge.style.color = 'var(--success)';
+      // 显示所有模型
+      document.querySelectorAll('.mp-model-card').forEach(c => c.style.display = '');
+    } else {
+      badge.textContent = t('model.minMode');
+      badge.style.color = 'var(--text-muted)';
+      // 只显示未安装的
+      document.querySelectorAll('.mp-model-card').forEach(c => {
+        const hasInstalled = c.querySelector('.mp-btn-installed');
+        if (hasInstalled) c.style.display = 'none';
+      });
+    }
+  });
+
   let _installAbort = null;
 
   async function installModel(id, btnEl) {
     btnEl.disabled = true;
-    btnEl.textContent = '安装中…';
+    btnEl.textContent = t('model.installing');
     const card = $id('mp-card-' + id);
 
     let progBar = card.querySelector('.mp-progress');
@@ -195,7 +221,7 @@ export function initModelPanel() {
     if (!cancelBtn) {
       cancelBtn = document.createElement('button');
       cancelBtn.className = 'mp-btn mp-btn-cancel';
-      cancelBtn.textContent = '取消';
+      cancelBtn.textContent = t('model.batchCancel');
       cancelBtn.style.marginTop = '6px';
       card.appendChild(cancelBtn);
     }
@@ -204,11 +230,11 @@ export function initModelPanel() {
     _installAbort = new AbortController();
     cancelBtn.onclick = () => {
       if (_installAbort) _installAbort.abort();
-      btnEl.textContent = '已取消';
+      btnEl.textContent = t('model.cancelled');
       btnEl.disabled = false;
       cancelBtn.classList.add('hidden');
       fill.style.width = '0%';
-      window.ocToast?.info('安装已取消');
+      window.ocToast?.info(t('toast.cancelled'));
       setTimeout(() => { if (progBar.parentNode) progBar.remove(); }, 1500);
     };
 
@@ -231,12 +257,12 @@ export function initModelPanel() {
             const ev = JSON.parse(line.slice(5).trim());
             if (ev.type === 'progress' && ev.percent >= 0) {
               fill.style.width = ev.percent + '%';
-              btnEl.textContent = ev.message || '安装中…';
+              btnEl.textContent = ev.message || t('model.installing');
             }
             if (ev.type === 'done') {
               cancelBtn.classList.add('hidden');
               if (ev.success) {
-                btnEl.textContent = '验证中…';
+                btnEl.textContent = t('model.verifying');
                 let verifyOk = true;
                 try {
                   const chk = await fetch(getBaseUrl() + `/api/models/${id}/check`);
@@ -245,18 +271,18 @@ export function initModelPanel() {
                     verifyOk = false;
                     const warn = document.createElement('div');
                     warn.style.cssText = 'font-size:11px;color:var(--warning);margin-top:4px';
-                    warn.textContent = '⚠️ 安装完成但验证失败，模块可能无法导入';
+                    warn.textContent = t('model.verifyFail');
                     card.appendChild(warn);
-                    window.ocToast?.warning('模型 ' + id + ' 验证失败');
+                    window.ocToast?.warning(t('toast.verifyFail', { id }));
                   }
                 } catch {}
-                if (verifyOk) window.ocToast?.success('模型 ' + id + ' 安装成功');
+                if (verifyOk) window.ocToast?.success(t('toast.installOk', { id }));
                 _modelsLoaded = false;
                 await loadModels();
               } else {
-                btnEl.textContent = '安装失败';
+                btnEl.textContent = t('model.failed');
                 btnEl.disabled = false;
-                window.ocToast?.error('模型 ' + id + ' 安装失败');
+                window.ocToast?.error(t('toast.installFail', { id }));
               }
             }
           } catch {}
@@ -264,7 +290,7 @@ export function initModelPanel() {
       }
     } catch(e) {
       if (e.name === 'AbortError') return;
-      btnEl.textContent = '安装失败';
+      btnEl.textContent = t('model.failed');
       btnEl.disabled = false;
       cancelBtn.classList.add('hidden');
     } finally {
@@ -273,10 +299,10 @@ export function initModelPanel() {
   }
 
   async function uninstallModel(id) {
-    if (!confirm('确定要卸载此模型？')) return;
+    if (!confirm(t('model.uninstallConfirm'))) return;
     try {
       await fetch(getBaseUrl() + `/api/models/${id}/uninstall`, { method: 'POST' });
-      window.ocToast?.success('模型 ' + id + ' 已卸载');
+      window.ocToast?.success(t('toast.uninstallOk', { id }));
       _modelsLoaded = false;
       await loadModels();
     } catch(e) { console.warn('uninstall:', e); }
@@ -284,6 +310,14 @@ export function initModelPanel() {
 
   $id('model-panel-toggle')?.addEventListener('click', openModelPanel);
   $id('mp-back')?.addEventListener('click', closeModelPanel);
+
+  function refreshMpModeBadge() {
+    const badge = $id('mp-mode-badge');
+    if (!badge?.dataset.mode) return;
+    badge.textContent = badge.dataset.mode === 'full' ? t('model.fullMode') : t('model.minMode');
+  }
+  window.addEventListener('oc-lang-change', refreshMpModeBadge);
+  window.addEventListener('oc-i18n-updated', refreshMpModeBadge);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -321,27 +355,32 @@ export function initMcpPanel() {
         return;
       }
       noSrv.classList.add('hidden');
-      list.innerHTML = d.servers.map(s => `
+      list.innerHTML = d.servers.map(s => {
+        const badge = s.connected ? t('mcp.connected') : t('mcp.disconnected');
+        const toggleTitle = s.connected ? t('mcp.disconnectTitle') : t('mcp.connectTitle');
+        const meta = `${s.transport.toUpperCase()} · ${t('mcp.toolsCount', { n: String(s.tools_count || 0) })}${s.description ? ' · ' + s.description : ''}`;
+        const connectBtn = !s.connected ? `<button class="mp-btn mp-btn-install" style="font-size:11px;padding:4px 12px" onclick="mcpConnect('${s.id}')">${t('mcp.connect')}</button>` : '';
+        return `
         <div class="mcp-server-card">
           <div class="mcp-server-header">
             <span class="mcp-server-name">${s.name}</span>
             <div style="display:flex;align-items:center;gap:6px">
-              <span class="mcp-server-badge ${s.connected ? 'connected' : ''}">${s.connected ? '已连接' : '未连接'}</span>
-              <label class="mcp-srv-toggle" title="${s.connected ? '断开' : '连接'}">
+              <span class="mcp-server-badge ${s.connected ? 'connected' : ''}">${badge}</span>
+              <label class="mcp-srv-toggle" title="${toggleTitle}">
                 <input type="checkbox" ${s.connected ? 'checked' : ''} onchange="mcpToggle('${s.id}', this.checked)">
                 <span class="mcp-srv-slider"></span>
               </label>
             </div>
           </div>
           <div style="font-size:11px;color:var(--text-muted)">
-            ${s.transport.toUpperCase()} · ${s.tools_count || 0} 工具${s.description ? ' · ' + s.description : ''}
+            ${meta}
           </div>
           <div style="display:flex;gap:6px;margin-top:6px">
-            ${!s.connected ? `<button class="mp-btn mp-btn-install" style="font-size:11px;padding:4px 12px" onclick="mcpConnect('${s.id}')">连接</button>` : ''}
-            <button class="mp-btn" style="font-size:11px;padding:4px 12px;background:var(--bg-surface)" onclick="mcpRemove('${s.id}')">移除</button>
+            ${connectBtn}
+            <button class="mp-btn" style="font-size:11px;padding:4px 12px;background:var(--bg-surface)" onclick="mcpRemove('${s.id}')">${t('mcp.removeServer')}</button>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     } catch(e) {
       $id('mcp-no-servers').classList.remove('hidden');
     }
@@ -371,7 +410,7 @@ export function initMcpPanel() {
   };
 
   window.mcpRemove = async function(id) {
-    if (!confirm('确定要移除此服务器吗？')) return;
+    if (!confirm(t('mcp.serverRemoveConfirm'))) return;
     try {
       const r = await fetch(getBaseUrl() + `/api/mcp/servers/${id}`, { method: 'DELETE' });
       const d = await r.json();
@@ -414,7 +453,7 @@ export function initMcpPanel() {
       _toolsData = d.tools || [];
       const list = $id('mcp-tools-list');
       const noTools = $id('mcp-no-tools');
-      $id('mcp-tools-count').textContent = d.count ? `${d.count} 个工具` : '';
+      $id('mcp-tools-count').textContent = d.count ? t('mcp.toolsCount', { n: String(d.count) }) : '';
       if (_toolsData.length === 0) {
         list.innerHTML = '';
         noTools.classList.remove('hidden');
@@ -455,7 +494,7 @@ export function initMcpPanel() {
     const required = new Set(schema.required || []);
     const keys = Object.keys(props);
     if (keys.length === 0) {
-      form.innerHTML = '<div class="mcp-form-empty">此工具无需参数</div>';
+      form.innerHTML = `<div class="mcp-form-empty" data-i18n="mcp.noParams">${t('mcp.noParams')}</div>`;
       return;
     }
     form.innerHTML = keys.map(key => {
@@ -535,14 +574,14 @@ export function initMcpPanel() {
     if (!_activeToolName) return;
     const btn = $id('mcp-tool-run');
     const resultEl = $id('mcp-tool-result');
-    btn.disabled = true; btn.textContent = '调用中…';
+    btn.disabled = true; btn.textContent = t('mcp.toolRunning');
     let params;
     const hasFormFields = $id('mcp-tool-form').querySelector('.mcp-form-input');
     if (hasFormFields) {
       params = collectFormParams();
     } else {
       try { params = JSON.parse($id('mcp-tool-params').value || '{}'); }
-      catch { resultEl.textContent = '⚠️ JSON 参数格式错误'; resultEl.classList.add('visible'); btn.disabled = false; btn.textContent = '▶ 调用'; return; }
+      catch { resultEl.textContent = t('mcp.jsonError'); resultEl.classList.add('visible'); btn.disabled = false; btn.textContent = t('mcp.toolRun'); return; }
     }
     try {
       const r = await fetch(getBaseUrl() + '/api/mcp/tool/call', {
@@ -555,14 +594,14 @@ export function initMcpPanel() {
         resultEl.textContent = typeof d.result === 'string' ? d.result : JSON.stringify(d.result, null, 2);
         if (mcpHistory) mcpHistory.add(_activeToolName, params, d.result, true);
       } else {
-        resultEl.textContent = '❌ ' + (d.error || '调用失败');
-        if (mcpHistory) mcpHistory.add(_activeToolName, params, d.error || '调用失败', false);
+        resultEl.textContent = t('mcp.callErrorDetail', { msg: d.error || t('mcp.callFailed') });
+        if (mcpHistory) mcpHistory.add(_activeToolName, params, d.error || t('mcp.callFailed'), false);
       }
     } catch(e) {
-      resultEl.textContent = '❌ 网络错误: ' + e.message;
+      resultEl.textContent = t('mcp.networkErrorDetail', { msg: e.message || '' });
     }
     resultEl.classList.add('visible');
-    btn.disabled = false; btn.textContent = '▶ 调用';
+    btn.disabled = false; btn.textContent = t('mcp.toolRun');
   }
 
   window._mcpReplayCallback = function(toolName, params) {
@@ -601,7 +640,7 @@ export function initMcpPanel() {
             <div class="sk-name">${s.name_zh || s.id}</div>
             <div class="sk-desc">${(s.description || '').slice(0, 60)}</div>
           </div>
-          <button class="mp-btn mp-btn-uninstall" style="font-size:11px;padding:4px 10px" onclick="mcpDeleteSkill('${s.id}')">删除</button>
+          <button class="mp-btn mp-btn-uninstall" style="font-size:11px;padding:4px 10px" onclick="mcpDeleteSkill('${s.id}')" data-i18n="mcp.deleteSkill">${t('mcp.deleteSkill')}</button>
         </div>
       `).join('');
     } catch(e) {
@@ -610,7 +649,7 @@ export function initMcpPanel() {
   }
 
   window.mcpDeleteSkill = async function(id) {
-    if (!confirm('删除此技能？')) return;
+    if (!confirm(t('mcp.skillDeleteConfirm'))) return;
     try {
       await fetch(getBaseUrl() + `/api/mcp/skills/${id}`, { method: 'DELETE' });
       _mcpLoaded = false;
@@ -624,7 +663,7 @@ export function initMcpPanel() {
     if (!desc) return;
     const btn = $id('mcp-gen-skill-btn');
     btn.disabled = true;
-    btn.textContent = '生成中…';
+    btn.textContent = t('mcp.generating');
     try {
       const r = await fetch(getBaseUrl() + '/api/mcp/skills/generate', {
         method: 'POST',
@@ -639,7 +678,7 @@ export function initMcpPanel() {
       }
     } catch(e) { console.warn('gen skill:', e); }
     btn.disabled = false;
-    btn.textContent = '✨ 生成技能';
+    btn.textContent = t('mcp.genSkill');
   }
 
   async function addServer() {
@@ -649,7 +688,7 @@ export function initMcpPanel() {
     if (!name || !cmdOrUrl) return;
     const id = name.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
     const btn = $id('mcp-add-srv-btn');
-    btn.disabled = true; btn.textContent = '添加中…';
+    btn.disabled = true; btn.textContent = t('mcp.addingServer');
     try {
       const body = { id, name, transport };
       if (transport === 'stdio') body.command = cmdOrUrl;
@@ -668,7 +707,7 @@ export function initMcpPanel() {
         await loadMcpData();
       }
     } catch(e) { console.warn('add server:', e); }
-    btn.disabled = false; btn.textContent = '添加服务器';
+    btn.disabled = false; btn.textContent = t('mcp.addServerBtn');
   }
 
   $id('mcp-panel-toggle')?.addEventListener('click', openMcpPanel);
@@ -686,6 +725,12 @@ export function initMcpPanel() {
       btn.style.borderColor = 'var(--accent)';
     });
   });
+
+  function refreshMcpPanelI18n() {
+    if (_mcpLoaded) loadMcpData().catch(() => {});
+  }
+  window.addEventListener('oc-lang-change', refreshMcpPanelI18n);
+  window.addEventListener('oc-i18n-updated', refreshMcpPanelI18n);
 }
 
 // ══════════════════════════════════════════════════════════════

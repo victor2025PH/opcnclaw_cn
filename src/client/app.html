@@ -615,11 +615,11 @@ body{
   display:flex;gap:12px;margin-bottom:20px;
 }
 .sc-stat-card{
-  flex:1;background:var(--bg-surface);border-radius:var(--radius-md);
-  padding:12px;text-align:center;
+  flex:1;min-width:60px;background:var(--bg-surface);border-radius:var(--radius-md);
+  padding:10px 8px;text-align:center;
 }
-.sc-stat-num{font-size:22px;font-weight:700;color:var(--accent)}
-.sc-stat-label{font-size:11px;color:var(--text-muted);margin-top:2px}
+.sc-stat-num{font-size:20px;font-weight:700;color:var(--accent)}
+.sc-stat-label{font-size:10px;color:var(--text-muted);margin-top:2px}
 .sc-section{margin-bottom:24px}
 .sc-section-title{
   font-size:13px;font-weight:600;color:var(--text-muted);
@@ -3993,7 +3993,7 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     </button>
     <h2 data-i18n="model.title">📦 模型管理</h2>
-    <span id="mp-mode-badge" style="font-size:11px;padding:3px 10px;border-radius:10px;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border)">—</span>
+    <button id="mp-mode-badge" style="font-size:11px;padding:4px 12px;border-radius:10px;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:all .2s" title="切换显示模式">—</button>
   </div>
   <div class="mp-body">
     <div class="mp-sys-bar" id="mp-sys-bar">
@@ -4002,7 +4002,7 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
       <div class="mp-sys-card"><div class="sys-num" id="mp-disk">—</div><div class="sys-label" data-i18n="model.diskFreeLabel">可用磁盘</div></div>
     </div>
     <div class="mp-batch-bar" id="mp-batch-bar">
-      <span class="mp-batch-count" id="mp-batch-count">已选 0 个模型</span>
+      <span class="mp-batch-count" id="mp-batch-count">勾选多个模型后点击"批量安装"</span>
       <button class="mp-btn mp-btn-install" id="mp-batch-install" style="padding:6px 16px;font-size:12px" data-i18n="model.batchInstall">批量安装</button>
       <button class="mp-btn mp-btn-cancel" id="mp-batch-clear" style="padding:6px 12px;font-size:12px" data-i18n="model.batchCancel">取消</button>
     </div>
