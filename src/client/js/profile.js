@@ -8,6 +8,33 @@ const $id = id => document.getElementById(id);
 let _sessions = [];
 let _currentId = null;
 
+/** API returns `{ session, msg_count, first_ts, last_ts }` — not `id` / `title`. */
+function _sessionKey(s) {
+  if (!s || typeof s !== 'object') return '';
+  if (s.session != null && s.session !== '') return String(s.session);
+  if (s.id != null && s.id !== '') return String(s.id);
+  return '';
+}
+
+function _sessionTitle(s) {
+  const key = _sessionKey(s);
+  if (!key) return t('sess.untitled');
+  if (key === 'default') return t('sess.defaultName');
+  let label = key.replace(/^profile:/, '');
+  if (label.startsWith('web:')) label = label.slice(4);
+  if (label.startsWith('wechat:')) label = '微信 · ' + label.slice(7);
+  if (label.startsWith('siri:')) label = 'Siri · ' + label.slice(5);
+  return label || key;
+}
+
+function _sessionTime(s) {
+  const raw = s.last_ts ?? s.updated_at ?? s.created_at ?? s.first_ts;
+  if (raw == null || raw === '') return '';
+  const d = new Date(typeof raw === 'number' && raw < 1e12 ? raw * 1000 : raw);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 function sessOpenPanel() { $id('sessions-panel').classList.add('open'); loadSessions(); }
 function sessClosePanel() { $id('sessions-panel').classList.remove('open'); }
 
@@ -16,7 +43,7 @@ async function loadSessions() {
     const r = await fetch(getBaseUrl() + '/api/history/sessions');
     const d = await r.json();
     _sessions = d.sessions || d || [];
-    _currentId = d.current_id || (_sessions[0]?.id);
+    _currentId = d.current_id != null ? d.current_id : (_sessionKey(_sessions[0]) || null);
     renderSessionList();
   } catch {
     $id('sess-list').innerHTML = `<div class="notif-empty">${t('sess.empty')}</div>`;
@@ -30,24 +57,26 @@ function renderSessionList() {
     return;
   }
   list.innerHTML = _sessions.map(s => {
-    const d = new Date(s.updated_at || s.created_at || Date.now());
-    const ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const isActive = s.id === _currentId;
-    return `<div class="sess-item${isActive ? ' active' : ''}" data-id="${s.id}">
-      <div class="sess-title">${s.title || s.id}</div>
+    const sid = _sessionKey(s);
+    const title = _sessionTitle(s);
+    const ts = _sessionTime(s);
+    const isActive = sid && String(_currentId) === sid;
+    const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    return `<div class="sess-item${isActive ? ' active' : ''}" data-session="${esc(sid)}">
+      <div class="sess-title">${esc(title)}</div>
       ${isActive ? `<span style="font-size:9px;color:var(--accent);font-weight:600">${t('sess.current')}</span>` : ''}
-      <span class="sess-time">${ts}</span>
-      <button class="sess-del" data-id="${s.id}" title="Delete">✕</button>
+      <span class="sess-time">${esc(ts)}</span>
+      <button class="sess-del" data-session="${esc(sid)}" title="Delete">✕</button>
     </div>`;
   }).join('');
   list.querySelectorAll('.sess-item').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.classList.contains('sess-del')) return;
-      switchSession(el.dataset.id);
+      switchSession(el.getAttribute('data-session'));
     });
   });
   list.querySelectorAll('.sess-del').forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); deleteSession(btn.dataset.id); });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); deleteSession(btn.getAttribute('data-session')); });
   });
 }
 
@@ -132,7 +161,7 @@ function renderSwitcher() {
       <span class="pa-name">${p.name}</span>
     </div>`;
   });
-  html += `<button class="profile-add-btn" id="profile-manage-btn" title="管理成员">+</button>`;
+  html += `<button class="profile-add-btn" id="profile-manage-btn" title="管理成员" style="width:auto;padding:2px 8px;border-radius:12px;font-size:11px">👥成员</button>`;
   html += `<div class="profile-quick-popup" id="profile-quick-popup"></div>`;
   switcher.innerHTML = html;
 
