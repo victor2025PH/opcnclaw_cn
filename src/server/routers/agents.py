@@ -274,7 +274,111 @@ async def create_custom_team(request: Request):
         return {"ok": False, "error": str(e)}
 
 
+@router.get("/store")
+async def get_store_roles(category: str = ""):
+    """角色商店 — 浏览社区角色"""
+    from src.server.agent_store import list_store_roles, get_store_categories
+    return {
+        "roles": list_store_roles(category),
+        "categories": get_store_categories(),
+    }
+
+
+@router.post("/store/install/{role_id}")
+async def install_store_role(role_id: str):
+    """安装商店角色"""
+    from src.server.agent_store import install_role
+    return install_role(role_id)
+
+
 @router.get("/teams")
 async def get_all_teams():
     """列出所有团队"""
     return {"teams": list_teams()}
+
+
+# ── 反馈系统（护城河：Agent 越用越懂老板）──
+
+
+class FeedbackRequest(BaseModel):
+    rating: str = Field("", description="满意度: good/bad/neutral")
+    comment: str = Field("", description="具体反馈文字")
+    agent_ids: list = Field(default_factory=list, description="指定 Agent（空=所有）")
+
+
+@router.post("/team/{team_id}/feedback")
+async def submit_team_feedback(team_id: str, req: FeedbackRequest):
+    """提交团队反馈（满意/不满意/具体意见）"""
+    team = get_team(team_id)
+    if not team:
+        return {"ok": False, "error": "团队不存在"}
+
+    from src.server.agent_memory import save_feedback
+
+    # 构建反馈文本
+    feedback_text = ""
+    if req.rating == "bad":
+        feedback_text = f"不满意。{req.comment}" if req.comment else "老板不满意，下次需要改进"
+    elif req.rating == "good":
+        feedback_text = f"满意！{req.comment}" if req.comment else "老板满意"
+    elif req.comment:
+        feedback_text = req.comment
+
+    if not feedback_text:
+        return {"ok": False, "error": "请提供评价或意见"}
+
+    # 保存反馈到指定 Agent 或所有 Agent
+    target_agents = req.agent_ids if req.agent_ids else list(team.agents.keys())
+    saved = 0
+    for aid in target_agents:
+        agent = team.agents.get(aid)
+        if agent and agent.current_task:
+            save_feedback(aid, feedback_text, agent.current_task.description)
+            saved += 1
+
+    return {"ok": True, "saved": saved, "message": f"反馈已记录，{saved} 个 Agent 将在下次工作中改进"}
+
+
+@router.post("/feedback/implicit")
+async def implicit_feedback(request: Request):
+    """隐式反馈：分析用户消息中对团队结果的评价"""
+    body = await request.json()
+    user_message = body.get("message", "")
+    team_id = body.get("team_id", "")
+
+    if not user_message or not team_id:
+        return {"ok": False}
+
+    team = get_team(team_id)
+    if not team:
+        return {"ok": False}
+
+    # 情绪关键词检测
+    negative_keywords = [
+        "不好", "不行", "太差", "重写", "重做", "换个", "不满意",
+        "不对", "有问题", "错了", "改一下", "不是这样", "偏了",
+        "太长", "太短", "太正式", "太随意", "没有重点", "跑题",
+    ]
+    positive_keywords = [
+        "不错", "很好", "满意", "可以", "挺好", "完美", "赞",
+        "就这样", "没问题", "ok", "good", "great",
+    ]
+
+    msg_lower = user_message.lower()
+    is_negative = any(k in msg_lower for k in negative_keywords)
+    is_positive = any(k in msg_lower for k in positive_keywords)
+
+    if not is_negative and not is_positive:
+        return {"ok": True, "detected": False}
+
+    from src.server.agent_memory import save_feedback
+
+    feedback = user_message[:200]
+    rating = "bad" if is_negative else "good"
+
+    # 保存到所有参与的 Agent
+    for aid, agent in team.agents.items():
+        if agent.current_task and agent.current_task.result:
+            save_feedback(aid, feedback)
+
+    return {"ok": True, "detected": True, "rating": rating}

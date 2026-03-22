@@ -196,6 +196,15 @@ async function sendTextMessage(text) {
   petSetSubtitle('');
   hideWelcome();
 
+  // 隐式反馈：如果有已完成的团队，检测用户消息是否是反馈
+  if (window._lastCompletedTeamId && text.trim().length > 1 && text.trim().length < 100) {
+    fetch(getBaseUrl() + '/api/agents/feedback/implicit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text.trim(), team_id: window._lastCompletedTeamId }),
+    }).catch(() => {});
+  }
+
   const imageData = [];
   const fileNames = [];
   for (const att of S.attachments) {
@@ -1474,6 +1483,7 @@ export function init() {
         // 完成：显示结果卡片
         if (team.status === 'done' && !_teamNotifiedIds.has(tid)) {
           _teamNotifiedIds.add(tid);
+          window._lastCompletedTeamId = tid;  // 隐式反馈追踪
           // 移除进度条
           const progressEl = document.getElementById(`team-progress-${tid}`);
           if (progressEl) progressEl.remove();
@@ -1508,8 +1518,16 @@ export function init() {
                 ${filesHtml}
                 <div class="trc-actions">
                   ${downloadUrl ? `<button onclick="window.location.href='${downloadUrl}'">📥 下载 ZIP</button>` : ''}
-                  ${projectId ? `<button onclick="window.open('/project','_blank')">📂 查看项目</button>` : ''}
+                  ${projectId ? `<button onclick="window.open('/report/${projectId}','_blank')">🔗 分享报告</button>` : ''}
                   <button onclick="navigator.clipboard.writeText(${JSON.stringify(result.substring(0, 2000))})">📋 复制</button>
+                  ${projectId ? `<button onclick="navigator.clipboard.writeText(location.origin+'/report/${projectId}').then(()=>this.textContent='已复制链接!')">📤 复制链接</button>` : ''}
+                  <button onclick="window._shareToWechat('${tid}',${JSON.stringify(result.substring(0,200))})" title="发送摘要到微信">💬 发微信</button>
+                </div>
+                <div class="trc-feedback" id="trc-fb-${tid}">
+                  <span style="font-size:11px;color:var(--text-muted)">这次结果怎么样？</span>
+                  <button class="trc-fb-btn trc-fb-good" onclick="window._submitTeamFeedback('${tid}','good',this)">👍 满意</button>
+                  <button class="trc-fb-btn trc-fb-bad" onclick="window._submitTeamFeedback('${tid}','bad',this)">👎 不满意</button>
+                  <button class="trc-fb-btn" onclick="window._submitTeamFeedbackDetail('${tid}',this)">💬 具体意见</button>
                 </div>
               </div>
             </div>`;
@@ -1520,3 +1538,76 @@ export function init() {
     } catch (e) { /* silent */ }
   }, 4000);
 }
+
+// ── 团队反馈系统 ──
+window._submitTeamFeedback = async function(teamId, rating, btn) {
+  const fbEl = document.getElementById('trc-fb-' + teamId);
+  if (!fbEl) return;
+  try {
+    const r = await fetch(getBaseUrl() + '/api/agents/team/' + teamId + '/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating, comment: '' }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      fbEl.innerHTML = rating === 'good'
+        ? '<span style="color:var(--success);font-size:12px">👍 已记录！Agent 会继续保持</span>'
+        : '<span style="color:var(--warning);font-size:12px">👎 已记录！Agent 下次会改进</span>';
+    }
+  } catch (e) { console.warn('feedback error', e); }
+};
+
+window._submitTeamFeedbackDetail = function(teamId, btn) {
+  const fbEl = document.getElementById('trc-fb-' + teamId);
+  if (!fbEl) return;
+  fbEl.innerHTML = `
+    <input type="text" id="trc-fb-input-${teamId}" placeholder="请说说哪里需要改进…" style="flex:1;padding:6px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit">
+    <button class="trc-fb-btn" onclick="window._sendFeedbackComment('${teamId}')" style="white-space:nowrap">发送</button>
+  `;
+  fbEl.style.display = 'flex';
+  fbEl.style.gap = '6px';
+  const input = document.getElementById('trc-fb-input-' + teamId);
+  if (input) { input.focus(); input.addEventListener('keydown', e => { if (e.key === 'Enter') window._sendFeedbackComment(teamId); }); }
+};
+
+window._sendFeedbackComment = async function(teamId) {
+  const input = document.getElementById('trc-fb-input-' + teamId);
+  const fbEl = document.getElementById('trc-fb-' + teamId);
+  if (!input || !fbEl) return;
+  const comment = input.value.trim();
+  if (!comment) return;
+  try {
+    const r = await fetch(getBaseUrl() + '/api/agents/team/' + teamId + '/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: 'bad', comment }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      fbEl.innerHTML = '<span style="color:var(--accent);font-size:12px">💬 反馈已记录，Agent 下次会注意</span>';
+    }
+  } catch (e) { console.warn('feedback error', e); }
+};
+
+// ── 微信分享 ──
+window._shareToWechat = async function(teamId, summary) {
+  const contact = prompt('发送给谁？（输入微信联系人名称）');
+  if (!contact || !contact.trim()) return;
+  const text = (summary || '').substring(0, 200) + '\n\n-- 十三香小龙虾AI工作队';
+  try {
+    const r = await fetch(getBaseUrl() + '/api/wechat/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact: contact.trim(), message: text }),
+    });
+    const d = await r.json();
+    if (d.ok || d.success) {
+      alert('已发送给 ' + contact);
+    } else {
+      alert('发送失败：' + (d.error || '微信未连接'));
+    }
+  } catch (e) {
+    alert('发送失败，请检查微信连接');
+  }
+};

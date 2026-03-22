@@ -291,6 +291,11 @@ body{
 .trc-actions{display:flex;gap:8px;flex-wrap:wrap}
 .trc-actions button{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface,#252542);color:var(--text-primary,#eee);font-size:12px;cursor:pointer;transition:all 0.15s}
 .trc-actions button:hover{border-color:var(--accent);background:rgba(108,99,255,0.15)}
+.trc-feedback{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap}
+.trc-fb-btn{padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-surface,#252542);color:var(--text-secondary);font-size:11px;cursor:pointer;transition:all 0.15s}
+.trc-fb-btn:hover{border-color:var(--accent);color:var(--text-primary)}
+.trc-fb-good:hover{border-color:var(--success);color:var(--success)}
+.trc-fb-bad:hover{border-color:var(--error);color:var(--error)}
 
 /* 加载和动画 */
 .loading-dots::after{content:'';animation:dots 1.5s infinite}
@@ -2761,6 +2766,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="hom-item" data-target="summary-btn"><span class="hom-icon">📋</span>对话摘要</button>
       <button class="hom-item" data-target="export-toggle"><span class="hom-icon">📥</span>导出</button>
       <button class="hom-item" data-target="bookmark-toggle"><span class="hom-icon">⭐</span>收藏</button>
+      <button class="hom-item" id="hom-profile" onclick="document.getElementById('settings-toggle').click();setTimeout(()=>{const b=document.querySelector('.stab[data-tab=tab-profile]');if(b)b.click()},200)"><span class="hom-icon">🧠</span>我的画像</button>
       <div class="hom-sep"></div>
       <button class="hom-item" onclick="window.open('/chat','_blank')"><span class="hom-icon">📱</span>手机简洁版</button>
       <button class="hom-item" onclick="window.open('/setup?force','_blank')"><span class="hom-icon">⚙️</span>初始设置</button>
@@ -2919,7 +2925,19 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <div class="welcome" id="welcome-screen">
       <div class="welcome-icon">🦞</div>
       <h2>十三香小龙虾 AI 工作队</h2>
-      <p style="color:var(--text-secondary);margin-bottom:20px">说一句话，52个AI帮你干活</p>
+      <p style="color:var(--text-secondary);margin-bottom:12px">说一句话，52个AI帮你干活</p>
+
+      <!-- 护城河状态条 -->
+      <div id="moat-bar" style="width:100%;max-width:400px;margin:0 auto 20px;padding:12px 16px;background:var(--bg-surface);border-radius:12px;border:1px solid var(--border);display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--text-secondary)"><span id="moat-icon">🌱</span> <span id="moat-level">加载中</span></span>
+          <span style="font-size:12px;font-weight:600;color:var(--accent)" id="moat-score-text">0分</span>
+        </div>
+        <div style="width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+          <div id="moat-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#6c63ff,#8b5cf6,#22c55e);border-radius:3px;transition:width 1s ease"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:6px" id="moat-desc">AI 正在学习你的业务</div>
+      </div>
 
       <!-- AI 团队快捷任务 -->
       <div class="suggestions" style="margin-bottom:16px">
@@ -3150,7 +3168,9 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <button class="stab" data-tab="tab-voice">🎤 语音</button>
       <button class="stab" data-tab="tab-expression">🎭 表情控制</button>
       <button class="stab" data-tab="tab-display">🎨 显示</button>
+      <button class="stab" data-tab="tab-profile">🧠 我的画像</button>
       <button class="stab" data-tab="tab-data">💾 数据</button>
+      <button class="stab" data-tab="tab-store">🛒 角色商店</button>
       <button class="stab" data-tab="tab-advanced">⚡ 高级</button>
     </div>
     <div class="settings-tab-content">
@@ -3276,19 +3296,23 @@ mark.search-hl.active{background:var(--accent);color:#fff}
             <option value="max" data-i18n="settings.petLevelMax">取较大</option>
           </select>
         </div>
+        <div class="settings-row" style="align-items:center;gap:10px;margin-top:10px">
+          <span class="settings-label" style="min-width:100px" data-i18n="settings.petSkin">桌宠形象</span>
+          <select id="pet-skin-select" style="flex:1;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit;min-width:0"></select>
+        </div>
       </div>
     </div>
     <div class="settings-group">
-      <h3>🎙️ 语音克隆</h3>
-      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">录制 10-20 秒清晰语音，即可克隆自己或家人的声音（需 DashScope API Key）</p>
+      <h3 data-i18n="clone.sectionTitle">🎙️ 语音克隆</h3>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px" data-i18n="clone.hint">录制 10-20 秒清晰语音，即可克隆自己或家人的声音（需 DashScope API Key）</p>
       <div id="clone-voices-list" style="margin-bottom:10px"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <input type="text" id="clone-voice-name" placeholder="声音名称（如：爸爸的声音）" style="flex:1;padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
+        <input type="text" id="clone-voice-name" data-i18n="clone.namePlaceholder" data-i18n-attr="placeholder" placeholder="声音名称（如：爸爸的声音）" style="flex:1;padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
       </div>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button class="btn" id="clone-record-btn" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px">🎤 开始录音</button>
+        <button class="btn" id="clone-record-btn" data-i18n="clone.record" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px">🎤 开始录音</button>
         <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);padding:10px;font-size:13px;border-radius:8px;cursor:pointer;text-align:center">
-          📁 上传音频
+          <span data-i18n="clone.upload">📁 上传音频</span>
           <input type="file" id="clone-upload-input" accept="audio/*" style="display:none">
         </label>
       </div>
@@ -3296,7 +3320,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <div id="clone-recording-ui" style="display:none;text-align:center;padding:12px;background:var(--bg-surface);border-radius:var(--radius-md);margin-top:8px">
         <div style="font-size:24px;margin-bottom:8px">🔴</div>
         <div id="clone-timer" style="font-size:18px;font-weight:700;margin-bottom:8px;font-variant-numeric:tabular-nums">00:00</div>
-        <button class="btn" id="clone-stop-btn" style="background:var(--error);color:#fff;padding:8px 24px;border-radius:8px">⏹ 停止录音</button>
+        <button class="btn" id="clone-stop-btn" data-i18n="clone.stop" style="background:var(--error);color:#fff;padding:8px 24px;border-radius:8px">⏹ 停止录音</button>
       </div>
     </div>
     <div class="settings-group">
@@ -3413,6 +3437,99 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
     </div><!-- /tab-display -->
     <!-- TAB: Data -->
+    <!-- TAB: User Profile (护城河) -->
+    <div class="stab-pane" id="tab-profile">
+    <div class="settings-group">
+      <h3>🏢 公司/品牌</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">AI 会自动从对话中学习，你也可以手动填写加速</p>
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="settings-label" style="min-width:70px">公司名称</span>
+          <input type="text" id="up-company" placeholder="如：十三香科技" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="settings-label" style="min-width:70px">所在行业</span>
+          <input type="text" id="up-industry" placeholder="如：电商、教育、科技" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="settings-label" style="min-width:70px">团队规模</span>
+          <input type="text" id="up-team-size" placeholder="如：5人、50人" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        </div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>📦 产品信息</h3>
+      <div id="up-products-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="up-product-new" placeholder="添加产品名称" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <button class="btn" id="up-product-add" style="background:var(--accent);color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;white-space:nowrap">+ 添加</button>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>🎯 目标用户</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <input type="text" id="up-target-users" placeholder="如：25-35岁女性白领" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-budget-range" placeholder="常见预算范围（如：5000-20000元/月）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>✍️ 写作偏好</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <input type="text" id="up-brand-tone" placeholder="品牌调性（如：专业但不严肃、年轻活力）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-writing-style" placeholder="写作风格（如：简洁有力、数据驱动）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-forbidden-words" placeholder="禁忌词（逗号分隔，如：最好,第一,绝对）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-common-terms" placeholder="常用术语（逗号分隔，如：私域,转化率,ROI）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>🏷️ 竞品</h3>
+      <input type="text" id="up-competitors" placeholder="竞品名称（逗号分隔）" style="width:100%;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;padding-bottom:16px">
+      <button class="btn" id="up-save" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px">💾 保存画像</button>
+      <button class="btn" id="up-reset" style="background:var(--bg-surface);color:var(--text-secondary);padding:10px 16px;font-size:12px;border-radius:8px">重置</button>
+    </div>
+    <div id="up-status" style="font-size:11px;color:var(--success);min-height:16px;text-align:center"></div>
+    <!-- 数据备份 -->
+    <div class="settings-group" style="margin-top:12px">
+      <h3>💾 数据备份</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="moat-export-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px">📤 导出 JSON</button>
+        <button class="btn" id="moat-export-zip-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px">📦 导出 ZIP</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px;cursor:pointer;text-align:center">
+          📥 导入数据
+          <input type="file" id="moat-import-input" accept=".json" style="display:none">
+        </label>
+      </div>
+      <div id="moat-backup-status" style="font-size:10px;color:var(--text-muted);min-height:14px;margin-top:4px;text-align:center"></div>
+    </div>
+    <!-- 护城河仪表盘 -->
+    <div class="settings-group" id="moat-dashboard" style="margin-top:12px">
+      <h3>🏰 护城河数据</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+          <svg viewBox="0 0 36 36" style="width:64px;height:64px;transform:rotate(-90deg)">
+            <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+            <circle id="moat-ring" cx="18" cy="18" r="16" fill="none" stroke="url(#moat-grad)" stroke-width="3" stroke-linecap="round" stroke-dasharray="0 100" style="transition:stroke-dasharray 1s ease"/>
+            <defs><linearGradient id="moat-grad"><stop offset="0%" stop-color="#6c63ff"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent)" id="moat-ring-score">0</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="moat-dash-level">加载中...</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px" id="moat-dash-desc"></div>
+        </div>
+      </div>
+      <div id="moat-bars" style="display:flex;flex-direction:column;gap:8px"></div>
+      <!-- 增长任务 -->
+      <div id="moat-tasks" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center">
+        📊 AI 已与你交互 <span id="up-interaction-count" style="color:var(--accent);font-weight:600">0</span> 次，越用护城河越深
+      </div>
+    </div>
+    </div><!-- /tab-profile -->
     <div class="stab-pane" id="tab-data">
     <div class="settings-group">
       <h3>记忆</h3>
@@ -3436,6 +3553,23 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       <p style="font-size:10px;color:var(--text-muted);margin-top:4px" data-i18n="settings.dataHint">导出/导入主题、收藏、历史等本地设置</p>
     </div>
     </div><!-- /tab-data -->
+    <!-- TAB: Agent Store -->
+    <div class="stab-pane" id="tab-store">
+    <div class="settings-group">
+      <h3>🛒 社区角色</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">一键安装行业专属 Agent，立即获得专业能力</p>
+      <div id="store-categories" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+      <div id="store-role-list" style="display:flex;flex-direction:column;gap:8px">
+        <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px">加载中...</div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>📋 已安装的自定义角色</h3>
+      <div id="store-installed-list" style="display:flex;flex-direction:column;gap:6px">
+        <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px">暂无</div>
+      </div>
+    </div>
+    </div><!-- /tab-store -->
     <!-- TAB: Advanced -->
     <div class="stab-pane" id="tab-advanced">
     <div class="settings-group">
@@ -4366,6 +4500,7 @@ const { initIoTPanel } = await import('/js/iot-panel.js' + _v);
 const { initPushManager } = await import('/js/push-manager.js' + _v);
 const { initPluginMarket } = await import('/js/plugin-market.js' + _v);
 const { initAgentPanel } = await import('/js/agent-panel.js' + _v);
+const { initUserProfile } = await import('/js/user-profile.js' + _v);
 
 const steps = [
   ['state', initState],
@@ -4383,6 +4518,7 @@ const steps = [
   ['push-manager', initPushManager],
   ['plugin-market', initPluginMarket],
   ['agent-panel', initAgentPanel],
+  ['user-profile', initUserProfile],
 ];
 let failedAt = null;
 for (const [name, fn] of steps) {

@@ -242,6 +242,22 @@ class AIBackend:
         self._persist("user", user_content)
 
         system = self.system_prompt
+        # 注入用户画像（让 AI 越用越懂老板，限 600 字）
+        try:
+            from .user_profile_ai import get_profile_context
+            profile_ctx = get_profile_context()
+            if profile_ctx:
+                system = system + profile_ctx[:600]
+        except Exception:
+            pass
+        # 注入质量守卫（防止空洞回复，限 200 字）
+        try:
+            from .quality_guard import get_quality_prompt_boost
+            quality_boost = get_quality_prompt_boost(user_message)
+            if quality_boost:
+                system = system + "\n\n" + quality_boost[:200]
+        except Exception:
+            pass
         skill_context = None
 
         _SKILL_ICONS = {
@@ -361,8 +377,38 @@ class AIBackend:
 
                 if last_provider:
                     logger.debug(f"路由器使用平台: {last_provider}")
+
+                # 质量检测：空洞回复自动补救（仅路由器可用时，最多 1 次）
+                if self._router and full_response and len(full_response) < 150:
+                    try:
+                        from .quality_guard import check_response_quality
+                        qr = check_response_quality(user_message, full_response)
+                        if qr["quality"] == "hollow" and qr.get("suggestion"):
+                            logger.warning(f"[QualityGuard] 空洞回复, score={qr['score']}, 自动补救")
+                            retry_msgs = messages + [
+                                {"role": "assistant", "content": full_response},
+                                {"role": "user", "content": qr["suggestion"]},
+                            ]
+                            yield "\n\n"
+                            async for chunk2, _ in self._router.chat_stream(
+                                retry_msgs, max_tokens=600, temperature=0.7,
+                                tools=TOOL_SCHEMAS if self.enable_tools else None,
+                            ):
+                                if chunk2 in ("__SWITCH__", "__TOOL_CALLS__"):
+                                    continue
+                                full_response += chunk2
+                                yield chunk2
+                    except Exception as e:
+                        logger.debug(f"[QualityGuard] 跳过: {e}")
+
                 self.conversation_history.append({"role": "assistant", "content": full_response})
                 self._persist("assistant", full_response)
+                # 从对话中学习用户画像
+                try:
+                    from .user_profile_ai import update_profile_from_conversation
+                    update_profile_from_conversation(user_message, full_response)
+                except Exception:
+                    pass
                 return
             except Exception as e:
                 logger.warning(f"路由器失败，降级到直连: {e}")
@@ -411,6 +457,12 @@ class AIBackend:
 
             self.conversation_history.append({"role": "assistant", "content": full_response})
             self._persist("assistant", full_response)
+            # 从对话中学习用户画像
+            try:
+                from .user_profile_ai import update_profile_from_conversation
+                update_profile_from_conversation(user_message, full_response)
+            except Exception:
+                pass
         except Exception as e:
             logger.error(f"OpenAI streaming error: {e}")
             yield "抱歉，处理时出现问题，请稍后再试。"

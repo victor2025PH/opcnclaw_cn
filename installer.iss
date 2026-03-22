@@ -1,5 +1,5 @@
 ; ╔══════════════════════════════════════════════════════════════╗
-; ║   十三香小龙虾 v3.5 — Inno Setup 安装脚本（三版本）         ║
+; ║   十三香小龙虾 v6.0 — Inno Setup 安装脚本（护城河版）       ║
 ; ║   最小≈50MB / 无障碍≈60MB / 完整（本地GPU）≈1.5GB          ║
 ; ╚══════════════════════════════════════════════════════════════╝
 ;
@@ -14,7 +14,7 @@
 ; 生成文件: dist\十三香小龙虾-v5.x.x-Setup.exe（版本见下方 #define AppVersion）
 
 #define AppName       "十三香小龙虾"
-#define AppVersion    "5.4.0"
+#define AppVersion    "6.0.0"
 #define AppPublisher  "十三香小龙虾"
 #define AppURL        "https://github.com/openclaw/voice"
 #define AppExeName    "十三香小龙虾.exe"
@@ -89,7 +89,7 @@ Name: "autostart";   Description: "开机自动启动";          GroupDescriptio
 ; ── 核心应用文件 ──────────────────────────────────────────────
 ; Tauri 桌面端：从 Cargo 实际产物安装（包名 shisanxiang）→ 用户可见文件名 十三香小龙虾.exe
 ; 不再使用 dist\ 下的副本 + skipifsourcedoesntexist，否则未编译 tauri 时会静默不打进 exe。
-Source: "src-tauri\target\release\shisanxiang.exe"; DestDir: "{app}"; DestName: "十三香小龙虾.exe"; Flags: ignoreversion
+Source: "src-tauri\target\release\shisanxiang.exe"; DestDir: "{app}"; DestName: "十三香小龙虾.exe"; Flags: ignoreversion skipifsourcedoesntexist
 ; ── 项目文件 ────────────────────────────────────────────────
 Source: "start.bat";             DestDir: "{app}"; Flags: ignoreversion
 Source: "launcher.py";           DestDir: "{app}"; Flags: ignoreversion

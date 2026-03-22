@@ -207,23 +207,94 @@ class Agent:
         except Exception as e:
             logger.debug(f"[Agent:{self.role.name}] post_execute: {e}")
 
+    # prompt 注入总长度上限（约 2000 token ≈ 3000 中文字符）
+    _MAX_CONTEXT_CHARS = 3000
+
     def _build_prompt(self, task: SubTask, context: dict) -> str:
+        """构建 Agent 执行 prompt（带智能截断）
+
+        注入优先级（高→低）：
+        1. 任务描述（必须）
+        2. 用户画像（核心护城河）
+        3. 反馈提醒（避免重复错误）
+        4. 历史记忆（上下文连续性）
+        5. 专长进化（锦上添花）
+        6. 项目知识库（参考）
+        7. 项目背景 + 历史工作
+        """
         parts = [f"## 你的任务\n{task.description}"]
-        # 注入历史记忆（让 Agent 越用越聪明）
+        used_chars = len(parts[0])
+
+        # 按优先级依次注入，超出上限时截断
+        injections = []
+
+        # P1: 用户画像
         try:
-            from .agent_memory import get_agent_context
-            memory_ctx = get_agent_context(self.role.id)
-            if memory_ctx:
-                parts.append(memory_ctx)
+            from .user_profile_ai import get_profile_context
+            ctx = get_profile_context()
+            if ctx:
+                injections.append(("画像", ctx, 600))  # name, content, max_chars
         except Exception:
             pass
-        if context:
-            parts.append(f"\n## 项目背景\n{json.dumps(context, ensure_ascii=False, indent=2)}")
-        if self._history:
-            recent = self._history[-3:]
+
+        # P2: 反馈提醒（避免重复错误最重要）
+        try:
+            from .quality_guard import get_feedback_reminder
+            ctx = get_feedback_reminder(self.role.id)
+            if ctx:
+                injections.append(("反馈", ctx, 400))
+        except Exception:
+            pass
+
+        # P3: 历史记忆
+        try:
+            from .agent_memory import get_agent_context
+            ctx = get_agent_context(self.role.id)
+            if ctx:
+                injections.append(("记忆", ctx, 500))
+        except Exception:
+            pass
+
+        # P4: 专长进化
+        try:
+            from .agent_evolution import get_agent_expertise
+            ctx = get_agent_expertise(self.role.id)
+            if ctx:
+                injections.append(("进化", ctx, 300))
+        except Exception:
+            pass
+
+        # P5: 项目知识库
+        try:
+            from .project_knowledge import get_knowledge_context
+            ctx = get_knowledge_context(task.description)
+            if ctx:
+                injections.append(("知识库", ctx, 400))
+        except Exception:
+            pass
+
+        # 按优先级注入，控制总长度
+        for name, content, max_chars in injections:
+            trimmed = content[:max_chars]
+            if used_chars + len(trimmed) > self._MAX_CONTEXT_CHARS:
+                remaining = self._MAX_CONTEXT_CHARS - used_chars
+                if remaining > 100:  # 至少 100 字才值得注入
+                    parts.append(trimmed[:remaining])
+                    used_chars += remaining
+                break  # 后续低优先级内容不再注入
+            parts.append(trimmed)
+            used_chars += len(trimmed)
+
+        # 项目背景和历史（如果还有空间）
+        if context and used_chars < self._MAX_CONTEXT_CHARS - 200:
+            ctx_str = json.dumps(context, ensure_ascii=False, indent=2)[:300]
+            parts.append(f"\n## 项目背景\n{ctx_str}")
+        if self._history and used_chars < self._MAX_CONTEXT_CHARS - 100:
+            recent = self._history[-2:]
             parts.append("\n## 你之前的工作")
             for h in recent:
-                parts.append(f"- {h['task']}: {h['result'][:100]}")
+                parts.append(f"- {h['task']}: {h['result'][:80]}")
+
         return "\n".join(parts)
 
     def to_dict(self) -> dict:
@@ -369,9 +440,18 @@ class AgentTeam:
 
         max_tasks = min(len(self.agents) - 1, 10)  # 动态上限
 
+        # 注入用户画像让 CEO 了解老板业务
+        _profile_section = ""
+        try:
+            from .user_profile_ai import get_profile_context
+            _profile_section = get_profile_context()
+        except Exception:
+            pass
+
         plan_prompt = f"""你是团队 CEO。用户需求如下：
 
 {request}
+{_profile_section}
 
 你的团队成员：
 {agent_list}

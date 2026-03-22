@@ -66,15 +66,68 @@ def get_agent_context(agent_id: str) -> str:
     """获取 Agent 的记忆上下文（注入到 system prompt）"""
     memories = get_agent_memory(agent_id, 3)
     if not memories:
-        return ""
+        # 即使没有历史记忆，也检查是否有反馈
+        fb = get_agent_feedback_summary(agent_id)
+        return fb
 
     ctx = "\n\n## 你的历史记忆（之前做过的工作）\n"
     for m in memories:
         ctx += f"- 任务：{m['task']}，成果摘要：{m['result'][:100]}\n"
         if m.get('feedback'):
-            ctx += f"  老板反馈：{m['feedback']}\n"
+            ctx += f"  [!] 老板反馈：{m['feedback']}\n"
+
+    # 追加反馈汇总（确保负面反馈被强调）
+    fb = get_agent_feedback_summary(agent_id)
+    if fb:
+        ctx += fb
 
     return ctx
+
+
+def save_feedback(agent_id: str, feedback: str, task_hint: str = ""):
+    """保存用户对 Agent 工作的反馈（更新最近一条记忆的 feedback 字段）"""
+    try:
+        from . import db as _db
+        conn = _db.get_conn("main")
+        if task_hint:
+            # 找到匹配任务的最近记录 ID
+            row = conn.execute(
+                "SELECT id FROM agent_memory WHERE agent_id=? AND task LIKE ? ORDER BY created_at DESC LIMIT 1",
+                (agent_id, f"%{task_hint[:50]}%"),
+            ).fetchone()
+            if row:
+                conn.execute("UPDATE agent_memory SET feedback=? WHERE id=?", (feedback, row[0]))
+        else:
+            # 找到该 Agent 最近一条记忆 ID
+            row = conn.execute(
+                "SELECT id FROM agent_memory WHERE agent_id=? ORDER BY created_at DESC LIMIT 1",
+                (agent_id,),
+            ).fetchone()
+            if row:
+                conn.execute("UPDATE agent_memory SET feedback=? WHERE id=?", (feedback, row[0]))
+        conn.commit()
+        logger.info(f"[AgentMemory] 保存反馈: {agent_id} <- {feedback[:50]}")
+    except Exception as e:
+        logger.debug(f"[AgentMemory] save_feedback failed: {e}")
+
+
+def get_agent_feedback_summary(agent_id: str) -> str:
+    """获取 Agent 收到的负面反馈摘要（用于 prompt 注入避免重复错误）"""
+    try:
+        from . import db as _db
+        conn = _db.get_conn("main")
+        rows = conn.execute(
+            "SELECT task, feedback FROM agent_memory WHERE agent_id=? AND feedback!='' AND feedback IS NOT NULL ORDER BY created_at DESC LIMIT 5",
+            (agent_id,),
+        ).fetchall()
+        if not rows:
+            return ""
+        lines = []
+        for task, fb in rows:
+            lines.append(f"- 任务「{task[:30]}」：老板说「{fb[:80]}」")
+        return "\n\n## 老板之前的反馈（务必注意）\n" + "\n".join(lines)
+    except Exception:
+        return ""
 
 
 def save_user_preference(key: str, value: str):

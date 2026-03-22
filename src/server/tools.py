@@ -404,6 +404,40 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "resume_last_project",
+            "description": (
+                "继续上次的项目/方案。当用户说'继续上次'、'接着做'、'上次的方案'、'继续之前的'时调用。"
+                "自动加载最近的项目成果，让团队在此基础上续做。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instruction": {
+                        "type": "string",
+                        "description": "用户补充的新要求（如'把文案部分重写'、'加上预算表'）",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_project_history",
+            "description": (
+                "查看历史项目列表。当用户问'之前做过什么'、'有哪些项目'、'历史方案'时调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────
@@ -946,22 +980,40 @@ async def deploy_team(task: str, template: str = "startup") -> Dict[str, Any]:
         from .agent_templates import get_template, AGENT_ROLES
         from .agent_skills import get_skills_for_role
 
-        # 智能选模板
+        # 智能选模板（结合用户画像推荐）
         tpl = get_template(template)
         if not tpl:
             task_lower = task.lower()
+
+            # 先尝试用户画像行业推荐
+            _profile_industry = ""
+            try:
+                from .user_profile_ai import get_user_profile
+                _up = get_user_profile()
+                _profile_industry = (_up.get("industry", "") or "").lower()
+            except Exception:
+                pass
+
             if any(w in task_lower for w in ["代码", "开发", "程序", "bug", "api"]):
                 template = "software"
             elif any(w in task_lower for w in ["营销", "推广", "广告", "品牌"]):
                 template = "marketing"
-            elif any(w in task_lower for w in ["电商", "上架", "产品", "店铺"]):
+            elif any(w in task_lower for w in ["电商", "上架", "产品", "店铺"]) or "电商" in _profile_industry:
                 template = "ecommerce"
             elif any(w in task_lower for w in ["内容", "文案", "视频", "文章"]):
                 template = "content_factory"
             elif any(w in task_lower for w in ["客服", "回复", "售后"]):
                 template = "service_center"
+            elif any(w in task_lower for w in ["咨询", "顾问", "调研"]) or "咨询" in _profile_industry:
+                template = "consulting"
             else:
-                template = "startup"
+                # 根据行业默认推荐
+                if _profile_industry in ("电商", "跨境电商", "直播电商"):
+                    template = "ecommerce"
+                elif _profile_industry in ("saas", "科技", "b2b"):
+                    template = "software"
+                else:
+                    template = "startup"
             tpl = get_template(template)
 
         # ── 检测可用 AI 平台 ──
@@ -1077,8 +1129,29 @@ async def confirm_team(team_id: str, task: str) -> Dict[str, Any]:
         if not team:
             return {"error": "团队不存在，请重新组建"}
 
+        # 用用户画像丰富任务描述（让所有 Agent 了解业务背景）
+        enriched_task = task
+        try:
+            from .user_profile_ai import get_user_profile
+            up = get_user_profile()
+            context_parts = []
+            if up.get("company"):
+                context_parts.append(f"公司：{up['company']}")
+            if up.get("industry"):
+                context_parts.append(f"行业：{up['industry']}")
+            if up.get("products"):
+                context_parts.append(f"产品：{', '.join(p['name'] for p in up['products'][:3])}")
+            if up.get("target_users"):
+                context_parts.append(f"目标用户：{up['target_users']}")
+            if up.get("brand_tone"):
+                context_parts.append(f"品牌调性：{up['brand_tone']}")
+            if context_parts:
+                enriched_task = task + "\n\n【业务背景】" + "；".join(context_parts)
+        except Exception:
+            pass
+
         import asyncio
-        asyncio.create_task(team.execute(task))
+        asyncio.create_task(team.execute(enriched_task))
 
         return {
             "team_id": team_id,
@@ -1182,6 +1255,117 @@ async def team_morning_brief() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+async def resume_last_project(instruction: str = "") -> Dict[str, Any]:
+    """继续上次的项目"""
+    try:
+        from .project_workspace import list_projects, get_project
+
+        projects = list_projects()
+        if not projects:
+            return {
+                "message": "暂无历史项目。你可以说'帮我写个营销方案'来创建第一个项目。",
+                "has_project": False,
+            }
+
+        # 取最近的项目
+        latest = projects[0]
+        project_id = latest["project_id"]
+        p = get_project(project_id)
+
+        # 读取 README（上次的成果摘要）
+        summary = ""
+        if p:
+            readme_content = p.get_file("README.md")
+            if readme_content:
+                summary = readme_content[:1000]
+
+        # 构建上下文
+        task_desc = latest.get("task", "")
+        team_name = latest.get("team_name", "")
+        files = latest.get("artifacts", [])
+        file_names = [f.get("filename", "") for f in files] if isinstance(files, list) else []
+
+        resume_context = f"""上次的项目：{latest.get('name', '')}
+任务：{task_desc}
+团队：{team_name}（{latest.get('agent_count', 0)}人）
+产出文件：{', '.join(file_names[:5])}
+
+上次的成果摘要：
+{summary[:800]}
+"""
+        if instruction:
+            resume_context += f"\n用户新要求：{instruction}"
+
+        # 注入用户画像
+        profile_hint = ""
+        try:
+            from .user_profile_ai import get_user_profile
+            up = get_user_profile()
+            if up.get("company"):
+                profile_hint = f"（{up['company']}，{up.get('industry', '')}）"
+        except Exception:
+            pass
+
+        return {
+            "has_project": True,
+            "project_id": project_id,
+            "project_name": latest.get("name", ""),
+            "original_task": task_desc,
+            "team_name": team_name,
+            "file_count": len(file_names),
+            "resume_context": resume_context,
+            "share_url": f"/report/{project_id}",
+            "message": (
+                f"找到上次的项目「{latest.get('name', '')}{profile_hint}」\n\n"
+                "请把上次的成果摘要展示给用户，然后问：\n"
+                f"1. 如果用户有新要求（instruction={instruction!r}），调用 deploy_team 带上原始任务+新要求\n"
+                "2. 如果用户只是想看，展示成果和分享链接\n"
+                "3. confirm_team 时把 resume_context 作为任务的一部分传入"
+            ),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+async def get_project_history() -> Dict[str, Any]:
+    """查看历史项目列表"""
+    try:
+        from .project_workspace import list_projects
+        projects = list_projects()
+
+        if not projects:
+            return {
+                "message": "暂无历史项目。说'帮我写个营销方案'来创建第一个！",
+                "projects": [],
+            }
+
+        items = []
+        for p in projects[:10]:
+            items.append({
+                "name": p.get("name", ""),
+                "task": p.get("task", "")[:60],
+                "team": p.get("team_name", ""),
+                "agents": p.get("agent_count", 0),
+                "files": len(p.get("artifacts", [])),
+                "share_url": f"/report/{p['project_id']}",
+                "created": p.get("created_at", 0),
+            })
+
+        # 构建展示文本
+        text = f"共 {len(projects)} 个历史项目：\n\n"
+        for i, item in enumerate(items, 1):
+            text += f"{i}. **{item['name']}** — {item['task']}\n"
+            text += f"   团队：{item['team']}（{item['agents']}人），{item['files']}个文件\n\n"
+
+        return {
+            "message": "请把项目列表用自然语言展示给用户，每个项目附上分享链接。用户可以说'继续第X个'来恢复项目。",
+            "projects": items,
+            "display_text": text,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 async def _iot_control_tool(device_name: str, action: str, value: dict = None) -> Dict[str, Any]:
     """IoT 设备控制（工具接口）"""
     try:
@@ -1252,6 +1436,10 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
             result = await confirm_team(**args)
         elif name == "check_team_result":
             result = await check_team_result(**args)
+        elif name == "resume_last_project":
+            result = await resume_last_project(**args)
+        elif name == "get_project_history":
+            result = await get_project_history()
         else:
             result = {"error": f"未知工具: {name}"}
     except Exception as e:
@@ -1298,6 +1486,8 @@ TOOLS_SYSTEM_ADDENDUM = """
 - **deploy_team(task, template)** — 组建团队（不会立即执行）
 - **confirm_team(team_id, task)** — 用户确认后才执行
 - **check_team_result(team_id)** — 查询结果
+- **resume_last_project(instruction)** — 继续上次的项目（用户说"继续上次"/"接着做"时调用）
+- **get_project_history()** — 查看历史项目列表
 
 模板：startup(5人)/marketing(10人)/ecommerce(15人)/software(10人)/content_factory(8人)/service_center(7人)/consulting(7人)/all_hands(52人)
 
@@ -1316,6 +1506,12 @@ TOOLS_SYSTEM_ADDENDUM = """
 （拿到结果后逐一介绍每个成员）
 用户: "开始"
 你: [TOOL_CALL] {"name": "confirm_team", "args": {"team_id": "xxx", "task": "为十三香AI写营销方案，面向创业者，预算5万"}} [/TOOL_CALL]
+
+继续项目示例：
+用户: "继续上次的方案"
+你: [TOOL_CALL] {"name": "resume_last_project", "args": {}} [/TOOL_CALL]
+用户: "把文案部分改短一点"
+你: [TOOL_CALL] {"name": "resume_last_project", "args": {"instruction": "文案部分改短"}} [/TOOL_CALL]
 """.strip()
 
 
