@@ -332,7 +332,7 @@ function _injectStyles() {
   style.textContent = `
     .user-avatar-btn {
       width: 36px; height: 36px; border-radius: 50%;
-      border: 2px solid var(--accent, #6c63ff); background: var(--bg2, #1a1a2e);
+      border: 2px solid var(--accent, #6c63ff); background: var(--bg-secondary, #1a1a2e);
       font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: transform 0.2s;
     }
@@ -340,27 +340,36 @@ function _injectStyles() {
 
     .user-panel {
       position: fixed; top: 50px; right: 16px; width: 280px;
-      background: var(--bg2, #1a1a2e); border: 1px solid var(--border, #333);
+      background: var(--bg-secondary, #1a1a2e); border: 1px solid var(--border, #333);
       border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       z-index: 9999; padding: 12px; max-height: 400px; overflow-y: auto;
     }
-    .user-panel-header { font-weight: 600; margin-bottom: 8px; color: var(--text, #eee); }
+    .user-panel-header { font-weight: 600; margin-bottom: 8px; color: var(--text-primary, #eee); }
     .user-card {
       display: flex; align-items: center; gap: 10px; padding: 8px 10px;
       border-radius: 8px; cursor: pointer; transition: background 0.2s;
     }
-    .user-card:hover { background: var(--bg3, #252542); }
-    .user-card.active { background: var(--accent, #6c63ff)22; border: 1px solid var(--accent, #6c63ff); }
+    .user-card:hover { background: var(--bg-surface-hover, #252542); }
+    .user-card.active { background: rgba(108,99,255,0.1); border: 1px solid var(--accent, #6c63ff); }
     .user-avatar-lg { font-size: 28px; }
     .user-info { flex: 1; }
-    .user-name { display: block; font-weight: 500; color: var(--text, #eee); }
-    .user-badge { font-size: 11px; color: var(--text-dim, #888); }
+    .user-name { display: block; font-weight: 500; color: var(--text-primary, #eee); }
+    .user-badge { font-size: 11px; color: var(--text-muted, #888); }
     .user-delete { background: none; border: none; color: #f55; cursor: pointer; font-size: 14px; padding: 4px; }
     .user-add-btn {
       width: 100%; padding: 10px; margin-top: 8px; border: 1px dashed var(--border, #444);
-      border-radius: 8px; background: none; color: var(--text, #eee); cursor: pointer; font-size: 14px;
+      border-radius: 8px; background: none; color: var(--text-primary, #eee); cursor: pointer; font-size: 14px;
     }
-    .user-add-btn:hover { background: var(--bg3, #252542); }
+    .user-add-btn:hover { background: var(--bg-surface-hover, #252542); }
+
+    /* 浅色模式 */
+    :root[data-theme="light"] .user-avatar-btn { background: #fff; border-color: var(--accent); }
+    :root[data-theme="light"] .user-panel { background: #fff; border-color: rgba(0,0,0,.1); box-shadow: 0 8px 32px rgba(0,0,0,.12); }
+    :root[data-theme="light"] .user-panel-header { color: #1a1c2e; }
+    :root[data-theme="light"] .user-card:hover { background: rgba(0,0,0,.04); }
+    :root[data-theme="light"] .user-name { color: #1a1c2e; }
+    :root[data-theme="light"] .user-add-btn { color: #6b7089; border-color: rgba(0,0,0,.15); }
+    :root[data-theme="light"] .user-add-btn:hover { background: rgba(0,0,0,.04); }
 
     .user-register-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000;
