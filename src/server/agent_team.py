@@ -285,10 +285,24 @@ class Agent:
             parts.append(trimmed)
             used_chars += len(trimmed)
 
-        # 项目背景和历史（如果还有空间）
-        if context and used_chars < self._MAX_CONTEXT_CHARS - 200:
-            ctx_str = json.dumps(context, ensure_ascii=False, indent=2)[:300]
-            parts.append(f"\n## 项目背景\n{ctx_str}")
+        # 协作上下文（团队成员的成果）— 单独渲染，不占用护城河注入空间
+        if context:
+            collab_parts = []
+            other_parts = []
+            for k, v in context.items():
+                if k.startswith("[") and k.endswith("]"):
+                    # 协作数据（成员成果/共享板）
+                    collab_parts.append(f"\n### {k}\n{v}")
+                else:
+                    other_parts.append(f"- {k}: {str(v)[:150]}")
+
+            if collab_parts:
+                collab_text = "\n## 团队协作（其他成员的工作成果，请参考并配合）" + "".join(collab_parts)
+                # 协作上下文有独立配额（最多 1500 字）
+                parts.append(collab_text[:1500])
+            if other_parts and used_chars < self._MAX_CONTEXT_CHARS - 100:
+                parts.append("\n## 项目背景\n" + "\n".join(other_parts[:5]))
+
         if self._history and used_chars < self._MAX_CONTEXT_CHARS - 100:
             recent = self._history[-2:]
             parts.append("\n## 你之前的工作")
@@ -537,12 +551,27 @@ class AgentTeam:
                 task.result = f"Agent {task.agent_id} 不存在"
                 return
             try:
-                # 将前序任务结果注入 context
+                # ── 协作上下文注入 ──
                 enriched_ctx = dict(self.context)
+
+                # 1. 直接依赖：完整结果（最多 800 字）
                 for dep_id in task.depends_on:
                     dep_task = next((t for t in self.tasks if t.agent_id == dep_id), None)
                     if dep_task and dep_task.result:
-                        enriched_ctx[f"{dep_id}_result"] = dep_task.result[:500]
+                        dep_agent = self.agents.get(dep_id)
+                        dep_name = dep_agent.role.name if dep_agent else dep_id
+                        enriched_ctx[f"[{dep_name}的成果]"] = dep_task.result[:800]
+
+                # 2. 共享成果板：其他已完成 Agent 的摘要（每人 150 字）
+                peer_summaries = []
+                for t in self.tasks:
+                    if t.agent_id != task.agent_id and t.status == "done" and t.result:
+                        if t.agent_id not in task.depends_on:  # 避免重复
+                            peer = self.agents.get(t.agent_id)
+                            name = peer.role.name if peer else t.agent_id
+                            peer_summaries.append(f"- {name}：{t.result[:150]}")
+                if peer_summaries:
+                    enriched_ctx["[其他成员已完成的工作]"] = "\n".join(peer_summaries[:5])
 
                 await asyncio.wait_for(
                     agent.execute(task, enriched_ctx, self._ai_call),
@@ -603,6 +632,74 @@ class AgentTeam:
             for t in ready:
                 if t.status == "done":
                     completed_agents.add(t.agent_id)
+
+            # CEO 中间审核（第一层完成后，为后续层补充协作指引）
+            if wave == 0 and len(completed_agents) >= 2:
+                try:
+                    await self._ceo_mid_review(completed_agents)
+                except Exception as e:
+                    logger.debug(f"[Team] CEO 中间审核跳过: {e}")
+
+    async def _ceo_mid_review(self, completed_agents: set):
+        """CEO 中间审核 — 第一层完成后，为后续任务补充协作指引"""
+        ceo = self.agents.get("ceo")
+        if not ceo:
+            return
+
+        # 收集第一层结果摘要
+        wave1_results = []
+        for t in self.tasks:
+            if t.agent_id in completed_agents and t.result:
+                agent = self.agents.get(t.agent_id)
+                name = agent.role.name if agent else t.agent_id
+                wave1_results.append(f"- {name}: {t.result[:200]}")
+
+        if not wave1_results:
+            return
+
+        # 找到待执行任务
+        pending = [t for t in self.tasks if t.status == "pending"]
+        if not pending:
+            return
+
+        pending_desc = "\n".join(f"- {self.agents.get(t.agent_id, t).role.name if self.agents.get(t.agent_id) else t.agent_id}: {t.description[:60]}" for t in pending[:5])
+
+        review_prompt = f"""第一批成员已完成工作：
+{chr(10).join(wave1_results[:5])}
+
+接下来要执行的任务：
+{pending_desc}
+
+请用 1-2 句话给每个待执行成员一个协作建议（如"参考CMO的定位策略"、"数据要和财务的预算对齐"）。
+只输出建议，每行一个，格式：成员ID: 建议"""
+
+        messages = [
+            {"role": "system", "content": "你是团队CEO，负责协调成员间的协作。简洁回答。"},
+            {"role": "user", "content": review_prompt},
+        ]
+
+        try:
+            review_text = await asyncio.wait_for(self._ai_call(messages), timeout=15)
+            # 解析建议并注入到待执行任务的 context
+            for line in review_text.strip().split("\n"):
+                line = line.strip()
+                if ":" in line or "：" in line:
+                    sep = "：" if "：" in line else ":"
+                    agent_hint, advice = line.split(sep, 1)
+                    agent_hint = agent_hint.strip().lower()
+                    for t in pending:
+                        aid = t.agent_id.lower()
+                        agent = self.agents.get(t.agent_id)
+                        aname = agent.role.name if agent else ""
+                        if aid in agent_hint or aname in agent_hint:
+                            # 注入协作指引到任务描述
+                            t.description = t.description + f"\n\n💡 CEO 协作指引：{advice.strip()}"
+                            break
+
+            self._add_message("ceo", "broadcast", "review", "已审核第一批成果，为后续任务补充协作指引")
+            logger.info(f"[Team:{self.name}] CEO 中间审核完成，为 {len(pending)} 个待执行任务补充指引")
+        except Exception as e:
+            logger.debug(f"[Team] CEO mid-review failed: {e}")
 
     async def _ceo_summarize(self, ceo: Agent) -> str:
         """CEO 汇总所有结果"""

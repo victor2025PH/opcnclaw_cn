@@ -143,6 +143,17 @@ function _renderTeam(data) {
     const preview = task?.result || task?.partial_result || '';
     const previewText = preview.substring(0, 80).replace(/[#*\n]/g, ' ');
 
+    // 协作依赖
+    const deps = task?.depends_on || [];
+    let depsHtml = '';
+    if (deps.length) {
+      const depNames = deps.map(d => {
+        const depAgent = agents[d];
+        return depAgent ? depAgent.name : d;
+      }).join(', ');
+      depsHtml = `<div class="asp-deps">← ${depNames}</div>`;
+    }
+
     // 进化数据
     const evo = _evolutionData?.[aid];
     let evoHtml = '';
@@ -166,6 +177,7 @@ function _renderTeam(data) {
           <span class="asp-status">${icon}</span>
         </div>
         ${evoHtml}
+        ${depsHtml}
         ${taskDesc ? `<div class="asp-task">${taskDesc}</div>` : ''}
         ${previewText ? `<div class="asp-result">${previewText}${preview.length > 80 ? '...' : ''}</div>` : ''}
       </div>`;
@@ -265,6 +277,7 @@ function _injectStyles() {
     .asp-task{font-size:10px;color:var(--text-secondary,#888);margin-top:4px;line-height:1.3}
     .asp-result{font-size:10px;color:var(--text-secondary,#aaa);margin-top:3px;line-height:1.3;
       background:rgba(255,255,255,0.04);padding:4px 6px;border-radius:4px}
+    .asp-deps{font-size:9px;color:var(--accent,#6c63ff);margin-top:2px;opacity:0.7}
     /* 进化显示 */
     .asp-evo{display:flex;align-items:center;gap:4px;margin-top:3px}
     .asp-evo-stars{font-size:8px;color:#f59e0b;letter-spacing:-1px}
