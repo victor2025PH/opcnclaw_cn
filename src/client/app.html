@@ -193,7 +193,11 @@ body{
 :root[data-theme="light"] .pp-card{background:#f8f8fc;border-color:rgba(0,0,0,.06)}
 :root[data-theme="light"] .pp-card:hover{border-color:var(--accent);background:rgba(108,92,231,.04)}
 :root[data-theme="light"] .pp-preset{background:#f8f8fc;border-color:rgba(0,0,0,.06)}
-:root[data-theme="light"] .profile-avatar{background:rgba(0,0,0,.04)}
+:root[data-theme="light"] .profile-avatar{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.1)}
+:root[data-theme="light"] .profile-avatar.active{border-color:var(--accent)}
+:root[data-theme="light"] .profile-add-btn{border-color:rgba(0,0,0,.15);color:#6b7089}
+:root[data-theme="light"] .back-btn{color:#6b7089}
+:root[data-theme="light"] .back-btn:hover{background:rgba(0,0,0,.05);color:#1a1c2e}
 /* Profile edit form */
 .pp-edit{display:none;flex-direction:column;gap:12px;padding:16px 0;opacity:0}
 .pp-edit.active{display:flex;animation:stabFadeIn .25s ease forwards}
@@ -3854,7 +3858,7 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
     </div>
     <!-- 护城河仪表盘 -->
     <div class="settings-group" id="moat-dashboard" style="margin-top:12px">
-      <h3 data-i18n="profile.moatTitle">🏰 护城河数据</h3>
+      <h3 data-i18n="profile.moatTitle">📊 AI 学习进度</h3>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="position:relative;width:64px;height:64px;flex-shrink:0">
           <svg viewBox="0 0 36 36" style="width:64px;height:64px;transform:rotate(-90deg)">

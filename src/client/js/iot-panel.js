@@ -65,8 +65,9 @@ function _injectTab() {
   const tabContainer = document.querySelector('.settings-tabs, .tab-bar');
   if (tabContainer) {
     const tab = document.createElement('button');
-    tab.className = 'tab-btn';
+    tab.className = 'stab';
     tab.textContent = '🏠 智能家居';
+    tab.dataset.tab = 'iot-panel-tab';
     tab.onclick = () => { _showPanel(); _fetchDevices(); };
     tabContainer.appendChild(tab);
   }

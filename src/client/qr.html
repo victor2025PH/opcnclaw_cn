@@ -172,7 +172,7 @@ body{
   <div class="moat" id="moat-bar" style="display:none" onclick="location.href='/app'">
     <span class="moat-icon" id="moat-icon">🌱</span>
     <div class="moat-info">
-      <div class="moat-level" id="moat-level">护城河</div>
+      <div class="moat-level" id="moat-level">AI 学习进度</div>
       <div class="moat-desc" id="moat-desc">AI 正在学习你的业务</div>
     </div>
     <div class="moat-score-wrap">
@@ -246,7 +246,7 @@ function _switchTab(tab) {
     if (d.total != null) {
       document.getElementById('moat-bar').style.display = 'flex';
       document.getElementById('moat-icon').textContent = d.level_icon || '🌱';
-      document.getElementById('moat-level').textContent = d.level || '护城河';
+      document.getElementById('moat-level').textContent = d.level || 'AI 学习进度';
       document.getElementById('moat-desc').textContent = d.level_desc || '';
       document.getElementById('moat-score').textContent = d.total;
     }

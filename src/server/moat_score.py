@@ -174,7 +174,7 @@ def calculate_moat_score() -> Dict:
     else:
         level = "刚刚开始"
         level_icon = "🌱"
-        level_desc = "告诉 AI 你的公司和产品，开始积累护城河"
+        level_desc = "告诉 AI 你的公司和产品，AI 会越来越懂你"
 
     # 生成增长任务
     tasks = _generate_growth_tasks(scores, details)
@@ -288,7 +288,7 @@ def _generate_growth_tasks(scores: Dict, details: Dict) -> list:
         tasks.append({
             "id": "backup",
             "icon": "💾",
-            "title": "备份护城河数据",
+            "title": "备份 AI 数据",
             "desc": "导出数据防止丢失",
             "reward": "安心",
             "action": "open_profile",
