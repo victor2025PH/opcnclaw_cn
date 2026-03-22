@@ -401,16 +401,23 @@ class AgentTeam:
 
         # 解析 JSON
         try:
-            # 提取 JSON 数组
             import re
             match = re.search(r'\[.*\]', plan_text, re.DOTALL)
             if match:
                 items = json.loads(match.group())
-                max_tasks = min(len(self.agents) - 1, 10)
-                for item in items[:max_tasks]:
-                    agent_id = item.get("agent", "")
-                    if agent_id in self.agents:
-                        # 解析依赖关系
+                # 构建 agent_id 大小写映射
+                id_map = {}
+                for aid in self.agents:
+                    id_map[aid] = aid
+                    id_map[aid.lower()] = aid
+                    id_map[aid.upper()] = aid
+                    # 也匹配中文名
+                    id_map[self.agents[aid].role.name] = aid
+
+                for item in items[:min(len(self.agents), 10)]:
+                    raw_id = item.get("agent", "")
+                    agent_id = id_map.get(raw_id) or id_map.get(raw_id.lower()) or id_map.get(raw_id.strip())
+                    if agent_id and agent_id in self.agents:
                         deps = item.get("depends_on", [])
                         if isinstance(deps, str):
                             deps = [deps] if deps else []
@@ -423,11 +430,19 @@ class AgentTeam:
                         self._add_message("ceo", agent_id, "task", item.get("task", ""))
         except Exception as e:
             logger.warning(f"[Team] CEO 任务拆解解析失败: {e}")
+
+        # 降级：如果拆解出的任务太少，给每个未分配的 Agent 分配通用任务
+        if len(self.tasks) < 2:
+            logger.info(f"[Team:{self.name}] 拆解不足({len(self.tasks)}个)，自动为每人分配任务")
+            assigned = {t.agent_id for t in self.tasks}
             for aid, agent in self.agents.items():
-                if aid != "ceo":
-                    task = SubTask(agent_id=aid, description=request)
+                if aid != "ceo" and aid not in assigned:
+                    task = SubTask(
+                        agent_id=aid,
+                        description=f"根据你的专长（{agent.role.description}），为以下需求提供你的专业意见：{request}",
+                    )
                     self.tasks.append(task)
-                    break
+                    self._add_message("ceo", aid, "task", task.description[:50])
 
         logger.info(f"[Team:{self.name}] 拆解为 {len(self.tasks)} 个子任务")
         return plan_text
