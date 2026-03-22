@@ -87,10 +87,12 @@ class SubTask:
     finished_at: float = 0.0
 
     def to_dict(self) -> dict:
+        partial = getattr(self, 'partial_result', '')
         return {
             "id": self.id, "agent_id": self.agent_id,
             "description": self.description, "status": self.status,
             "result": self.result[:200] if self.result else "",
+            "partial_result": partial[:300] if partial else "",
             "depends_on": self.depends_on,
         }
 
@@ -120,8 +122,20 @@ class Agent:
                 {"role": "user", "content": self._build_prompt(task, context)},
             ]
 
-            # 调用 AI
-            result = await ai_call(messages, model=self.role.preferred_model)
+            # 调用 AI（流式收集，前端可通过 status API 实时看到）
+            task.partial_result = ""
+            try:
+                from src.server.main import backend as _b
+                if _b and _b._router:
+                    result = ""
+                    async for chunk, _ in _b._router.chat_stream(messages, max_tokens=600):
+                        if chunk not in ("__SWITCH__", "__TOOL_CALLS__"):
+                            result += chunk
+                            task.partial_result = result  # 实时更新
+                else:
+                    result = await ai_call(messages, model=self.role.preferred_model)
+            except Exception:
+                result = await ai_call(messages, model=self.role.preferred_model)
 
             task.status = "done"
             task.result = result
@@ -277,10 +291,12 @@ class AgentTeam:
             self.final_result = summary
             self.status = "done"
 
-            # 保存汇总到项目空间
+            # 保存汇总到项目空间 + 生成精美 HTML 报告
             if hasattr(self, '_project') and self._project:
                 try:
                     self._project.save_summary(summary)
+                    # 生成精美 HTML 报告（可直接分享给客户）
+                    self._generate_html_report(summary, user_request)
                 except Exception:
                     pass
 
@@ -506,6 +522,80 @@ class AgentTeam:
         summary = await self._ai_call(messages)
         self._add_message("ceo", "user", "result", "最终报告已生成")
         return summary
+
+    def _generate_html_report(self, summary: str, task: str):
+        """生成精美 HTML 报告（可直接分享给客户）"""
+        if not hasattr(self, '_project') or not self._project:
+            return
+        try:
+            # 简单 Markdown → HTML
+            import re
+            html_body = summary
+            html_body = re.sub(r'^### (.*$)', r'<h3>\1</h3>', html_body, flags=re.M)
+            html_body = re.sub(r'^## (.*$)', r'<h2>\1</h2>', html_body, flags=re.M)
+            html_body = re.sub(r'^# (.*$)', r'<h1>\1</h1>', html_body, flags=re.M)
+            html_body = re.sub(r'^\- (.*$)', r'<li>\1</li>', html_body, flags=re.M)
+            html_body = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html_body)
+            html_body = html_body.replace('\n\n', '</p><p>').replace('\n', '<br>')
+
+            # 收集各 Agent 贡献
+            agent_cards = ""
+            for t in self.tasks:
+                agent = self.agents.get(t.agent_id)
+                if agent and t.result:
+                    preview = t.result[:150].replace('<', '&lt;').replace('\n', ' ')
+                    agent_cards += f"""
+                    <div class="agent-card">
+                        <div class="ac-head">{agent.role.avatar} {agent.role.name}</div>
+                        <div class="ac-body">{preview}...</div>
+                    </div>"""
+
+            html = f"""<!DOCTYPE html>
+<html lang="zh"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{task[:30]} — 十三香AI工作队</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:-apple-system,sans-serif;background:#0b0d14;color:#eee;padding:0}}
+.header{{background:linear-gradient(135deg,#6c63ff,#8b5cf6);padding:40px 20px;text-align:center}}
+.header h1{{font-size:24px;margin-bottom:8px}}
+.header p{{opacity:0.8;font-size:14px}}
+.content{{max-width:800px;margin:0 auto;padding:20px}}
+h1,h2,h3{{margin:20px 0 10px;color:#fff}}
+p{{margin:8px 0;line-height:1.7;color:#ccc}}
+li{{margin:4px 0;color:#ccc}}
+strong{{color:#fff}}
+.team-section{{margin-top:30px}}
+.team-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}}
+.agent-card{{background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:12px}}
+.ac-head{{font-size:14px;font-weight:600;margin-bottom:6px}}
+.ac-body{{font-size:12px;color:#aaa;line-height:1.5}}
+.footer{{text-align:center;padding:30px;color:#666;font-size:12px}}
+</style></head><body>
+<div class="header">
+<h1>{task[:50]}</h1>
+<p>由 {self.name}（{len(self.agents)}人）完成 · 十三香 AI 工作队</p>
+</div>
+<div class="content">
+<p>{html_body}</p>
+<div class="team-section">
+<h2>👥 团队贡献</h2>
+<div class="team-grid">{agent_cards}</div>
+</div>
+</div>
+<div class="footer">由十三香 AI 工作队自动生成 · shisanxiang.ai</div>
+</body></html>"""
+
+            self._project.save_artifact(
+                agent_name="系统",
+                agent_avatar="🌐",
+                filename="报告_可分享",
+                content=html,
+                file_type="html",
+            )
+            logger.info(f"[Team:{self.name}] 生成 HTML 报告")
+        except Exception as e:
+            logger.debug(f"[Team] HTML 报告生成失败: {e}")
 
     def _add_message(self, from_a: str, to_a: str, msg_type: str, content: str):
         self.messages.append(TeamMessage(

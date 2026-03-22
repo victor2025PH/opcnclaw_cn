@@ -270,7 +270,15 @@ body{
 .tpc-header{font-size:14px;font-weight:600;margin-bottom:8px}
 .tpc-bar{height:6px;background:var(--bg-surface,#252542);border-radius:3px;overflow:hidden;margin-bottom:8px}
 .tpc-fill{height:100%;background:linear-gradient(90deg,var(--accent),#22c55e);border-radius:3px;transition:width 0.5s ease}
-.tpc-detail{font-size:11px;color:var(--text-secondary,#888);line-height:1.5}
+.tpc-detail{font-size:11px;color:var(--text-secondary,#888);line-height:1.5;max-height:300px;overflow-y:auto}
+.tpc-agent-live{margin-bottom:6px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;border-left:2px solid var(--border)}
+.tpc-agent-live:has(.tpc-al-typing){border-left-color:#f59e0b}
+.tpc-agent-live:has(.tpc-al-done){border-left-color:#22c55e}
+.tpc-al-head{font-size:12px;font-weight:500;display:block;margin-bottom:2px}
+.tpc-al-typing{font-size:11px;color:#f59e0b;font-family:monospace;line-height:1.4}
+.tpc-al-done{font-size:11px;color:var(--text-secondary,#aaa);line-height:1.4}
+.tpc-cursor{animation:blink 0.6s infinite;color:#f59e0b;font-weight:bold}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
 /* 团队结果卡片 */
 .team-result-card{background:var(--bg-card,#1a1a2e);border:1px solid var(--accent);border-radius:12px;padding:16px;max-width:500px}

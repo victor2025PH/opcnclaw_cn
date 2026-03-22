@@ -549,6 +549,88 @@ try {
     } catch(e) {}
   };
 } catch(e) {}
+
+// ── AI 主动通知（监听 EventBus 事件）──
+var _notifQueue = [];
+var _showingNotif = false;
+
+function showNotification(icon, text, action) {
+  _notifQueue.push({icon: icon, text: text, action: action});
+  if (!_showingNotif) _processNotifQueue();
+}
+
+function _processNotifQueue() {
+  if (!_notifQueue.length) { _showingNotif = false; return; }
+  _showingNotif = true;
+  var n = _notifQueue.shift();
+
+  // 弹出通知气泡
+  var bubble = document.createElement('div');
+  bubble.className = 'notif-bubble';
+  bubble.innerHTML = '<div class="nb-icon">' + n.icon + '</div><div class="nb-text">' + n.text + '</div>';
+  if (n.action) {
+    bubble.style.cursor = 'pointer';
+    bubble.onclick = function() { n.action(); bubble.remove(); };
+  }
+  wrap.appendChild(bubble);
+  setMode('wave'); // 挥手引起注意
+
+  // 5秒后自动消失
+  setTimeout(function() {
+    bubble.classList.add('fade-out');
+    setTimeout(function() { bubble.remove(); _processNotifQueue(); }, 300);
+  }, 5000);
+}
+
+// 监听事件流
+try {
+  var evtSource = new EventSource('/api/events/stream');
+  evtSource.onmessage = function(ev) {
+    try {
+      var d = JSON.parse(ev.data);
+      var type = d.type || '';
+
+      // 微信新消息
+      if (type === 'inbox_message') {
+        var contact = (d.data || {}).contact || '某人';
+        var content = (d.data || {}).content || '';
+        showNotification('💬', contact + '：' + content.substring(0, 20), function() {
+          window.open('/app', '_blank');
+        });
+      }
+
+      // 团队完成
+      if (type === 'agent_team:done') {
+        var teamName = (d.data || {}).name || '团队';
+        showNotification('✅', teamName + '完成了！点击查看', function() {
+          window.open('/project', '_blank');
+        });
+      }
+
+      // 系统事件
+      if (type === 'system_event') {
+        showNotification('📢', (d.data || {}).message || '系统通知');
+      }
+    } catch(e) {}
+  };
+} catch(e) {}
 </script>
+
+<style>
+/* 通知气泡 */
+.notif-bubble{
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  min-width:200px;max-width:280px;padding:10px 14px;
+  background:rgba(8,8,20,0.95);border:1px solid rgba(108,99,255,0.3);
+  border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  display:flex;align-items:center;gap:8px;
+  animation:bubbleIn 0.3s ease-out;z-index:200;
+  pointer-events:auto;-webkit-app-region:no-drag;
+}
+.notif-bubble.fade-out{opacity:0;transform:translateX(-50%) translateY(5px);transition:all 0.3s}
+@keyframes bubbleIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.nb-icon{font-size:20px;flex-shrink:0}
+.nb-text{font-size:12px;color:#e8e8f0;line-height:1.4}
+</style>
 </body>
 </html>

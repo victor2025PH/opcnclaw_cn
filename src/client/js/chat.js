@@ -1437,7 +1437,7 @@ export function init() {
           scrollToBottom();
         }
 
-        // 更新进度
+        // 更新进度（直播式）
         if ((team.status === 'executing') && _teamProgressIds.has(tid)) {
           const tasks = team.tasks || [];
           const done = tasks.filter(t => t.status === 'done').length;
@@ -1447,11 +1447,22 @@ export function init() {
           if (fill) fill.style.width = pct + '%';
           if (detail) {
             const agents = Object.values(team.agents || {});
-            const lines = agents.slice(0, 6).map(a => {
+            // 直播式：显示每个 Agent 的实时工作内容
+            let html = '';
+            for (const a of agents) {
+              const task = tasks.find(t => t.agent_id === (a.id || ''));
               const icon = a.status === 'done' ? '✅' : a.status === 'working' ? '🔄' : '⏳';
-              return `${a.avatar} ${a.name} ${icon}`;
-            });
-            detail.innerHTML = lines.join(' · ') + (agents.length > 6 ? ` ... 共${agents.length}人` : '');
+              const partial = task?.partial_result || task?.result || '';
+              const preview = partial ? partial.substring(0, 60).replace(/[#*\n]/g, ' ') + '...' : '';
+
+              html += `<div class="tpc-agent-live">
+                <span class="tpc-al-head">${a.avatar} ${a.name} ${icon}</span>
+                ${a.status === 'working' && preview ? `<div class="tpc-al-typing">${preview}<span class="tpc-cursor">|</span></div>` : ''}
+                ${a.status === 'done' && preview ? `<div class="tpc-al-done">${preview}</div>` : ''}
+              </div>`;
+            }
+            detail.innerHTML = html;
+            scrollToBottom();
           }
         }
 
