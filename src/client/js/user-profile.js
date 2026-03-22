@@ -392,7 +392,82 @@ async function loadWelcomeMoat() {
     if (level) level.textContent = d.level || '刚刚开始';
     if (scoreText) scoreText.textContent = (d.total || 0) + '分';
     if (desc) desc.textContent = d.level_desc || '';
+
+    // 成就检测 + 徽章展示
+    checkAchievements(d);
+    renderAchievementBadges();
   } catch (e) { /* silent */ }
+}
+
+function renderAchievementBadges() {
+  const el = document.getElementById('moat-achievements');
+  if (!el) return;
+  const achieved = JSON.parse(localStorage.getItem('oc_achievements') || '{}');
+  const all = [
+    { id: 'first_10', icon: '🌱' },
+    { id: 'first_20', icon: '🥉' },
+    { id: 'first_40', icon: '🥈' },
+    { id: 'first_60', icon: '🥇' },
+    { id: 'first_80', icon: '🏆' },
+  ];
+  el.innerHTML = all.map(a => {
+    const done = !!achieved[a.id];
+    return `<span style="font-size:16px;opacity:${done ? 1 : 0.2};filter:${done ? 'none' : 'grayscale(1)'};transition:all 0.3s" title="${done ? '已解锁' : '未解锁'}">${a.icon}</span>`;
+  }).join('');
+}
+
+function checkAchievements(d) {
+  const key = 'oc_achievements';
+  const achieved = JSON.parse(localStorage.getItem(key) || '{}');
+  const total = d.total || 0;
+
+  const milestones = [
+    { id: 'first_10', threshold: 10, icon: '🌱', title: '初识 AI', desc: 'AI 开始认识你了！' },
+    { id: 'first_20', threshold: 20, icon: '🥉', title: '初步了解', desc: '护城河初步建立' },
+    { id: 'first_40', threshold: 40, icon: '🥈', title: '持续积累', desc: 'AI 团队越来越懂你' },
+    { id: 'first_60', threshold: 60, icon: '🥇', title: '高度依赖', desc: '你的 AI 团队已很难被替代' },
+    { id: 'first_80', threshold: 80, icon: '🏆', title: '深度绑定', desc: '恭喜！AI 已成为你业务的核心助手' },
+  ];
+
+  for (const m of milestones) {
+    if (total >= m.threshold && !achieved[m.id]) {
+      achieved[m.id] = Date.now();
+      localStorage.setItem(key, JSON.stringify(achieved));
+      showAchievementToast(m);
+      break;  // 一次只弹一个
+    }
+  }
+}
+
+function showAchievementToast(m) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);
+    z-index:10000;background:linear-gradient(135deg,#1a1a2e,#2d2d4e);
+    border:1px solid var(--accent,#6c63ff);border-radius:16px;padding:16px 24px;
+    display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(108,99,255,0.3);
+    transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    max-width:360px;
+  `;
+  toast.innerHTML = `
+    <span style="font-size:32px">${m.icon}</span>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:#fff">成就解锁：${m.title}</div>
+      <div style="font-size:12px;color:var(--text-secondary,#aaa);margin-top:2px">${m.desc}</div>
+    </div>
+  `;
+  document.body.appendChild(toast);
+
+  // 动画弹入
+  requestAnimationFrame(() => {
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+  });
+
+  // 5 秒后消失
+  setTimeout(() => {
+    toast.style.transform = 'translateX(-50%) translateY(-100px)';
+    setTimeout(() => toast.remove(), 500);
+  }, 5000);
 }
 
 

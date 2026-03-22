@@ -2841,11 +2841,25 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <button class="ob-btn" onclick="obSaveKey()" id="ob-save-btn">✅ 验证并开始使用</button>
           <button onclick="obDone()" style="display:block;margin:12px auto 0;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">跳过（功能受限）</button>
         </div>
-        <!-- 步骤 4：已配置，直接开始 -->
+        <!-- 步骤 4：快速画像（让 AI 认识你）-->
+        <div class="ob-step" id="ob-step-profile" style="display:none">
+          <div style="font-size:36px;margin-bottom:12px">🧠</div>
+          <h2>让 AI 认识你</h2>
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">填写越多，AI 越懂你的业务（也可以跳过，之后在设置中填写）</p>
+          <div style="text-align:left;display:flex;flex-direction:column;gap:8px;max-width:320px;margin:0 auto">
+            <input type="text" id="ob-company" placeholder="公司/品牌名（如：十三香科技）" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
+            <input type="text" id="ob-industry" placeholder="行业（如：电商、教育、SaaS）" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
+            <input type="text" id="ob-product" placeholder="主要产品/服务名称" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
+          </div>
+          <button class="ob-btn" onclick="obSaveProfile()" style="margin-top:12px">保存并开始 →</button>
+          <button onclick="obDone()" style="display:block;margin:8px auto 0;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">跳过</button>
+        </div>
+        <!-- 步骤 5：已配置，直接开始 -->
         <div class="ob-step" id="ob-step-ready" style="display:none">
           <div style="font-size:48px;margin-bottom:16px">🚀</div>
           <h2>一切就绪！</h2>
           <p id="ob-ready-msg">AI 已连接，可以开始使用了</p>
+          <p style="font-size:12px;color:var(--accent);margin-top:8px">试试说"帮我写一个营销方案"，52 个 AI 帮你干活</p>
           <button class="ob-btn" onclick="obDone()">开始使用</button>
         </div>
       </div>
@@ -2859,6 +2873,17 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         var r=await fetch('/api/ai/status');
         var d=await r.json();
         if(d.configured){
+          // AI 已配置 → 检查是否有画像
+          try{
+            var pr=await fetch('/api/user/profile');
+            var pp=await pr.json();
+            if(!pp.company && !pp.industry){
+              // 无画像 → 显示画像填写步骤
+              document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
+              document.getElementById('ob-step-profile').style.display='block';
+              return;
+            }
+          }catch(e){}
           document.getElementById('ob-ready-msg').textContent='已连接 '+d.platform+'，可以开始使用了';
           document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
           document.getElementById('ob-step-ready').style.display='block';
@@ -2884,9 +2909,8 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         if(d.ok){
           status.textContent='✅ '+d.message;status.style.color='#22c55e';
           setTimeout(function(){
-            document.getElementById('ob-ready-msg').textContent=d.message;
             document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-            document.getElementById('ob-step-ready').style.display='block';
+            document.getElementById('ob-step-profile').style.display='block';
           },1500);
         }else{
           status.textContent='❌ '+d.error;status.style.color='#ef4444';
@@ -2896,6 +2920,22 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         status.textContent='网络错误';status.style.color='#ef4444';
         btn.textContent='✅ 验证并开始使用';btn.disabled=false;
       }
+    }
+
+    async function obSaveProfile(){
+      var company=document.getElementById('ob-company').value.trim();
+      var industry=document.getElementById('ob-industry').value.trim();
+      var product=document.getElementById('ob-product').value.trim();
+      var data={};
+      if(company)data.company=company;
+      if(industry)data.industry=industry;
+      if(product)data.products=[{name:product,description:''}];
+      if(Object.keys(data).length>0){
+        try{
+          await fetch('/api/user/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        }catch(e){}
+      }
+      obDone();
     }
 
     function obDone(){document.getElementById('onboarding').style.display='none';localStorage.setItem('oc_onboarded','1')}
@@ -2937,6 +2977,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <div id="moat-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#6c63ff,#8b5cf6,#22c55e);border-radius:3px;transition:width 1s ease"></div>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:6px" id="moat-desc">AI 正在学习你的业务</div>
+        <div id="moat-achievements" style="display:flex;gap:4px;margin-top:8px;justify-content:center"></div>
       </div>
 
       <!-- AI 团队快捷任务 -->
@@ -3164,14 +3205,14 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
     <!-- Tab Navigation -->
     <div class="settings-tabs" id="settings-tabs">
-      <button class="stab active" data-tab="tab-general">🔧 通用</button>
-      <button class="stab" data-tab="tab-voice">🎤 语音</button>
-      <button class="stab" data-tab="tab-expression">🎭 表情控制</button>
-      <button class="stab" data-tab="tab-display">🎨 显示</button>
-      <button class="stab" data-tab="tab-profile">🧠 我的画像</button>
-      <button class="stab" data-tab="tab-data">💾 数据</button>
-      <button class="stab" data-tab="tab-store">🛒 角色商店</button>
-      <button class="stab" data-tab="tab-advanced">⚡ 高级</button>
+      <button class="stab active" data-tab="tab-general" data-i18n="settings.tabGeneral">🔧 通用</button>
+      <button class="stab" data-tab="tab-voice" data-i18n="settings.tabVoice">🎤 语音</button>
+      <button class="stab" data-tab="tab-expression" data-i18n="settings.tabExpression">🎭 表情控制</button>
+      <button class="stab" data-tab="tab-display" data-i18n="settings.tabDisplay">🎨 显示</button>
+      <button class="stab" data-tab="tab-profile" data-i18n="settings.tabProfile">🧠 我的画像</button>
+      <button class="stab" data-tab="tab-data" data-i18n="settings.tabData">💾 数据</button>
+      <button class="stab" data-tab="tab-store" data-i18n="settings.tabStore">🛒 角色商店</button>
+      <button class="stab" data-tab="tab-advanced" data-i18n="settings.tabAdvanced">⚡ 高级</button>
     </div>
     <div class="settings-tab-content">
     <!-- TAB: General -->
@@ -3199,10 +3240,10 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <div class="settings-group">
       <h3 data-i18n="settings.language">语言</h3>
       <div class="settings-row">
-        <span class="settings-label">Language</span>
+        <span class="settings-label" data-i18n="settings.langLabel">界面语言</span>
         <select id="lang-select" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:13px;font-family:inherit;cursor:pointer">
-          <option value="zh">中文</option>
-          <option value="en">English</option>
+          <option value="zh" data-i18n="lang.option.zh">中文</option>
+          <option value="en" data-i18n="lang.option.en">English</option>
         </select>
       </div>
     </div>
@@ -3212,16 +3253,16 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <div class="settings-group">
       <h3 data-i18n="settings.voice">语音</h3>
       <div class="settings-row">
-        <span class="settings-label">STT 模型</span>
+        <span class="settings-label" data-i18n="settings.sttModel">STT 模型</span>
         <select id="stt-model-select" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:13px;font-family:inherit;cursor:pointer">
-          <option value="tiny">tiny（最快）</option>
-          <option value="base" selected>base（均衡）</option>
-          <option value="small">small（较好）</option>
-          <option value="medium">medium（推荐）</option>
+          <option value="tiny" data-i18n="stt.option.tiny">tiny（最快）</option>
+          <option value="base" selected data-i18n="stt.option.base">base（均衡）</option>
+          <option value="small" data-i18n="stt.option.small">small（较好）</option>
+          <option value="medium" data-i18n="stt.option.medium">medium（推荐）</option>
         </select>
       </div>
       <div class="settings-row" id="stt-model-status-row" style="display:none">
-        <span class="settings-label">模型状态</span>
+        <span class="settings-label" data-i18n="settings.sttModelStatus">模型状态</span>
         <span id="stt-model-status" style="font-size:13px;color:var(--text-secondary)">—</span>
       </div>
       <div class="settings-row">
@@ -3334,10 +3375,10 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <!-- TAB: Expression Control -->
     <div class="stab-pane" id="tab-expression">
     <div class="settings-group">
-      <h3>🎭 表情控制</h3>
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">用面部表情和头部动作控制电脑，无需双手。</p>
+      <h3 data-i18n="expr.sectionTitle">🎭 表情控制</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px" data-i18n="expr.intro">用面部表情和头部动作控制电脑，无需双手。</p>
       <div class="settings-row">
-        <span class="settings-label">启用表情控制</span>
+        <span class="settings-label" data-i18n="expr.enable">启用表情控制</span>
         <label style="position:relative;width:48px;height:26px">
           <input type="checkbox" id="expr-enable" style="opacity:0;width:0;height:0">
           <span style="position:absolute;inset:0;background:var(--bg-surface);border-radius:13px;cursor:pointer;transition:.3s"></span>
@@ -3345,36 +3386,36 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         </label>
       </div>
       <div class="settings-row">
-        <span class="settings-label">全局灵敏度</span>
+        <span class="settings-label" data-i18n="expr.sensitivityLabel">全局灵敏度</span>
         <input type="range" id="expr-sensitivity" min="0.5" max="1.5" step="0.1" value="1.0" style="width:100px">
         <span id="expr-sensitivity-val" style="font-size:12px;color:var(--text-secondary);min-width:32px;text-align:right">1.0</span>
       </div>
     </div>
     <div class="settings-group">
-      <h3>预设方案</h3>
+      <h3 data-i18n="expr.presets">预设方案</h3>
       <div id="expr-presets" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="settings-group">
-      <h3>嘴部动作</h3>
+      <h3 data-i18n="expr.mouth">嘴部动作</h3>
       <div id="expr-mouth-list"></div>
     </div>
     <div class="settings-group">
-      <h3>眉毛动作</h3>
+      <h3 data-i18n="expr.brow">眉毛动作</h3>
       <div id="expr-brow-list"></div>
     </div>
     <div class="settings-group">
-      <h3>眼睛动作</h3>
+      <h3 data-i18n="expr.eye">眼睛动作</h3>
       <div id="expr-eye-list"></div>
     </div>
     <div class="settings-group">
-      <h3>头部动作</h3>
+      <h3 data-i18n="expr.head">头部动作</h3>
       <div id="expr-head-list"></div>
     </div>
     <div class="settings-group">
-      <h3>👁️ 眼神追踪 <span style="font-size:11px;color:var(--warning);font-weight:normal">(实验性)</span></h3>
-      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">通过虹膜位置估算注视方向，精度约为屏幕9宫格区域。</p>
+      <h3><span data-i18n="gaze.sectionTitle">👁️ 眼神追踪</span> <span style="font-size:11px;color:var(--warning);font-weight:normal" data-i18n="gaze.experimental">(实验性)</span></h3>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px" data-i18n="gaze.hint">通过虹膜位置估算注视方向，精度约为屏幕9宫格区域。</p>
       <div class="settings-row">
-        <span class="settings-label">启用眼神追踪</span>
+        <span class="settings-label" data-i18n="gaze.enable">启用眼神追踪</span>
         <label style="position:relative;width:48px;height:26px">
           <input type="checkbox" id="gaze-enable" style="opacity:0;width:0;height:0">
           <span style="position:absolute;inset:0;background:var(--bg-surface);border-radius:13px;cursor:pointer;transition:.3s"></span>
@@ -3382,30 +3423,30 @@ mark.search-hl.active{background:var(--accent);color:#fff}
         </label>
       </div>
       <div class="settings-row">
-        <span class="settings-label">注视停留阈值</span>
+        <span class="settings-label" data-i18n="gaze.dwellLabel">注视停留阈值</span>
         <input type="range" id="gaze-dwell" min="1000" max="4000" step="250" value="2000" style="width:100px">
         <span id="gaze-dwell-val" style="font-size:12px;color:var(--text-secondary);min-width:36px;text-align:right">2.0s</span>
       </div>
-      <button class="btn" id="gaze-calibrate-btn" style="width:100%;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;margin-top:4px">🎯 开始5点校准</button>
+      <button class="btn" id="gaze-calibrate-btn" style="width:100%;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;margin-top:4px" data-i18n="gaze.calibrate5">🎯 开始5点校准</button>
       <div id="gaze-status" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
-      <button class="btn" id="calib-wizard-btn" style="width:100%;background:linear-gradient(135deg,var(--accent),#c084fc);color:#fff;font-size:12px;padding:10px;margin-top:8px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer" onclick="CalibWizard.open()">🎯 完整无障碍校准向导 (3分钟)</button>
+      <button class="btn" id="calib-wizard-btn" style="width:100%;background:linear-gradient(135deg,var(--accent),#c084fc);color:#fff;font-size:12px;padding:10px;margin-top:8px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer" onclick="CalibWizard.open()" data-i18n="gaze.calibWizard">🎯 完整无障碍校准向导 (3分钟)</button>
     </div>
     <div class="settings-group">
-      <h3>🔄 工作流录制 <span style="font-size:11px;color:var(--text-muted);font-weight:normal">(实验性)</span></h3>
-      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">录制你的操作序列，保存为可重放的工作流模板。</p>
+      <h3><span data-i18n="workflow.sectionTitle">🔄 工作流录制</span> <span style="font-size:11px;color:var(--text-muted);font-weight:normal" data-i18n="workflow.experimental">(实验性)</span></h3>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px" data-i18n="workflow.hint">录制你的操作序列，保存为可重放的工作流模板。</p>
       <div style="display:flex;gap:8px">
-        <button class="btn" id="workflow-start-rec" style="flex:1;background:var(--error);color:#fff;font-size:12px;padding:8px" aria-label="开始录制工作流">⏺ 开始录制</button>
-        <button class="btn" id="workflow-stop-rec" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;display:none" aria-label="停止录制">⏹ 停止并保存</button>
+        <button class="btn" id="workflow-start-rec" style="flex:1;background:var(--error);color:#fff;font-size:12px;padding:8px" data-i18n="workflow.ariaStart" data-i18n-attr="aria-label"><span data-i18n="workflow.startRec">⏺ 开始录制</span></button>
+        <button class="btn" id="workflow-stop-rec" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;display:none" data-i18n="workflow.ariaStop" data-i18n-attr="aria-label"><span data-i18n="workflow.stopSave">⏹ 停止并保存</span></button>
       </div>
       <div id="workflow-rec-status" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
     </div>
     <div class="settings-group">
-      <h3>实时监测</h3>
-      <div id="expr-live-monitor" style="font-size:12px;color:var(--text-secondary)">开启摄像头后显示实时数据...</div>
+      <h3 data-i18n="expr.liveTitle">实时监测</h3>
+      <div id="expr-live-monitor" style="font-size:12px;color:var(--text-secondary)" data-i18n="expr.liveHint">开启摄像头后显示实时数据...</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn" id="expr-save" style="flex:1;background:var(--accent);color:#fff;font-size:12px;padding:8px">💾 保存配置</button>
-      <button class="btn" id="expr-reset" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px">↩️ 恢复默认</button>
+      <button class="btn" id="expr-save" style="flex:1;background:var(--accent);color:#fff;font-size:12px;padding:8px" data-i18n="expr.saveBtn">💾 保存配置</button>
+      <button class="btn" id="expr-reset" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px" data-i18n="expr.resetBtn">↩️ 恢复默认</button>
     </div>
     </div><!-- /tab-expression -->
     <!-- TAB: Display -->
@@ -3422,13 +3463,13 @@ mark.search-hl.active{background:var(--accent);color:#fff}
       </div>
       <p style="font-size:11px;color:var(--text-muted);margin:0 0 10px;line-height:1.5" data-i18n="settings.themeQuickHint">提示：顶部栏右侧也有 🌙/☀️ 按钮，可一键切换主题（与此处选项同步）。</p>
       <div class="settings-row">
-        <span class="settings-label">界面模式</span>
+        <span class="settings-label" data-i18n="settings.uiMode">界面模式</span>
         <select id="ui-mode-select" style="padding:5px 12px;background:var(--bg-surface);border:1px solid var(--border-strong);border-radius:8px;color:var(--text-primary);font-size:13px;font-family:inherit">
-          <option value="simple">🎯 简洁模式</option>
-          <option value="pro">🔧 专业模式</option>
+          <option value="simple" data-i18n="mode.simple">🎯 简洁模式</option>
+          <option value="pro" data-i18n="mode.pro">🔧 专业模式</option>
         </select>
       </div>
-      <p style="font-size:11px;color:var(--text-muted);margin-top:2px;margin-bottom:8px">简洁模式隐藏高级功能按钮，更适合日常使用</p>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:2px;margin-bottom:8px" data-i18n="settings.uiModeHint">简洁模式隐藏高级功能按钮，更适合日常使用</p>
       <div class="settings-row">
         <span class="settings-label" data-i18n="settings.fullscreen">全屏</span>
         <button class="btn" id="fullscreen-settings-btn" data-i18n="settings.enterFs" style="padding:6px 16px;background:var(--bg-surface);color:var(--text-primary);font-size:13px">进入全屏</button>
@@ -3440,66 +3481,66 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <!-- TAB: User Profile (护城河) -->
     <div class="stab-pane" id="tab-profile">
     <div class="settings-group">
-      <h3>🏢 公司/品牌</h3>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">AI 会自动从对话中学习，你也可以手动填写加速</p>
+      <h3 data-i18n="profile.sectionCompany">🏢 公司/品牌</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="profile.companyHint">AI 会自动从对话中学习，你也可以手动填写加速</p>
       <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:6px">
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="settings-label" style="min-width:70px">公司名称</span>
-          <input type="text" id="up-company" placeholder="如：十三香科技" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+          <span class="settings-label" style="min-width:70px" data-i18n="profile.labelCompany">公司名称</span>
+          <input type="text" id="up-company" data-i18n="profile.phCompany" data-i18n-attr="placeholder" placeholder="如：十三香科技" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="settings-label" style="min-width:70px">所在行业</span>
-          <input type="text" id="up-industry" placeholder="如：电商、教育、科技" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+          <span class="settings-label" style="min-width:70px" data-i18n="profile.labelIndustry">所在行业</span>
+          <input type="text" id="up-industry" data-i18n="profile.phIndustry" data-i18n-attr="placeholder" placeholder="如：电商、教育、科技" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="settings-label" style="min-width:70px">团队规模</span>
-          <input type="text" id="up-team-size" placeholder="如：5人、50人" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+          <span class="settings-label" style="min-width:70px" data-i18n="profile.labelTeam">团队规模</span>
+          <input type="text" id="up-team-size" data-i18n="profile.phTeam" data-i18n-attr="placeholder" placeholder="如：5人、50人" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
         </div>
       </div>
     </div>
     <div class="settings-group">
-      <h3>📦 产品信息</h3>
+      <h3 data-i18n="profile.sectionProducts">📦 产品信息</h3>
       <div id="up-products-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
       <div style="display:flex;gap:6px">
-        <input type="text" id="up-product-new" placeholder="添加产品名称" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-        <button class="btn" id="up-product-add" style="background:var(--accent);color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;white-space:nowrap">+ 添加</button>
+        <input type="text" id="up-product-new" data-i18n="profile.phProduct" data-i18n-attr="placeholder" placeholder="添加产品名称" style="flex:1;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <button class="btn" id="up-product-add" style="background:var(--accent);color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;white-space:nowrap" data-i18n="profile.productAdd">+ 添加</button>
       </div>
     </div>
     <div class="settings-group">
-      <h3>🎯 目标用户</h3>
+      <h3 data-i18n="profile.sectionAudience">🎯 目标用户</h3>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <input type="text" id="up-target-users" placeholder="如：25-35岁女性白领" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-        <input type="text" id="up-budget-range" placeholder="常见预算范围（如：5000-20000元/月）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-target-users" data-i18n="profile.phTargetUsers" data-i18n-attr="placeholder" placeholder="如：25-35岁女性白领" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-budget-range" data-i18n="profile.phBudget" data-i18n-attr="placeholder" placeholder="常见预算范围（如：5000-20000元/月）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
       </div>
     </div>
     <div class="settings-group">
-      <h3>✍️ 写作偏好</h3>
+      <h3 data-i18n="profile.sectionWriting">✍️ 写作偏好</h3>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <input type="text" id="up-brand-tone" placeholder="品牌调性（如：专业但不严肃、年轻活力）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-        <input type="text" id="up-writing-style" placeholder="写作风格（如：简洁有力、数据驱动）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-        <input type="text" id="up-forbidden-words" placeholder="禁忌词（逗号分隔，如：最好,第一,绝对）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
-        <input type="text" id="up-common-terms" placeholder="常用术语（逗号分隔，如：私域,转化率,ROI）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-brand-tone" data-i18n="profile.phBrandTone" data-i18n-attr="placeholder" placeholder="品牌调性（如：专业但不严肃、年轻活力）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-writing-style" data-i18n="profile.phWritingStyle" data-i18n-attr="placeholder" placeholder="写作风格（如：简洁有力、数据驱动）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-forbidden-words" data-i18n="profile.phForbidden" data-i18n-attr="placeholder" placeholder="禁忌词（逗号分隔，如：最好,第一,绝对）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <input type="text" id="up-common-terms" data-i18n="profile.phCommonTerms" data-i18n-attr="placeholder" placeholder="常用术语（逗号分隔，如：私域,转化率,ROI）" style="padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
       </div>
     </div>
     <div class="settings-group">
-      <h3>🏷️ 竞品</h3>
-      <input type="text" id="up-competitors" placeholder="竞品名称（逗号分隔）" style="width:100%;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+      <h3 data-i18n="profile.sectionCompetitors">🏷️ 竞品</h3>
+      <input type="text" id="up-competitors" data-i18n="profile.phCompetitors" data-i18n-attr="placeholder" placeholder="竞品名称（逗号分隔）" style="width:100%;padding:8px 10px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;padding-bottom:16px">
-      <button class="btn" id="up-save" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px">💾 保存画像</button>
-      <button class="btn" id="up-reset" style="background:var(--bg-surface);color:var(--text-secondary);padding:10px 16px;font-size:12px;border-radius:8px">重置</button>
+      <button class="btn" id="up-save" style="flex:1;background:var(--accent);color:#fff;padding:10px;font-size:13px;border-radius:8px" data-i18n="profile.saveBtn">💾 保存画像</button>
+      <button class="btn" id="up-reset" style="background:var(--bg-surface);color:var(--text-secondary);padding:10px 16px;font-size:12px;border-radius:8px" data-i18n="profile.resetBtn">重置</button>
     </div>
     <div id="up-status" style="font-size:11px;color:var(--success);min-height:16px;text-align:center"></div>
     <!-- 数据备份 -->
     <div class="settings-group" style="margin-top:12px">
-      <h3>💾 数据备份</h3>
+      <h3 data-i18n="profile.backupTitle">💾 数据备份</h3>
       <div style="display:flex;gap:8px">
-        <button class="btn" id="moat-export-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px">📤 导出 JSON</button>
-        <button class="btn" id="moat-export-zip-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px">📦 导出 ZIP</button>
+        <button class="btn" id="moat-export-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px" data-i18n="profile.exportJson">📤 导出 JSON</button>
+        <button class="btn" id="moat-export-zip-btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px" data-i18n="profile.exportZip">📦 导出 ZIP</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:6px">
         <label class="btn" style="flex:1;background:var(--bg-surface);color:var(--text-primary);font-size:12px;padding:8px;border-radius:8px;cursor:pointer;text-align:center">
-          📥 导入数据
+          <span data-i18n="profile.importData">📥 导入数据</span>
           <input type="file" id="moat-import-input" accept=".json" style="display:none">
         </label>
       </div>
@@ -3507,7 +3548,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     </div>
     <!-- 护城河仪表盘 -->
     <div class="settings-group" id="moat-dashboard" style="margin-top:12px">
-      <h3>🏰 护城河数据</h3>
+      <h3 data-i18n="profile.moatTitle">🏰 护城河数据</h3>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="position:relative;width:64px;height:64px;flex-shrink:0">
           <svg viewBox="0 0 36 36" style="width:64px;height:64px;transform:rotate(-90deg)">
@@ -3518,26 +3559,24 @@ mark.search-hl.active{background:var(--accent);color:#fff}
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent)" id="moat-ring-score">0</div>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="moat-dash-level">加载中...</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="moat-dash-level" data-i18n="profile.moatLoading">加载中...</div>
           <div style="font-size:11px;color:var(--text-secondary);margin-top:2px" id="moat-dash-desc"></div>
         </div>
       </div>
       <div id="moat-bars" style="display:flex;flex-direction:column;gap:8px"></div>
       <!-- 增长任务 -->
       <div id="moat-tasks" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
-      <div style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center">
-        📊 AI 已与你交互 <span id="up-interaction-count" style="color:var(--accent);font-weight:600">0</span> 次，越用护城河越深
-      </div>
+      <div id="profile-moat-interaction-line" style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center"></div>
     </div>
     </div><!-- /tab-profile -->
     <div class="stab-pane" id="tab-data">
     <div class="settings-group">
-      <h3>记忆</h3>
+      <h3 data-i18n="settings.memoryTitle">记忆</h3>
       <div class="settings-row">
-        <span class="settings-label">对话历史</span>
+        <span class="settings-label" data-i18n="settings.chatHistoryLabel">对话历史</span>
         <span id="history-count" style="font-size:13px;color:var(--text-secondary)">—</span>
       </div>
-      <button class="btn" id="clear-memory-btn" style="margin-top:8px;background:var(--bg-surface);color:var(--text-primary);width:100%">
+      <button class="btn" id="clear-memory-btn" style="margin-top:8px;background:var(--bg-surface);color:var(--text-primary);width:100%" data-i18n="settings.clearMemoryBtn">
         🗑️ 清除记忆
       </button>
     </div>
@@ -3556,17 +3595,17 @@ mark.search-hl.active{background:var(--accent);color:#fff}
     <!-- TAB: Agent Store -->
     <div class="stab-pane" id="tab-store">
     <div class="settings-group">
-      <h3>🛒 社区角色</h3>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">一键安装行业专属 Agent，立即获得专业能力</p>
+      <h3 data-i18n="store.sectionCommunity">🛒 社区角色</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px" data-i18n="store.communityHint">一键安装行业专属 Agent，立即获得专业能力</p>
       <div id="store-categories" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
       <div id="store-role-list" style="display:flex;flex-direction:column;gap:8px">
-        <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px">加载中...</div>
+        <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px" data-i18n="store.loading">加载中...</div>
       </div>
     </div>
     <div class="settings-group">
-      <h3>📋 已安装的自定义角色</h3>
+      <h3 data-i18n="store.installedSection">📋 已安装的自定义角色</h3>
       <div id="store-installed-list" style="display:flex;flex-direction:column;gap:6px">
-        <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px">暂无</div>
+        <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px" data-i18n="store.empty">暂无</div>
       </div>
     </div>
     </div><!-- /tab-store -->
@@ -3626,8 +3665,8 @@ mark.search-hl.active{background:var(--accent);color:#fff}
   <div class="mp-body">
     <div class="mp-sys-bar" id="mp-sys-bar">
       <div class="mp-sys-card"><div class="sys-num" id="mp-gpu-name">—</div><div class="sys-label">GPU</div></div>
-      <div class="mp-sys-card"><div class="sys-num" id="mp-vram">—</div><div class="sys-label">显存</div></div>
-      <div class="mp-sys-card"><div class="sys-num" id="mp-disk">—</div><div class="sys-label">可用磁盘</div></div>
+      <div class="mp-sys-card"><div class="sys-num" id="mp-vram">—</div><div class="sys-label" data-i18n="model.vramLabel">显存</div></div>
+      <div class="mp-sys-card"><div class="sys-num" id="mp-disk">—</div><div class="sys-label" data-i18n="model.diskFreeLabel">可用磁盘</div></div>
     </div>
     <div class="mp-batch-bar" id="mp-batch-bar">
       <span class="mp-batch-count" id="mp-batch-count">已选 0 个模型</span>
@@ -4202,7 +4241,7 @@ mark.search-hl.active{background:var(--accent);color:#fff}
 
 <!-- Accessibility Calibration Wizard Overlay -->
 <!-- Workflow Recording Badge -->
-<div id="workflow-rec-badge" style="display:none;position:fixed;top:12px;right:12px;z-index:9980;background:rgba(239,68,68,0.9);color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;align-items:center;gap:6px;animation:pulse-dot 1.5s infinite;pointer-events:none" role="status" aria-label="正在录制工作流">
+<div id="workflow-rec-badge" style="display:none;position:fixed;top:12px;right:12px;z-index:9980;background:rgba(239,68,68,0.9);color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;align-items:center;gap:6px;animation:pulse-dot 1.5s infinite;pointer-events:none" role="status" data-i18n="workflow.recordingBadge" data-i18n-attr="aria-label" aria-label="正在录制工作流">
   <span style="width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block"></span> REC
 </div>
 
