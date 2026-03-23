@@ -376,7 +376,7 @@ class AIBackend:
                 # 处理原生 tool_calls — 多步循环（最多 5 轮）
                 _loop_msgs = list(messages)
                 _is_desktop_action = False
-                for _round in range(5):
+                for _round in range(10):
                     if not native_tool_calls:
                         break
                     for tc in native_tool_calls:
@@ -398,7 +398,7 @@ class AIBackend:
                             {"role": "tool", "tool_call_id": tc.get("id", f"call_{_round}"), "content": tool_result})
 
                     # 桌面操作后自动截屏，让 AI 看到当前屏幕状态
-                    if _is_desktop_action and _round < 4:
+                    if _is_desktop_action and _round < 9:
                         try:
                             import asyncio
                             await asyncio.sleep(1)  # 等操作生效
