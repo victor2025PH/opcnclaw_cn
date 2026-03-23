@@ -52,6 +52,11 @@ async def tts_api(request: Request):
     if not text or not tts:
         return Response(content="", status_code=400)
 
+    # 清理文本（移除 URL、TOOL_CALL、JSON 等不适合朗读的内容）
+    text = clean_for_speech(text)
+    if not text.strip():
+        return Response(content="", status_code=204)
+
     async def audio_stream():
         async for chunk in tts.synthesize_stream(text):
             b64 = base64.b64encode(chunk).decode()
