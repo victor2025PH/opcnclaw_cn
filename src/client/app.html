@@ -3262,8 +3262,15 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 
     function obDone(){document.getElementById('onboarding').style.display='none';localStorage.setItem('oc_onboarded','1')}
 
-    // 首次显示引导
+    // 首次显示引导（仅桌面端，手机端跳过避免超时循环）
     (async function(){
+      var isMobile = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent);
+      var isLan = /^https?:\/\/(192\.168\.|10\.|172\.\d)/.test(location.origin);
+      if (isMobile || (isLan && !/localhost|127\.0\.0/.test(location.hostname))) {
+        // 手机/局域网远程访问：跳过引导
+        localStorage.setItem('oc_onboarded', '1');
+        return;
+      }
       var currentVer = '6.0.1';
       var savedVer = localStorage.getItem('oc_version');
       if (savedVer !== currentVer) {
