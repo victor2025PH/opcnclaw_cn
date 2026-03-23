@@ -361,7 +361,7 @@ class AIBackend:
                 last_provider = None
                 native_tool_calls = None
                 async for chunk_text, provider_id in self._router.chat_stream(
-                    messages, max_tokens=1200, temperature=0.7, tools=_tools,
+                    messages, max_tokens=4096, temperature=0.7, tools=_tools,
                 ):
                     if chunk_text == "__SWITCH__":
                         continue
@@ -420,7 +420,7 @@ class AIBackend:
                                 self._router._force_next = "deepseek"
                     native_tool_calls = None
                     async for chunk_text2, pid2 in self._router.chat_stream(
-                        _loop_msgs, max_tokens=800, temperature=0.7, tools=_tools,
+                        _loop_msgs, max_tokens=4096, temperature=0.7, tools=_tools,
                     ):
                         if chunk_text2 == "__SWITCH__":
                             continue
@@ -445,7 +445,7 @@ class AIBackend:
                                 {"role": "user", "content": f"工具 {tc['name']} 返回结果：{tool_result}\n请用自然语言把结果告诉用户。"},
                             ]
                             async for chunk_text2, _ in self._router.chat_stream(
-                                followup_msgs, max_tokens=600, temperature=0.7
+                                followup_msgs, max_tokens=4096, temperature=0.7
                             ):
                                 if chunk_text2 in ("__SWITCH__", "__TOOL_CALLS__"):
                                     continue
@@ -465,7 +465,7 @@ class AIBackend:
                             ]
                             yield "\n\n"
                             async for chunk2, _ in self._router.chat_stream(
-                                retry_msgs, max_tokens=600, temperature=0.7,
+                                retry_msgs, max_tokens=4096, temperature=0.7,
                                 tools=TOOL_SCHEMAS if self.enable_tools else None,
                             ):
                                 if chunk2 in ("__SWITCH__", "__TOOL_CALLS__"):
@@ -496,7 +496,7 @@ class AIBackend:
             stream = await self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_tokens=600,
+                max_tokens=4096,
                 temperature=0.7,
                 stream=True,
             )
@@ -519,7 +519,7 @@ class AIBackend:
                         ]
                         followup = await self._client.chat.completions.create(
                             model=self.model, messages=followup_msgs,
-                            max_tokens=400, temperature=0.7, stream=True,
+                            max_tokens=2048, temperature=0.7, stream=True,
                         )
                         followup_text = ""
                         async for fc in followup:
@@ -598,7 +598,7 @@ class AIBackend:
         if self._router:
             try:
                 result = ""
-                async for chunk, _ in self._router.chat_stream(messages, max_tokens=400):
+                async for chunk, _ in self._router.chat_stream(messages, max_tokens=2048):
                     if chunk != "__SWITCH__":
                         result += chunk
                 return result
@@ -608,7 +608,7 @@ class AIBackend:
             try:
                 resp = await self._client.chat.completions.create(
                     model=self.model, messages=messages,
-                    max_tokens=400, temperature=0.7,
+                    max_tokens=2048, temperature=0.7,
                 )
                 return resp.choices[0].message.content or ""
             except Exception as e:
