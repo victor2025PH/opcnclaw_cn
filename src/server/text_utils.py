@@ -45,10 +45,12 @@ def clean_for_speech(text: str) -> str:
     # 7. 移除剩余的星号、井号等符号
     text = re.sub(r'[*#_~`|>]', '', text)
 
-    # 7.5 移除函数调用格式 xxx(...) 和 key=value
-    text = re.sub(r'\w+\([^)]*\)', '', text)           # function(args)
-    text = re.sub(r'\w+=\w+', '', text)                 # key=value
-    text = re.sub(r'\w+=["\'][^"\']*["\']', '', text)   # key="value"
+    # 7.5 移除函数调用、参数、技术内容
+    text = re.sub(r'[a-zA-Z_]\w*\([^)]*\)', '', text)           # function(args)
+    text = re.sub(r'[a-zA-Z_]\w*=[^\s,，。]+', '', text)         # key=anything
+    text = re.sub(r'\[[\w\s:,\'"{}]+\]', '', text)               # [array content]
+    text = re.sub(r'[a-zA-Z_]{2,}\.[a-zA-Z_]{2,}', '', text)    # module.method
+    text = re.sub(r'(?<![a-zA-Z])[a-z_]{3,}(?:\s+[a-z_]{3,}){2,}', '', text)  # 连续英文小写词(3+个)
 
     # 8. 移除 emoji（几乎所有）
     text = re.sub(r'[\U0001F300-\U0001F9FF\u2600-\u27BF\u2300-\u23FF]', '', text)
