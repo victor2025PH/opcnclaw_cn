@@ -202,7 +202,9 @@ function _switchTab(tab) {
     const info = await r.json();
     const ips = info.ips || [];
     const port = info.http_port || location.port || '8766';
-    const mainUrl = ips.length ? `http://${ips[0]}:${port}/app` : `${location.origin}/app`;
+    // 优先选 192.168 开头的WiFi IP（手机能访问的）
+    const wifiIp = ips.find(ip => ip.startsWith('192.168.')) || ips.find(ip => ip.startsWith('10.')) || ips[0];
+    const mainUrl = ips.length ? `http://${wifiIp}:${port}/app` : `${location.origin}/app`;
     const urlEl = document.getElementById('qr-url');
     urlEl.textContent = mainUrl;
     urlEl.dataset.url = mainUrl;

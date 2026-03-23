@@ -48,14 +48,19 @@ async def tts_api(request: Request):
     """Convert text to speech audio and return as streaming response."""
     stt, tts, backend, vad, settings, app = _get_globals()
     body = await request.json()
-    text = body.get("text", "").strip()
-    if not text or not tts:
+    raw_text = body.get("text", "").strip()
+    if not raw_text or not tts:
         return Response(content="", status_code=400)
 
     # 清理文本（移除 URL、TOOL_CALL、JSON 等不适合朗读的内容）
-    text = clean_for_speech(text)
+    text = clean_for_speech(raw_text)
     if not text.strip():
         return Response(content="", status_code=204)
+
+    # 调试日志：看 TTS 收到了什么
+    if raw_text != text:
+        logger.debug(f"[TTS] 清理前({len(raw_text)}字): {raw_text[:100]}")
+        logger.debug(f"[TTS] 清理后({len(text)}字): {text[:100]}")
 
     async def audio_stream():
         async for chunk in tts.synthesize_stream(text):
@@ -919,6 +924,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     if sentence:
                                         # Clean and synthesize this sentence
                                         speech_text = clean_for_speech(sentence)
+                                        logger.info(f"[WS-TTS] 原句: {sentence[:80]} → 清理后: {speech_text[:80]}")
                                         if speech_text:
                                             try:
                                                 logger.debug(f"Synthesizing: {speech_text[:50]}...")

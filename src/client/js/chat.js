@@ -16,7 +16,9 @@ function assistantAvatarEmoji(isDesktop) {
 
 async function testConnection(url) {
   try {
-    const r = await fetch(`${url}/api/server-info`, { signal: AbortSignal.timeout(5000) });
+    const opts = {};
+    try { opts.signal = AbortSignal.timeout(8000); } catch(e) {}  // 兼容旧浏览器
+    const r = await fetch(`${url}/api/server-info`, opts);
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
@@ -1432,7 +1434,8 @@ export function init() {
     }
 
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.origin);
-    const maxRetries = isLocalhost ? 8 : 1;
+    const isLan = /^https?:\/\/(192\.168\.|10\.|172\.\d)/.test(window.location.origin);
+    const maxRetries = isLocalhost ? 8 : isLan ? 5 : 2;  // 局域网也多试几次
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       if (attempt > 0) {
@@ -1470,7 +1473,21 @@ export function init() {
       }
     }
 
-    showSetup();
+    // 局域网连接失败时不跳setup，显示重试提示
+    if (isLan) {
+      const welcome = document.getElementById('welcome-screen');
+      if (welcome) {
+        welcome.innerHTML = `
+          <div style="text-align:center;padding:40px">
+            <div style="font-size:48px;margin-bottom:16px">🦞</div>
+            <h2>正在连接服务器...</h2>
+            <p style="color:var(--text-secondary);margin:12px 0">请确保手机和电脑在同一WiFi</p>
+            <button onclick="location.reload()" style="padding:12px 24px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:16px;cursor:pointer;margin-top:12px">重试连接</button>
+          </div>`;
+      }
+    } else {
+      showSetup();
+    }
   })();
 
   // ── 团队状态实时通知 ──
