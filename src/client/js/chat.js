@@ -60,6 +60,13 @@ function showChat(info) {
 }
 
 function showSetup() {
+  // 局域网/本机访问不跳setup（直接留在聊天页）
+  var h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1' || /^(192\.168\.|10\.|172\.)/.test(h)) {
+    S.serverUrl = location.origin;
+    localStorage.setItem('oc_server', S.serverUrl);
+    return;
+  }
   dom.chatPage.classList.add('hidden');
   dom.setupPage.classList.remove('hidden');
   dom.connectBtn.disabled = false;

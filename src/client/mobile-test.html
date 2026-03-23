@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>手机测试</title>
+<style>
+body{background:#0b0d14;color:#eee;font-family:sans-serif;text-align:center;padding:40px 20px}
+h1{font-size:24px}
+#status{margin:20px 0;padding:15px;background:#1a1a2e;border-radius:10px}
+input{width:100%;padding:12px;border-radius:8px;border:1px solid #333;background:#1a1a2e;color:#eee;font-size:16px;margin:10px 0;box-sizing:border-box}
+button{padding:12px 24px;background:#6c63ff;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;margin:5px}
+</style>
+</head>
+<body>
+<h1>🦞 手机连接测试</h1>
+<div id="status">测试中...</div>
+<input id="msg" placeholder="输入消息...">
+<button onclick="sendMsg()">发送</button>
+<div id="reply" style="margin-top:20px;text-align:left;white-space:pre-wrap"></div>
+<script>
+var base = location.origin;
+document.getElementById('status').textContent = '连接: ' + base;
+
+fetch(base + '/api/ping').then(r=>r.json()).then(d=>{
+  document.getElementById('status').innerHTML = '✅ 服务器连接成功<br>时间: ' + new Date(d.ts*1000).toLocaleString();
+}).catch(e=>{
+  document.getElementById('status').innerHTML = '❌ 连接失败: ' + e.message;
+});
+
+async function sendMsg(){
+  var msg = document.getElementById('msg').value;
+  if(!msg) return;
+  document.getElementById('reply').textContent = '思考中...';
+  try{
+    var r = await fetch(base + '/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'user',content:msg}],stream:false})
+    });
+    var d = await r.json();
+    document.getElementById('reply').textContent = JSON.stringify(d,null,2).substring(0,500);
+  }catch(e){
+    document.getElementById('reply').textContent = '错误: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
