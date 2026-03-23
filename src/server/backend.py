@@ -287,8 +287,13 @@ class AIBackend:
             except Exception as e:
                 logger.debug(f"离线技能处理失败: {e}")
 
-        # ── 2b. IoT 意图预处理（智能家居指令）────────────────────────
-        if not image_b64 and not skill_context:
+        # ── 2b. IoT 意图预处理（仅智能家居，排除软件/桌面操作）─────
+        _not_iot = any(w in user_message for w in [
+            "记事本", "浏览器", "Excel", "Word", "PPT", "微信", "软件",
+            "文件", "程序", "网站", "网页", "应用", "方案", "报告",
+            "代码", "营销", "分析", "桌面", "截图", "窗口",
+        ])
+        if not image_b64 and not skill_context and not _not_iot:
             try:
                 from .iot_intent import is_iot_intent, parse_intent, execute_iot
                 if is_iot_intent(user_message):

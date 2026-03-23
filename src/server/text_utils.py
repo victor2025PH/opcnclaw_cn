@@ -44,11 +44,22 @@ def clean_for_speech(text: str) -> str:
     # Remove hashtags (but keep the word)
     text = re.sub(r'#(\w+)', r'\1', text)
     
-    # Remove URLs
+    # Remove TOOL_CALL blocks
+    text = re.sub(r'\[TOOL_CALL\][\s\S]*?\[/TOOL_CALL\]', '', text)
+    text = re.sub(r'\[tool_call\][\s\S]*?\[/tool_call\]', '', text, flags=re.IGNORECASE)
+
+    # Remove URLs (various formats)
     text = re.sub(r'https?://\S+', '', text)
-    
+    text = re.sub(r'www\.\S+', '', text)
+    text = re.sub(r'\S+\.com\S*', '', text)
+    text = re.sub(r'\S+\.cn\S*', '', text)
+    text = re.sub(r'\S+\.io\S*', '', text)
+
     # Remove markdown links [text](url) -> text
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+
+    # Remove JSON-like content
+    text = re.sub(r'\{[^}]{20,}\}', '', text)
     
     # Remove common emojis (keep some expressive ones?)
     # For now, remove most technical emojis
