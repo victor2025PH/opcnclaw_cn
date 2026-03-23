@@ -11,6 +11,10 @@
 ![Skills](https://img.shields.io/badge/技能-126个-green.svg)
 
 <p align="center">
+  <img src="docs/screenshots/welcome.jpg" width="80%" alt="欢迎页">
+</p>
+
+<p align="center">
   <a href="https://github.com/victor2025PH/opcnclaw_cn/releases/latest"><strong>📥 下载安装包</strong></a> ·
   <a href="https://13x.lol"><strong>🌐 官网</strong></a> ·
   <a href="https://github.com/victor2025PH/opcnclaw_cn/issues"><strong>🐛 反馈</strong></a>
@@ -69,6 +73,23 @@
 | ✍️ 文案创作 | DeepSeek V3 / 通义千问 |
 
 支持：智谱 · DeepSeek · 通义千问 · 百度文心 · Kimi · OpenAI · Gemini · Groq · Ollama 等 13+ 平台。
+
+---
+
+### 📸 产品截图
+
+<p align="center">
+<table>
+<tr>
+<td><img src="docs/screenshots/install.jpg" width="400" alt="安装界面"><br><sub>一键安装，3 种模式</sub></td>
+<td><img src="docs/screenshots/chat.jpg" width="400" alt="AI 对话"><br><sub>AI 对话 + 桌宠</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/welcome.jpg" width="400" alt="欢迎页"><br><sub>欢迎页 + 团队任务入口</sub></td>
+<td><img src="docs/screenshots/menu.jpg" width="400" alt="功能菜单"><br><sub>丰富的功能菜单</sub></td>
+</tr>
+</table>
+</p>
 
 ---
 
