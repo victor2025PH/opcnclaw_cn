@@ -3524,6 +3524,7 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
     <!-- Tab Navigation -->
     <div class="settings-tabs" id="settings-tabs">
       <button class="stab active" data-tab="tab-general" data-i18n="settings.tabGeneral">🔧 通用</button>
+      <button class="stab" data-tab="tab-ai">🤖 AI 配置</button>
       <button class="stab" data-tab="tab-voice" data-i18n="settings.tabVoice">🎤 语音</button>
       <button class="stab" data-tab="tab-pet" data-i18n="settings.tabPet">桌宠</button>
       <button class="stab" data-tab="tab-expression" data-i18n="settings.tabExpression">🎭 表情控制</button>
@@ -3568,6 +3569,27 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
       </div>
     </div>
     </div><!-- /tab-general -->
+    <!-- TAB: AI Config -->
+    <div class="stab-pane" id="tab-ai">
+    <div class="settings-group">
+      <h3>🤖 AI 平台配置</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">选择 AI 平台并填写 API Key，推荐智谱 GLM-4-Flash（永久免费）</p>
+      <div id="ai-providers-list" style="display:flex;flex-direction:column;gap:8px">加载中...</div>
+    </div>
+    <div class="settings-group">
+      <h3>⚡ 快速配置</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">粘贴任意平台的 API Key，自动识别平台</p>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="ai-quick-key" placeholder="粘贴 API Key..." style="flex:1;padding:10px 12px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+        <button class="btn" id="ai-quick-save" style="background:var(--accent);color:#fff;padding:10px 16px;font-size:13px;border-radius:8px;white-space:nowrap">验证并保存</button>
+      </div>
+      <div id="ai-quick-status" style="font-size:11px;min-height:16px;margin-top:6px"></div>
+    </div>
+    <div class="settings-group">
+      <h3>📡 当前状态</h3>
+      <div id="ai-current-status" style="padding:10px 12px;background:var(--bg-surface);border-radius:8px;font-size:13px">检查中...</div>
+    </div>
+    </div><!-- /tab-ai -->
     <!-- TAB: Voice -->
     <div class="stab-pane" id="tab-voice">
     <div class="settings-group">

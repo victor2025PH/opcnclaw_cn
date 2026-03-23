@@ -208,6 +208,9 @@ export function initUserProfile() {
       if (btn && btn.dataset.tab === 'tab-wechat-bot') {
         loadWechatBotTab();
       }
+      if (btn && btn.dataset.tab === 'tab-ai') {
+        loadAIConfigTab();
+      }
     });
   }
 
@@ -721,3 +724,101 @@ async function loadWechatBotTab() {
     });
   }
 }
+
+
+// ── AI 配置 tab ──
+
+async function loadAIConfigTab() {
+  // 1. 加载平台列表
+  try {
+    const r = await fetch(`${_BASE()}/api/providers`);
+    const d = await r.json();
+    const providers = d.providers || [];
+    const listEl = document.getElementById('ai-providers-list');
+    if (listEl) {
+      listEl.innerHTML = providers.map(p => {
+        const hasKey = p.has_key;
+        const statusIcon = hasKey ? '🟢' : '⚪';
+        const statusText = hasKey ? '已配置' : '未配置';
+        const freeTag = (p.name_short || '').includes('免费') ? '<span style="color:var(--success);font-size:10px;margin-left:4px">免费</span>' : '';
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-surface);border-radius:8px;border:1px solid ${hasKey ? 'var(--success)' : 'var(--border)'}">
+            <span style="font-size:14px">${statusIcon}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${p.name_short || p.name || p.id}${freeTag}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${statusText} · ${p.key_env || ''}</div>
+            </div>
+            <button onclick="window._configProvider('${p.id}','${p.key_env || ''}','${(p.name_short || '').replace(/'/g,'')}')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:inherit">${hasKey ? '修改' : '配置'}</button>
+          </div>`;
+      }).join('');
+    }
+  } catch(e) {
+    const el = document.getElementById('ai-providers-list');
+    if (el) el.innerHTML = '<div style="color:var(--error)">加载失败</div>';
+  }
+
+  // 2. 当前状态
+  try {
+    const r = await fetch(`${_BASE()}/api/ai/status`);
+    const d = await r.json();
+    const el = document.getElementById('ai-current-status');
+    if (el) {
+      if (d.configured) {
+        el.innerHTML = `<span style="color:var(--success)">✅ 已连接</span> — ${d.platform || '未知平台'}`;
+      } else {
+        el.innerHTML = '<span style="color:var(--warning)">⚠️ 未配置</span> — 请填写至少一个平台的 API Key';
+      }
+    }
+  } catch(e) {}
+
+  // 3. 快速配置按钮
+  const saveBtn = document.getElementById('ai-quick-save');
+  if (saveBtn && !saveBtn._bound) {
+    saveBtn._bound = true;
+    saveBtn.addEventListener('click', async () => {
+      const key = document.getElementById('ai-quick-key')?.value?.trim();
+      const statusEl = document.getElementById('ai-quick-status');
+      if (!key) { statusEl.textContent = '请输入 API Key'; statusEl.style.color = 'var(--error)'; return; }
+      saveBtn.disabled = true; saveBtn.textContent = '验证中...';
+      try {
+        const r = await fetch(`${_BASE()}/api/ai/quick-setup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          statusEl.textContent = '✅ ' + (d.message || '配置成功');
+          statusEl.style.color = 'var(--success)';
+          document.getElementById('ai-quick-key').value = '';
+          setTimeout(() => loadAIConfigTab(), 1000);
+        } else {
+          statusEl.textContent = '❌ ' + (d.error || '验证失败');
+          statusEl.style.color = 'var(--error)';
+        }
+      } catch(e) {
+        statusEl.textContent = '网络错误';
+        statusEl.style.color = 'var(--error)';
+      }
+      saveBtn.disabled = false; saveBtn.textContent = '验证并保存';
+    });
+  }
+}
+
+// 单个平台配置
+window._configProvider = function(providerId, envKey, name) {
+  const key = prompt(`请输入 ${name} 的 API Key：\n\n环境变量: ${envKey}`);
+  if (!key || !key.trim()) return;
+  fetch(`${_BASE()}/api/setup/save-key`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: providerId, key: key.trim() }),
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      alert('✅ 保存成功！');
+      loadAIConfigTab();
+    } else {
+      alert('❌ 保存失败: ' + (d.error || ''));
+    }
+  }).catch(e => alert('网络错误'));
+};
