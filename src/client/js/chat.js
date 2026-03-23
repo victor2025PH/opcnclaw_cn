@@ -321,9 +321,17 @@ async function speakText(text) {
       .replace(/\[TOOL_CALL\][\s\S]*?\[\/TOOL_CALL\]/gi, '')
       .replace(/https?:\/\/\S+/g, '')
       .replace(/www\.\S+/g, '')
-      .replace(/\{[^}]{20,}\}/g, '')
+      .replace(/\S+\.(com|cn|io|org|net)\S*/g, '')
+      .replace(/\{[^}]{10,}\}/g, '')
+      .replace(/\[[^\]]{20,}\]/g, '')
       .replace(/```[\s\S]*?```/g, '')
       .replace(/`[^`]+`/g, '')
+      .replace(/[*#_~|>]+/g, '')
+      .replace(/desktop_\w+\([^)]*\)/g, '')
+      .replace(/open_application\([^)]*\)/g, '')
+      .replace(/web_search\([^)]*\)/g, '')
+      .replace(/\n+/g, '。')
+      .replace(/\s{2,}/g, ' ')
       .trim();
     if (!cleanText) return;
     const resp = await fetch(`${getBaseUrl()}/api/tts`, {

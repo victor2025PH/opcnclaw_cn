@@ -477,8 +477,13 @@ def get_current_time(timezone: str = "") -> Dict[str, Any]:
 async def web_search(query: str, count: int = 5) -> Dict[str, Any]:
     """搜索互联网，返回搜索结果摘要"""
     try:
-        # 用 DuckDuckGo HTML 搜索（免费，无需 API Key）
-        url = f"https://html.duckduckgo.com/html/?q={query}"
+        # 自动追加当前年月，确保搜索最新结果
+        from datetime import datetime
+        now = datetime.now()
+        if str(now.year) not in query:
+            query = f"{query} {now.year}年{now.month}月"
+        # 用 DuckDuckGo HTML 搜索（免费，无需 API Key），限定最近时间
+        url = f"https://html.duckduckgo.com/html/?q={query}&df=m"  # df=m 限定最近一个月
         async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
             r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
             if r.status_code != 200:
@@ -1577,6 +1582,7 @@ TOOLS_SYSTEM_ADDENDUM = """
 ⚠️ 团队任务注意：
   deploy_team + confirm_team 后团队在后台执行，不要反复调 check_team_result 等待。
   直接告诉用户"团队已出发，完成后会通知"即可。
+  团队产出保存为 Markdown 文件（不是 Word），用户可在项目文件夹下载 ZIP。
 
 📂 **项目管理**
   继续上次: resume_last_project(instruction)
