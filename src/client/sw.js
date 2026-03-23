@@ -1,9 +1,9 @@
-// OpenClaw Voice — Service Worker v7
-const CACHE_NAME = 'oc-v7';
-const API_CACHE = 'ssx-api-v2';
+// OpenClaw Voice — Service Worker v9
+const CACHE_NAME = 'oc-v9';
+const API_CACHE = 'ssx-api-v3';
 
+// 不缓存 HTML 页面（频繁更新，缓存导致旧版本问题）
 const OFFLINE_URLS = [
-  '/chat',
   '/manifest.json',
 ];
 
@@ -83,9 +83,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never intercept these paths
-  const BYPASS = ['/', '/qr', '/setup', '/cert', '/admin', '/api/'];
-  if (BYPASS.some(p => url.pathname.startsWith(p))) {
+  // Never intercept these paths (exact match for pages, prefix for /api/)
+  const BYPASS_EXACT = ['/', '/qr', '/qr/', '/setup', '/setup/', '/cert', '/cert/', '/admin', '/admin/', '/demo', '/demo/'];
+  const BYPASS_PREFIX = ['/api/', '/ws', '/docs', '/redoc'];
+  if (BYPASS_EXACT.includes(url.pathname) || BYPASS_PREFIX.some(p => url.pathname.startsWith(p))) {
     return;
   }
 
