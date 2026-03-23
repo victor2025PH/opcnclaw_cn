@@ -376,7 +376,7 @@ class AIBackend:
                 # 处理原生 tool_calls — 多步循环（最多 5 轮）
                 _loop_msgs = list(messages)
                 _is_desktop_action = False
-                for _round in range(10):
+                for _round in range(20):  # 安全上限，AI自己决定何时停
                     if not native_tool_calls:
                         break
                     for tc in native_tool_calls:
@@ -398,13 +398,15 @@ class AIBackend:
                             {"role": "tool", "tool_call_id": tc.get("id", f"call_{_round}"), "content": tool_result})
 
                     # 桌面操作后自动截屏，让 AI 看到当前屏幕状态
-                    if _is_desktop_action and _round < 9:
+                    if _is_desktop_action and _round < 19:
                         try:
                             import asyncio
                             await asyncio.sleep(1)  # 等操作生效
                             screen_result = await call_tool("desktop_screenshot", {})
                             _loop_msgs.append({"role": "user", "content":
-                                f"[系统] 操作已执行。当前屏幕内容：{screen_result[:1500]}\n请根据屏幕内容决定下一步操作，继续完成用户的任务。如果已完成就告诉用户结果。"})
+                                f"[系统] 操作已执行。当前屏幕OCR内容：{screen_result[:1500]}\n"
+                                f"用户的原始目标：{user_message}\n"
+                                f"请判断：目标完成了吗？如果没完成，继续调用工具执行下一步。不要用文字回复说'你可以...'，直接调用工具操作。"})
                             logger.info(f"🖥️ 自动截屏[{_round+1}]: {len(screen_result)} chars")
                         except Exception as e:
                             logger.debug(f"自动截屏失败: {e}")
