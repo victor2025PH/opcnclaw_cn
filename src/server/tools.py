@@ -895,6 +895,8 @@ async def desktop_click(target: str) -> Dict[str, Any]:
 async def desktop_type(text: str) -> Dict[str, Any]:
     """在当前焦点输入文字"""
     try:
+        import asyncio
+        await asyncio.sleep(0.5)  # 等前一步操作生效
         from .routers.desktop import desktop
         if not desktop:
             return {"error": "桌面控制不可用"}
@@ -908,7 +910,8 @@ async def desktop_type(text: str) -> Dict[str, Any]:
             desktop.type_chinese(text)
         else:
             desktop.type_text(text)
-        return {"typed": True, "text": text[:50]}
+        await asyncio.sleep(0.3)
+        return {"typed": True, "text": text[:50], "hint": "文字已输入，如果需要确认请调用 desktop_hotkey(keys='enter')"}
     except Exception as e:
         return {"error": f"输入失败: {e}"}
 
@@ -916,11 +919,14 @@ async def desktop_type(text: str) -> Dict[str, Any]:
 async def desktop_hotkey(keys: str) -> Dict[str, Any]:
     """执行键盘快捷键"""
     try:
+        import asyncio
+        await asyncio.sleep(0.3)  # 等前一步操作生效
         from .routers.desktop import desktop
         if not desktop:
             return {"error": "桌面控制不可用"}
         key_list = [k.strip() for k in keys.split("+")]
         desktop.hotkey(key_list)
+        await asyncio.sleep(0.5)  # 等快捷键生效
         return {"executed": True, "keys": keys}
     except Exception as e:
         return {"error": f"快捷键执行失败: {e}"}
@@ -967,10 +973,12 @@ async def open_application(app_name: str) -> Dict[str, Any]:
                        "bilibili": "https://www.bilibili.com", "b站": "https://www.bilibili.com"}
             url = url_map.get(app_name.lower(), url)
             subprocess.Popen(f'start "" "{url}"', shell=True)
+            import asyncio; await asyncio.sleep(2)  # 等浏览器加载
             return {"opened": True, "app": app_name, "url": url}
 
         cmd = APP_MAP.get(app_name.lower(), APP_MAP.get(app_name, app_name))
         subprocess.Popen(f'start "" "{cmd}"', shell=True)
+        import asyncio; await asyncio.sleep(1.5)  # 等窗口出现
         return {"opened": True, "app": app_name, "command": cmd}
     except Exception as e:
         return {"error": f"打开 {app_name} 失败: {e}"}
