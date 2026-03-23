@@ -63,6 +63,21 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "web_search",
+            "description": "搜索互联网获取最新信息。当用户要求搜索、查找、采集新闻/资料时调用。比打开浏览器更快更准。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "搜索关键词，如'OpenClaw最新新闻'、'AI行业动态2026'"},
+                    "count": {"type": "integer", "description": "返回结果数量，默认5"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "calculate",
             "description": (
                 "Evaluate a mathematical expression. Use this for arithmetic, "
@@ -457,6 +472,35 @@ def get_current_time(timezone: str = "") -> Dict[str, Any]:
         "weekday": weekday_zh,
         "timestamp": int(now.timestamp()),
     }
+
+
+async def web_search(query: str, count: int = 5) -> Dict[str, Any]:
+    """搜索互联网，返回搜索结果摘要"""
+    try:
+        # 用 DuckDuckGo HTML 搜索（免费，无需 API Key）
+        url = f"https://html.duckduckgo.com/html/?q={query}"
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code != 200:
+                return {"error": f"搜索失败: HTTP {r.status_code}"}
+            # 简单提取结果
+            results = []
+            for match in re.finditer(r'class="result__a"[^>]*href="([^"]*)"[^>]*>([^<]*)</a>.*?class="result__snippet"[^>]*>(.*?)</span>', r.text, re.DOTALL):
+                href, title, snippet = match.groups()
+                snippet = re.sub(r'<[^>]+>', '', snippet).strip()
+                if title.strip():
+                    results.append({"title": title.strip(), "snippet": snippet[:200], "url": href})
+                    if len(results) >= count:
+                        break
+            if not results:
+                # 降级：提取所有链接文本
+                for match in re.finditer(r'class="result__a"[^>]*>([^<]*)</a>', r.text):
+                    results.append({"title": match.group(1).strip(), "snippet": "", "url": ""})
+                    if len(results) >= count:
+                        break
+            return {"query": query, "results": results, "count": len(results)}
+    except Exception as e:
+        return {"error": f"搜索失败: {e}"}
 
 
 async def get_weather(city: str) -> Dict[str, Any]:
@@ -862,10 +906,11 @@ async def desktop_screenshot() -> Dict[str, Any]:
             return {"error": "桌面控制不可用"}
         items = desktop.ocr_screen(force=True)
         text = " | ".join(i["text"] for i in items[:50])
+        sw, sh = desktop.screen_size()
         return {
             "text": text[:2000],
             "elements_count": len(items),
-            "screen_size": f"{desktop.screen_w}x{desktop.screen_h}",
+            "screen_size": f"{sw}x{sh}",
         }
     except Exception as e:
         return {"error": f"截屏失败: {e}"}
@@ -939,7 +984,8 @@ async def open_application(app_name: str) -> Dict[str, Any]:
     _has_chrome = bool(shutil.which("chrome") or shutil.which("google-chrome")
                        or os.path.exists(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
                        or os.path.exists(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"))
-    _default_browser = "chrome" if _has_chrome else "msedge"
+    # 用 --profile-directory=Default 跳过 Chrome 用户选择页
+    _default_browser = 'chrome --profile-directory="Default"' if _has_chrome else "msedge"
 
     APP_MAP = {
         "微信": "WeChat",
@@ -1422,6 +1468,8 @@ async def call_tool(name: str, args: Dict[str, Any]) -> str:
     try:
         if name == "get_current_time":
             result = get_current_time(**args)
+        elif name == "web_search":
+            result = await web_search(**args)
         elif name == "get_weather":
             result = await get_weather(**args)
         elif name == "calculate":
@@ -1521,6 +1569,7 @@ TOOLS_SYSTEM_ADDENDUM = """
   读消息: read_wechat_messages(contact)
 
 🔧 **实用工具**
+  搜索互联网: web_search(query) — 搜索新闻、资料、信息，比打开浏览器更快
   时间: get_current_time()
   天气: get_weather(city)
   计算: calculate(expression)
