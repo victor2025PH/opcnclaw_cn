@@ -2949,6 +2949,16 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
 </div>
 
 <!-- ═══════════════ SETUP PAGE ═══════════════ -->
+<script>
+// 局域网/本机访问：跳过setup直接显示聊天页
+(function(){
+  var h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1' || /^(192\.168\.|10\.|172\.)/.test(h)) {
+    document.write('<style>#setup-page{display:none!important}#chat-page{display:block!important}</style>');
+    localStorage.setItem('oc_server', location.origin);
+  }
+})();
+</script>
 <div id="setup-page" class="page">
   <div class="setup-card">
     <div class="setup-logo">🦞</div>
