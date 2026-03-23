@@ -28,7 +28,7 @@ from loguru import logger
 
 # 平台+模型能力标签
 PROVIDER_CAPABILITIES = {
-    "zhipu_flash":      {"chat": 90, "writing": 80, "vision": 85, "reasoning": 60, "coding": 50},
+    "zhipu_flash":      {"chat": 95, "writing": 85, "vision": 95, "reasoning": 80, "coding": 75, "action": 95},
     "deepseek":         {"chat": 85, "reasoning": 95, "coding": 95, "writing": 80, "data": 90, "action": 95},
     "tongyi":           {"chat": 85, "writing": 90, "reasoning": 75, "data": 85, "vision": 70},
     "baidu_speed":      {"chat": 80, "writing": 75, "reasoning": 55, "coding": 40},
@@ -43,7 +43,7 @@ PROVIDER_CAPABILITIES = {
 
 # 任务→推荐的具体模型（最强优先）
 TASK_MODEL_MAP = {
-    "action":    {"deepseek": "deepseek-reasoner", "openai": "gpt-4o"},           # 执行操作→最强推理
+    "action":    {"zhipu_flash": "glm-5-turbo", "deepseek": "deepseek-reasoner", "openai": "gpt-4o"},  # 执行操作→GLM-5-Turbo(Agent专用)
     "reasoning": {"deepseek": "deepseek-reasoner", "openai": "gpt-4o"},           # 深度推理→R1
     "coding":    {"deepseek": "deepseek-reasoner", "openai": "gpt-4o"},           # 代码→R1
     "writing":   {"deepseek": "deepseek-chat", "tongyi": "qwen-plus"},            # 文案→V3

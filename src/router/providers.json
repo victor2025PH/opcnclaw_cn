@@ -9,13 +9,14 @@
       "tag": "永久免费",
       "description": "GLM-4-Flash 完全免费无限量，性能优秀，强烈推荐",
       "base_url": "https://open.bigmodel.cn/api/paas/v4",
-      "default_model": "glm-4-flash",
-      "models": ["glm-4-flash", "glm-4-flash-250414", "glm-4-plus", "glm-4-long"],
+      "default_model": "glm-5-turbo",
+      "models": ["glm-5-turbo", "glm-5", "glm-4-flash", "glm-4-plus", "glm-4-long"],
       "model_info": {
-        "glm-4-flash": {"label": "GLM-4-Flash", "desc": "免费，速度快，日常对话首选", "best_for": "chat"},
-        "glm-4-flash-250414": {"label": "GLM-4-Flash 最新", "desc": "免费，2025年4月更新版", "best_for": "chat"},
-        "glm-4-plus": {"label": "GLM-4-Plus", "desc": "付费，能力更强", "best_for": "reasoning"},
-        "glm-4-long": {"label": "GLM-4-Long", "desc": "付费，支持超长文本", "best_for": "data"}
+        "glm-5-turbo": {"label": "GLM-5-Turbo (Agent专用)", "desc": "工具调用95.8分，多模态，200K上下文，推荐", "best_for": "action"},
+        "glm-5": {"label": "GLM-5", "desc": "最强综合能力，Agent+推理+创作", "best_for": "reasoning"},
+        "glm-4-flash": {"label": "GLM-4-Flash", "desc": "免费，速度快，轻量对话", "best_for": "chat"},
+        "glm-4-plus": {"label": "GLM-4-Plus", "desc": "均衡，能力较强", "best_for": "writing"},
+        "glm-4-long": {"label": "GLM-4-Long", "desc": "超长文本处理", "best_for": "data"}
       },
       "key_prefix": "",
       "key_placeholder": "your_api_key.secret_key",
@@ -28,7 +29,7 @@
       "free_info": "GLM-4-Flash 完全免费，无限次数，永久有效",
       "priority": 1,
       "supports_vision": true,
-      "vision_model": "glm-4v-flash",
+      "vision_model": "glm-5-turbo",
       "supports_function_calling": true,
       "guide_steps": [
         {"step": 1, "title": "打开智谱AI注册页", "action": "open_url", "url": "https://open.bigmodel.cn/login", "tip": "支持手机号验证码注册，也可微信扫码"},

@@ -349,9 +349,14 @@ class AIBackend:
                                     "deploy_team", "发微信", "发朋友圈"]
                 _prefer_deepseek = any(kw in user_message for kw in _action_keywords)
                 if _prefer_deepseek and hasattr(self._router, '_states'):
-                    ds = self._router._states.get("deepseek")
-                    if ds and ds.status == "ok":
-                        self._router._force_next = "deepseek"
+                    # 优先智谱 GLM-5-Turbo（Agent 专用，工具调用最强）
+                    zp = self._router._states.get("zhipu_flash")
+                    if zp and zp.status == "ok":
+                        self._router._force_next = "zhipu_flash"
+                    else:
+                        ds = self._router._states.get("deepseek")
+                        if ds and ds.status == "ok":
+                            self._router._force_next = "deepseek"
 
                 last_provider = None
                 native_tool_calls = None
@@ -406,9 +411,13 @@ class AIBackend:
 
                     # 发回模型，看是否需要继续调用工具（保持用 DeepSeek）
                     if _prefer_deepseek and hasattr(self._router, '_force_next'):
-                        ds = self._router._states.get("deepseek")
-                        if ds and ds.status == "ok":
-                            self._router._force_next = "deepseek"
+                        zp = self._router._states.get("zhipu_flash")
+                        if zp and zp.status == "ok":
+                            self._router._force_next = "zhipu_flash"
+                        else:
+                            ds = self._router._states.get("deepseek")
+                            if ds and ds.status == "ok":
+                                self._router._force_next = "deepseek"
                     native_tool_calls = None
                     async for chunk_text2, pid2 in self._router.chat_stream(
                         _loop_msgs, max_tokens=800, temperature=0.7, tools=_tools,
