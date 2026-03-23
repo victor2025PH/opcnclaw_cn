@@ -1238,7 +1238,7 @@ async def confirm_team(team_id: str, task: str) -> Dict[str, Any]:
             "team_id": team_id,
             "status": "executing",
             "agent_count": len(team.agents),
-            "message": f"收到！{len(team.agents)} 人团队已出发！我会实时汇报进度。",
+            "message": f"收到！{len(team.agents)} 人团队已在后台执行！请直接告诉用户'团队已出发，预计1-3分钟完成，进度会在右侧面板实时显示'。不要调用check_team_result等待，团队会自动完成。",
         }
     except Exception as e:
         return {"error": f"启动失败: {e}"}
@@ -1574,6 +1574,10 @@ TOOLS_SYSTEM_ADDENDUM = """
   天气: get_weather(city)
   计算: calculate(expression)
 
+⚠️ 团队任务注意：
+  deploy_team + confirm_team 后团队在后台执行，不要反复调 check_team_result 等待。
+  直接告诉用户"团队已出发，完成后会通知"即可。
+
 📂 **项目管理**
   继续上次: resume_last_project(instruction)
   历史项目: get_project_history()
@@ -1581,10 +1585,11 @@ TOOLS_SYSTEM_ADDENDUM = """
 ⚠️ 重要原则：
 1. 用户让你做事时，**立即用工具行动**，不要只说"好的我来帮你"
 2. 能用工具完成的就用工具，不要只给文字建议
-3. 操控电脑时，用 desktop_hotkey + desktop_type 组合完成，像人一样操作
-4. 可以连续调用多个工具（如先按快捷键，再打字，再按回车）
-5. 大型任务（方案/报告）用 deploy_team，简单操作直接用桌面工具
-6. 回答简洁，重在行动
+3. 搜索信息直接用 web_search，不要打开浏览器搜索
+4. 操控电脑时，用 desktop_hotkey + desktop_type 组合完成
+5. 只有复杂大型任务（完整方案/多人协作报告）才用 deploy_team
+6. deploy_team 后不要反复 check_team_result，告诉用户"团队在后台工作"即可
+7. 回答简洁，重在行动
 
 调用格式：
 [TOOL_CALL] {"name": "工具名", "args": {...}} [/TOOL_CALL]
