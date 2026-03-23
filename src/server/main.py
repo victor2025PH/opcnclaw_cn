@@ -1174,7 +1174,7 @@ async def get_auto_open_qr():
 
 @app.get("/m")
 async def mobile_page():
-    return FileResponse("src/client/mobile-test.html", headers={"Cache-Control": "no-store"})
+    return FileResponse("src/client/mobile-chat.html", headers={"Cache-Control": "no-store"})
 
 @app.get("/chat")
 @app.get("/chat/")
