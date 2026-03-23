@@ -1435,7 +1435,7 @@ export function init() {
 
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.origin);
     const isLan = /^https?:\/\/(192\.168\.|10\.|172\.\d)/.test(window.location.origin);
-    const maxRetries = isLocalhost ? 8 : isLan ? 5 : 2;  // 局域网也多试几次
+    const maxRetries = (isLocalhost || isLan) ? 8 : 2;  // 本机和局域网都多试
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       if (attempt > 0) {
@@ -1473,18 +1473,13 @@ export function init() {
       }
     }
 
-    // 局域网连接失败时不跳setup，显示重试提示
-    if (isLan) {
-      const welcome = document.getElementById('welcome-screen');
-      if (welcome) {
-        welcome.innerHTML = `
-          <div style="text-align:center;padding:40px">
-            <div style="font-size:48px;margin-bottom:16px">🦞</div>
-            <h2>正在连接服务器...</h2>
-            <p style="color:var(--text-secondary);margin:12px 0">请确保手机和电脑在同一WiFi</p>
-            <button onclick="location.reload()" style="padding:12px 24px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:16px;cursor:pointer;margin-top:12px">重试连接</button>
-          </div>`;
-      }
+    // 连接失败处理
+    if (isLocalhost || isLan) {
+      // 本机/局域网：直接显示聊天页（服务可能还在启动）
+      dom.setupPage.classList.add('hidden');
+      dom.chatPage.classList.remove('hidden');
+      S.serverUrl = window.location.origin;
+      localStorage.setItem('oc_server', S.serverUrl);
     } else {
       showSetup();
     }
