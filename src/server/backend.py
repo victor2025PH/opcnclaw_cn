@@ -388,7 +388,11 @@ class AIBackend:
                         _loop_msgs.append(
                             {"role": "tool", "tool_call_id": tc.get("id", f"call_{_round}"), "content": tool_result})
 
-                    # 发回模型，看是否需要继续调用工具
+                    # 发回模型，看是否需要继续调用工具（保持用 DeepSeek）
+                    if _prefer_deepseek and hasattr(self._router, '_force_next'):
+                        ds = self._router._states.get("deepseek")
+                        if ds and ds.status == "ok":
+                            self._router._force_next = "deepseek"
                     native_tool_calls = None
                     async for chunk_text2, pid2 in self._router.chat_stream(
                         _loop_msgs, max_tokens=800, temperature=0.7, tools=_tools,
