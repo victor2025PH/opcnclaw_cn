@@ -7,6 +7,7 @@ Tools: get_current_time, get_weather, calculate
 
 import json
 import math
+import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -927,10 +928,18 @@ async def desktop_hotkey(keys: str) -> Dict[str, Any]:
 
 async def open_application(app_name: str) -> Dict[str, Any]:
     """打开应用程序"""
+    # 检测 Chrome 是否安装
+    import shutil
+    _has_chrome = bool(shutil.which("chrome") or shutil.which("google-chrome")
+                       or os.path.exists(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+                       or os.path.exists(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"))
+    _default_browser = "chrome" if _has_chrome else "msedge"
+
     APP_MAP = {
         "微信": "WeChat",
-        "浏览器": "msedge",
+        "浏览器": _default_browser,
         "chrome": "chrome",
+        "谷歌": "chrome",
         "edge": "msedge",
         "记事本": "notepad",
         "文件管理器": "explorer",
@@ -942,12 +951,25 @@ async def open_application(app_name: str) -> Dict[str, Any]:
         "excel": "excel",
         "ppt": "powerpnt",
         "powerpoint": "powerpnt",
-        "网页": "msedge",
+        "网页": _default_browser,
     }
+
+    # 如果 app_name 是 URL 或网站名，直接用浏览器打开
+    _is_url = any(x in app_name.lower() for x in ["youtube", "google", "baidu", "taobao", "bilibili",
+                  ".com", ".cn", ".org", "http", "www"])
     try:
         import subprocess
+        if _is_url:
+            url = app_name if app_name.startswith("http") else f"https://www.{app_name.lower().strip()}.com"
+            # 常见网站映射
+            url_map = {"youtube": "https://www.youtube.com", "谷歌": "https://www.google.com",
+                       "百度": "https://www.baidu.com", "淘宝": "https://www.taobao.com",
+                       "bilibili": "https://www.bilibili.com", "b站": "https://www.bilibili.com"}
+            url = url_map.get(app_name.lower(), url)
+            subprocess.Popen(f'start "" "{url}"', shell=True)
+            return {"opened": True, "app": app_name, "url": url}
+
         cmd = APP_MAP.get(app_name.lower(), APP_MAP.get(app_name, app_name))
-        # 用 start 命令前台启动，确保窗口可见
         subprocess.Popen(f'start "" "{cmd}"', shell=True)
         return {"opened": True, "app": app_name, "command": cmd}
     except Exception as e:
@@ -1462,9 +1484,13 @@ TOOLS_SYSTEM_ADDENDUM = """
 ⚡ 你的核心能力（用户让你做事时，立即行动）：
 
 🖥️ **操控电脑**
-  打开软件：直接调用 open_application(app_name)
-    支持：记事本/微信/浏览器/chrome/文件管理器/计算器/vscode/word/excel/命令行
-    示例：用户说"帮我打开记事本" → 你立即调用 open_application(app_name="记事本")
+  打开软件/网站：直接调用 open_application(app_name)
+    软件：记事本/微信/浏览器/chrome/文件管理器/计算器/vscode/word/excel/命令行
+    网站：youtube/google/baidu/bilibili — 直接传网站名就行
+    示例：
+    - "帮我打开记事本" → open_application(app_name="记事本")
+    - "帮我打开youtube" → open_application(app_name="youtube")
+    - "帮我打开百度" → open_application(app_name="百度")
   其他操作：desktop_click(x,y) / desktop_type(text) / desktop_hotkey(keys)
   看屏幕：desktop_screenshot() 返回 OCR 文字
 
