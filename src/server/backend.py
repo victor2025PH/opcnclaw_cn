@@ -345,7 +345,7 @@ class AIBackend:
                 last_provider = None
                 native_tool_calls = None
                 async for chunk_text, provider_id in self._router.chat_stream(
-                    messages, max_tokens=600, temperature=0.7, tools=_tools,
+                    messages, max_tokens=1200, temperature=0.7, tools=_tools,
                 ):
                     if chunk_text == "__SWITCH__":
                         continue
@@ -384,6 +384,25 @@ class AIBackend:
 
                 if last_provider:
                     logger.debug(f"路由器使用平台: {last_provider}")
+
+                # ── ReAct 降级：原生 FC 未触发时，解析文本中的 [TOOL_CALL] ──
+                if not native_tool_calls and self.enable_tools and not skill_context:
+                    text_tool_calls = parse_tool_calls(full_response)
+                    if text_tool_calls:
+                        for tc in text_tool_calls:
+                            logger.info(f"🔧 ReAct Tool: {tc['name']}({tc['args']})")
+                            tool_result = await call_tool(tc["name"], tc["args"])
+                            followup_msgs = messages + [
+                                {"role": "assistant", "content": full_response},
+                                {"role": "user", "content": f"工具 {tc['name']} 返回结果：{tool_result}\n请用自然语言把结果告诉用户。"},
+                            ]
+                            async for chunk_text2, _ in self._router.chat_stream(
+                                followup_msgs, max_tokens=600, temperature=0.7
+                            ):
+                                if chunk_text2 in ("__SWITCH__", "__TOOL_CALLS__"):
+                                    continue
+                                full_response += chunk_text2
+                                yield chunk_text2
 
                 # 质量检测：空洞回复自动补救（仅路由器可用时，最多 1 次）
                 if self._router and full_response and len(full_response) < 150:
