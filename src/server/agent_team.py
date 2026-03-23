@@ -177,6 +177,11 @@ class Agent:
                 result = await ai_call(messages, model=self.role.preferred_model)
 
             task.status = "done"
+            # 确保 result 不为空（GLM-5 可能把 token 都用在 reasoning 上）
+            if not result and task.partial_result:
+                result = task.partial_result
+            if not result:
+                result = "(Agent 执行完成但未生成文本内容)"
             task.result = result
             task.finished_at = time.time()
             self.status = AgentStatus.DONE

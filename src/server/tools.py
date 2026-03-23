@@ -494,13 +494,13 @@ async def web_search(query: str, count: int = 5) -> Dict[str, Any]:
                 href, title, snippet = match.groups()
                 snippet = re.sub(r'<[^>]+>', '', snippet).strip()
                 if title.strip():
-                    results.append({"title": title.strip(), "snippet": snippet[:200], "url": href})
+                    results.append({"title": title.strip(), "snippet": snippet[:200]})
                     if len(results) >= count:
                         break
             if not results:
                 # 降级：提取所有链接文本
                 for match in re.finditer(r'class="result__a"[^>]*>([^<]*)</a>', r.text):
-                    results.append({"title": match.group(1).strip(), "snippet": "", "url": ""})
+                    results.append({"title": match.group(1).strip(), "snippet": ""})
                     if len(results) >= count:
                         break
             return {"query": query, "results": results, "count": len(results)}
