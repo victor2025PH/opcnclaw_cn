@@ -19,10 +19,14 @@ def clean_for_speech(text: str) -> str:
     # 2. 移除 TOOL_CALL 块
     text = re.sub(r'\[TOOL_CALL\][\s\S]*?\[/TOOL_CALL\]', '', text, flags=re.IGNORECASE)
 
-    # 3. 移除 URL（各种格式）
+    # 3. 移除 URL（各种格式，彻底清除）
     text = re.sub(r'https?://\S+', '', text)
+    text = re.sub(r'//\S+', '', text)                   # //duckduckgo.com/...
     text = re.sub(r'www\.\S+', '', text)
-    text = re.sub(r'\S+\.(com|cn|io|org|net|ai|app)\S*', '', text)
+    text = re.sub(r'\S+\.(com|cn|io|org|net|ai|app|html|php|asp)\S*', '', text)
+    text = re.sub(r'\S*%[0-9A-Fa-f]{2}\S*', '', text)  # URL编码 %2F %3A 等
+    text = re.sub(r'\S+/\S+/\S+', '', text)             # 路径 a/b/c
+    text = re.sub(r'[a-zA-Z0-9_\-]{20,}', '', text)     # 长字母数字串（token/hash）
 
     # 4. 移除 markdown 链接 [text](url) → text
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
