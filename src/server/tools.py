@@ -931,6 +931,7 @@ async def open_application(app_name: str) -> Dict[str, Any]:
         "微信": "WeChat",
         "浏览器": "msedge",
         "chrome": "chrome",
+        "edge": "msedge",
         "记事本": "notepad",
         "文件管理器": "explorer",
         "命令行": "cmd",
@@ -939,12 +940,16 @@ async def open_application(app_name: str) -> Dict[str, Any]:
         "vscode": "code",
         "word": "winword",
         "excel": "excel",
+        "ppt": "powerpnt",
+        "powerpoint": "powerpnt",
+        "网页": "msedge",
     }
     try:
         import subprocess
         cmd = APP_MAP.get(app_name.lower(), APP_MAP.get(app_name, app_name))
-        subprocess.Popen(cmd, shell=True, creationflags=0x08)
-        return {"opened": True, "app": app_name}
+        # 用 start 命令前台启动，确保窗口可见
+        subprocess.Popen(f'start "" "{cmd}"', shell=True)
+        return {"opened": True, "app": app_name, "command": cmd}
     except Exception as e:
         return {"error": f"打开 {app_name} 失败: {e}"}
 
