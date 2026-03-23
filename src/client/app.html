@@ -3110,89 +3110,109 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
     <!-- 新手引导 + AI 配置检测 -->
     <div class="onboarding" id="onboarding" style="display:none">
       <div class="ob-card">
-        <!-- 步骤 1：欢迎 -->
+        <!-- 步骤 1：欢迎 + AI 状态 -->
         <div class="ob-step" id="ob-step-1">
-          <div style="font-size:48px;margin-bottom:16px">🦞</div>
+          <div style="font-size:52px;margin-bottom:12px">🦞</div>
           <h2>欢迎使用十三香小龙虾 AI 工作队</h2>
-          <p>这不是普通的聊天工具——<br>你有 <strong>52 个 AI 员工</strong>，随时待命</p>
-          <button class="ob-btn" onclick="obNext(2)">了解一下 →</button>
+          <p style="margin-bottom:16px">你有 <strong>52 个 AI 员工</strong>，能聊天、写方案、操控电脑</p>
+          <div id="ob-ai-check" style="padding:12px;background:var(--bg-surface,#252542);border-radius:10px;margin-bottom:16px;font-size:13px;text-align:left">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span id="ob-ai-dot" style="width:8px;height:8px;border-radius:50%;background:#666"></span>
+              <span id="ob-ai-label">正在检查 AI 连接...</span>
+            </div>
+            <div id="ob-ai-detail" style="font-size:11px;color:var(--text-muted)"></div>
+          </div>
+          <button class="ob-btn" id="ob-next-1" onclick="obNext(2)" style="display:none">下一步 →</button>
         </div>
-        <!-- 步骤 2：介绍 -->
+
+        <!-- 步骤 2：告诉 AI 你是谁（可选快填） -->
         <div class="ob-step" id="ob-step-2" style="display:none">
-          <div style="font-size:48px;margin-bottom:16px">👥</div>
-          <h2>一句话，团队帮你干活</h2>
-          <p>点击快捷按钮，比如「📣 写营销方案」<br>AI 会先问需求，然后组建团队执行</p>
-          <p style="font-size:12px;color:var(--text-muted)">每个 Agent 的产出保存为文件，可下载 ZIP</p>
-          <button class="ob-btn" onclick="obCheckAI()">继续 →</button>
+          <div style="font-size:36px;margin-bottom:12px">🧠</div>
+          <h2>让 AI 更懂你（可选）</h2>
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">填写后 AI 会根据你的业务定制回答，也可以跳过</p>
+          <div style="text-align:left;display:flex;flex-direction:column;gap:8px;max-width:320px;margin:0 auto">
+            <input type="text" id="ob-company" placeholder="公司/品牌名" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
+            <input type="text" id="ob-industry" placeholder="行业（电商/教育/科技...）" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
+            <input type="text" id="ob-product" placeholder="产品/服务名称" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
+          </div>
+          <button class="ob-btn" onclick="obSaveProfile()" style="margin-top:12px">保存并继续 →</button>
+          <button onclick="obNext(3)" style="display:block;margin:8px auto 0;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">跳过，直接开始</button>
         </div>
-        <!-- 步骤 3：AI 配置引导（未配置时显示）-->
+
+        <!-- 步骤 3：试一试 -->
+        <div class="ob-step" id="ob-step-3" style="display:none">
+          <div style="font-size:48px;margin-bottom:12px">🚀</div>
+          <h2>准备就绪！试试这些</h2>
+          <div style="display:flex;flex-direction:column;gap:8px;max-width:320px;margin:12px auto;text-align:left">
+            <div onclick="obTry('帮我写一个营销推广方案')" style="padding:12px;background:var(--bg-surface,#252542);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s;border:1px solid var(--border)">
+              <span style="font-size:20px">📣</span>
+              <div><div style="font-size:13px;font-weight:600">写营销方案</div><div style="font-size:10px;color:var(--text-muted)">52人团队协作完成</div></div>
+            </div>
+            <div onclick="obTry('帮我打开记事本')" style="padding:12px;background:var(--bg-surface,#252542);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s;border:1px solid var(--border)">
+              <span style="font-size:20px">🖥️</span>
+              <div><div style="font-size:13px;font-weight:600">操控电脑</div><div style="font-size:10px;color:var(--text-muted)">AI 帮你打开软件、操作桌面</div></div>
+            </div>
+            <div onclick="obTry('今天天气怎么样')" style="padding:12px;background:var(--bg-surface,#252542);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s;border:1px solid var(--border)">
+              <span style="font-size:20px">💬</span>
+              <div><div style="font-size:13px;font-weight:600">随便聊聊</div><div style="font-size:10px;color:var(--text-muted)">问天气、算数、翻译...</div></div>
+            </div>
+          </div>
+          <button class="ob-btn" onclick="obDone()" style="margin-top:8px;background:var(--bg-surface,#252542);color:var(--text-primary);box-shadow:none">自己探索 →</button>
+        </div>
+
+        <!-- 未配置 AI 时的配置步骤 -->
         <div class="ob-step" id="ob-step-ai" style="display:none">
           <div style="font-size:36px;margin-bottom:12px">⚙️</div>
-          <h2>还差一步！配置 AI 引擎</h2>
-          <p>推荐 <strong>智谱 GLM-4-Flash</strong>（永久免费、无限次数）</p>
+          <h2>配置 AI 引擎</h2>
+          <p>推荐 <strong>智谱 GLM-4-Flash</strong>（永久免费）</p>
           <div style="text-align:left;background:var(--bg-surface,#252542);border-radius:10px;padding:12px;margin:12px 0;font-size:13px;line-height:2">
-            ① <a href="https://open.bigmodel.cn/login" target="_blank" style="color:var(--accent)">点击打开智谱注册页 →</a><br>
-            ② 登录后 → API Keys → 创建 Key → 复制<br>
+            ① <a href="https://open.bigmodel.cn/login" target="_blank" style="color:var(--accent)">打开智谱注册页 →</a><br>
+            ② API Keys → 创建 → 复制<br>
             ③ 粘贴到下方：
           </div>
           <input type="text" id="ob-api-key" placeholder="粘贴 API Key..." style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface,#0b0d14);color:var(--text-primary);font-size:14px;margin-bottom:8px">
           <div id="ob-api-status" style="font-size:12px;min-height:20px;margin-bottom:8px"></div>
-          <button class="ob-btn" onclick="obSaveKey()" id="ob-save-btn">✅ 验证并开始使用</button>
-          <button onclick="obDone()" style="display:block;margin:12px auto 0;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">跳过（功能受限）</button>
-        </div>
-        <!-- 步骤 4：快速画像（让 AI 认识你）-->
-        <div class="ob-step" id="ob-step-profile" style="display:none">
-          <div style="font-size:36px;margin-bottom:12px">🧠</div>
-          <h2>让 AI 认识你</h2>
-          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">填写越多，AI 越懂你的业务（也可以跳过，之后在设置中填写）</p>
-          <div style="text-align:left;display:flex;flex-direction:column;gap:8px;max-width:320px;margin:0 auto">
-            <input type="text" id="ob-company" placeholder="公司/品牌名（如：十三香科技）" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
-            <input type="text" id="ob-industry" placeholder="行业（如：电商、教育、SaaS）" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
-            <input type="text" id="ob-product" placeholder="主要产品/服务名称" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:13px">
-          </div>
-          <button class="ob-btn" onclick="obSaveProfile()" style="margin-top:12px">保存并开始 →</button>
-          <button onclick="obDone()" style="display:block;margin:8px auto 0;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">跳过</button>
-        </div>
-        <!-- 步骤 5：已配置，直接开始 -->
-        <div class="ob-step" id="ob-step-ready" style="display:none">
-          <div style="font-size:48px;margin-bottom:16px">🚀</div>
-          <h2>一切就绪！</h2>
-          <p id="ob-ready-msg">AI 已连接，可以开始使用了</p>
-          <p style="font-size:12px;color:var(--accent);margin-top:8px">试试说"帮我写一个营销方案"，52 个 AI 帮你干活</p>
-          <button class="ob-btn" onclick="obDone()">开始使用</button>
+          <button class="ob-btn" onclick="obSaveKey()" id="ob-save-btn">✅ 验证并保存</button>
+          <button onclick="obDone()" style="display:block;margin:12px auto 0;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">跳过</button>
         </div>
       </div>
     </div>
     <script>
     function obNext(n){document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});document.getElementById('ob-step-'+n).style.display='block'}
 
-    async function obCheckAI(){
-      // 检查 AI 是否已配置
+    // 步骤1自动检查 AI 状态
+    async function obAutoCheck(){
+      var dot=document.getElementById('ob-ai-dot');
+      var label=document.getElementById('ob-ai-label');
+      var detail=document.getElementById('ob-ai-detail');
+      var nextBtn=document.getElementById('ob-next-1');
       try{
         var r=await fetch('/api/ai/status');
         var d=await r.json();
         if(d.configured){
-          // AI 已配置 → 检查是否有画像
+          dot.style.background='#22c55e';
+          label.innerHTML='✅ AI 已就绪 — <strong>'+d.platform+'</strong>';
+          // 检查有几个平台
           try{
-            var pr=await fetch('/api/user/profile');
-            var pp=await pr.json();
-            if(!pp.company && !pp.industry){
-              // 无画像 → 显示画像填写步骤
-              document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-              document.getElementById('ob-step-profile').style.display='block';
-              return;
-            }
-          }catch(e){}
-          document.getElementById('ob-ready-msg').textContent='已连接 '+d.platform+'，可以开始使用了';
-          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-          document.getElementById('ob-step-ready').style.display='block';
+            var pr=await fetch('/api/ai/smart-routing');
+            var pd=await pr.json();
+            var cnt=(pd.configured||[]).length;
+            detail.textContent=cnt>1?'已配置 '+cnt+' 个 AI 平台，智能调配中':'开箱即用，无需配置';
+          }catch(e){detail.textContent='开箱即用，无需配置';}
+          nextBtn.style.display='inline-block';
         }else{
-          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-          document.getElementById('ob-step-ai').style.display='block';
+          dot.style.background='#f59e0b';
+          label.textContent='⚠️ AI 未配置';
+          detail.textContent='需要填写 API Key 才能使用';
+          nextBtn.textContent='去配置 →';
+          nextBtn.style.display='inline-block';
+          nextBtn.onclick=function(){obNext('ai')};
         }
       }catch(e){
-        document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-        document.getElementById('ob-step-ai').style.display='block';
+        dot.style.background='#ef4444';
+        label.textContent='服务器连接中...';
+        detail.textContent='请等待几秒';
+        setTimeout(obAutoCheck,3000);
       }
     }
 
@@ -3207,18 +3227,12 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
         var d=await r.json();
         if(d.ok){
           status.textContent='✅ '+d.message;status.style.color='#22c55e';
-          setTimeout(function(){
-            document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-            document.getElementById('ob-step-profile').style.display='block';
-          },1500);
+          setTimeout(function(){obNext(2)},1500);
         }else{
           status.textContent='❌ '+d.error;status.style.color='#ef4444';
-          btn.textContent='✅ 验证并开始使用';btn.disabled=false;
+          btn.textContent='✅ 验证并保存';btn.disabled=false;
         }
-      }catch(e){
-        status.textContent='网络错误';status.style.color='#ef4444';
-        btn.textContent='✅ 验证并开始使用';btn.disabled=false;
-      }
+      }catch(e){status.textContent='网络错误';status.style.color='#ef4444';btn.textContent='✅ 验证并保存';btn.disabled=false;}
     }
 
     async function obSaveProfile(){
@@ -3230,52 +3244,36 @@ body:has(#skills-center:not(.hidden)) .fullscreen-btn{display:none}
       if(industry)data.industry=industry;
       if(product)data.products=[{name:product,description:''}];
       if(Object.keys(data).length>0){
-        try{
-          await fetch('/api/user/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-        }catch(e){}
+        try{await fetch('/api/user/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});}catch(e){}
       }
+      obNext(3);
+    }
+
+    function obTry(msg){
       obDone();
+      // 把消息填入输入框并发送
+      setTimeout(function(){
+        var input=document.getElementById('msg-input');
+        if(input){input.value=msg;input.dispatchEvent(new Event('input'));}
+        var sendBtn=document.querySelector('.send-btn');
+        if(sendBtn)setTimeout(function(){sendBtn.click()},300);
+      },500);
     }
 
     function obDone(){document.getElementById('onboarding').style.display='none';localStorage.setItem('oc_onboarded','1')}
 
-    // 首次或未配置时显示引导
+    // 首次显示引导
     (async function(){
-      // 版本检查：版本升级时重置引导状态
-      var currentVer = '6.0.0';
+      var currentVer = '6.0.1';
       var savedVer = localStorage.getItem('oc_version');
       if (savedVer !== currentVer) {
         localStorage.removeItem('oc_onboarded');
         localStorage.setItem('oc_version', currentVer);
       }
       var onboarded = localStorage.getItem('oc_onboarded');
-      try{
-        var r=await fetch('/api/ai/status');
-        var d=await r.json();
-        if(!d.configured){
-          // AI 未配置：无论是否 onboarded 都显示配置引导
-          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-          document.getElementById('ob-step-ai').style.display='block';
-          document.getElementById('onboarding').style.display='flex';
-        }else if(!onboarded){
-          // AI 已配置但首次使用/版本升级：显示画像引导
-          document.querySelectorAll('.ob-step').forEach(function(e){e.style.display='none'});
-          try{
-            var pr=await fetch('/api/user/profile');
-            var pp=await pr.json();
-            if(!pp.company && !pp.industry){
-              document.getElementById('ob-step-profile').style.display='block';
-            }else{
-              document.getElementById('ob-step-ready').style.display='block';
-            }
-          }catch(e2){
-            document.getElementById('ob-step-ready').style.display='block';
-          }
-          document.getElementById('onboarding').style.display='flex';
-        }
-        // AI 已配置且已 onboarded 且同版本：不显示
-      }catch(e){
-        if(!onboarded) document.getElementById('onboarding').style.display='flex';
+      if (!onboarded) {
+        document.getElementById('onboarding').style.display='flex';
+        obAutoCheck();
       }
     })();
     </script>
