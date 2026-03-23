@@ -782,7 +782,7 @@ async function loadAIConfigTab() {
     if (mapEl && rd.routing) {
       mapEl.innerHTML = rd.routing.map(r => {
         const color = r.status === 'ready' ? 'var(--success)' : r.status === 'limited' ? 'var(--warning)' : 'var(--text-muted)';
-        const provName = r.provider || '未配置';
+        const provName = r.model ? `${r.provider}/${r.model}` : (r.provider || '未配置');
         const bar = r.score > 0 ? `<div style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;min-width:40px"><div style="height:100%;width:${r.score}%;background:${color};border-radius:2px"></div></div>` : '';
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-surface);border-radius:6px">
           <span style="font-size:14px;min-width:24px">${r.label.split(' ')[0]}</span>
