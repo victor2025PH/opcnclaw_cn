@@ -1854,6 +1854,32 @@ async def wechat_channels():
     return {"channels": channels}
 
 
+# ── 智能路由 API ──
+@app.get("/api/ai/smart-routing")
+async def api_smart_routing():
+    """智能路由推荐方案"""
+    try:
+        from .smart_router import get_routing_recommendation, get_setup_guide
+        # 获取已配置的平台
+        configured = []
+        try:
+            from src.router.config import RouterConfig
+            rc = RouterConfig()
+            for p in rc.all_providers_meta():
+                key = rc.get_provider_key(p["id"])
+                if key and len(key) > 5:
+                    configured.append(p["id"])
+        except Exception:
+            pass
+        return {
+            "configured": configured,
+            "routing": get_routing_recommendation(configured),
+            "guide": get_setup_guide(),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ── 定时任务 API ──
 @app.get("/api/scheduler/status")
 async def api_scheduler_status():

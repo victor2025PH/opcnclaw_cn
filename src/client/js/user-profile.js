@@ -771,7 +771,47 @@ async function loadAIConfigTab() {
     }
   } catch(e) {}
 
-  // 3. 快速配置按钮
+  // 3. 智能路由
+  try {
+    const rr = await fetch(`${_BASE()}/api/ai/smart-routing`);
+    const rd = await rr.json();
+
+    // 路由映射
+    const mapEl = document.getElementById('ai-routing-map');
+    if (mapEl && rd.routing) {
+      mapEl.innerHTML = rd.routing.map(r => {
+        const color = r.status === 'ready' ? 'var(--success)' : r.status === 'limited' ? 'var(--warning)' : 'var(--text-muted)';
+        const provName = r.provider || '未配置';
+        const bar = r.score > 0 ? `<div style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;min-width:40px"><div style="height:100%;width:${r.score}%;background:${color};border-radius:2px"></div></div>` : '';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-surface);border-radius:6px">
+          <span style="font-size:14px;min-width:24px">${r.label.split(' ')[0]}</span>
+          <span style="font-size:12px;color:var(--text-primary);min-width:60px">${r.label.split(' ').slice(1).join(' ')}</span>
+          ${bar}
+          <span style="font-size:11px;color:${color};min-width:65px;text-align:right">${provName}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // 设置引导
+    const guideEl = document.getElementById('ai-setup-guide');
+    if (guideEl && rd.guide) {
+      const configured = new Set(rd.configured || []);
+      guideEl.innerHTML = rd.guide.map(g => {
+        const done = configured.has(g.provider);
+        return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg-surface);border-radius:8px;border-left:3px solid ${done ? 'var(--success)' : g.priority === '必须' ? 'var(--error)' : 'var(--border)'}">
+          <span style="font-size:18px;flex-shrink:0">${done ? '✅' : '⬜'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${g.step}. ${g.title} <span style="font-size:10px;color:${g.priority === '必须' ? 'var(--error)' : 'var(--text-muted)'}">${g.priority}</span></div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${g.desc}</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:3px">推荐：${g.recommend}</div>
+          </div>
+          ${!done && g.priority !== '已包含' ? `<button onclick="window._configProvider('${g.provider}','','${g.recommend.split('（')[0]}')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--accent);background:none;color:var(--accent);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">配置</button>` : ''}
+        </div>`;
+      }).join('');
+    }
+  } catch(e) { console.warn('[AI] routing load failed:', e); }
+
+  // 4. 快速配置按钮
   const saveBtn = document.getElementById('ai-quick-save');
   if (saveBtn && !saveBtn._bound) {
     saveBtn._bound = true;
