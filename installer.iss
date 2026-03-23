@@ -960,7 +960,8 @@ begin
     AppDir := ExpandConstant('{app}');
     EnvFile := AppDir + '\.env';
     TemplateFile := AppDir + '\.env.template';
-    if not FileExists(EnvFile) and FileExists(TemplateFile) then
+    // 始终用 template 覆盖 .env（预置 Key 需要更新）
+    if FileExists(TemplateFile) then
       FileCopy(TemplateFile, EnvFile, False);
 
     RunInstallSteps();
