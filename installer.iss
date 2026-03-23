@@ -950,6 +950,18 @@ begin
 end;
 
 // ─── 安装后处理 ────────────────────────────────────────
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  // 安装前关闭旧的十三香小龙虾服务（释放端口和文件锁）
+  Exec('cmd.exe', '/c taskkill /F /FI "WINDOWTITLE eq OpenClaw*" >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('cmd.exe', '/c for /f "tokens=5" %a in (''netstat -ano ^| findstr ":8766.*LISTENING"'') do taskkill /PID %a /F >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('cmd.exe', '/c for /f "tokens=5" %a in (''netstat -ano ^| findstr ":8765.*LISTENING"'') do taskkill /PID %a /F >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1000);
+  Result := '';
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   EnvFile, TemplateFile, AppDir: String;
