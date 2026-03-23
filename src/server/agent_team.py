@@ -125,19 +125,55 @@ class Agent:
                 {"role": "user", "content": self._build_prompt(task, context)},
             ]
 
-            # 调用 AI（流式收集，前端可通过 status API 实时看到）
+            # 调用 AI（支持工具调用，多步循环）
             task.partial_result = ""
             try:
                 from src.server.main import backend as _b
+                from .tools import TOOL_SCHEMAS, call_tool
+                _has_tools = self.role.tools or self.role.can_delegate
+                _tools = TOOL_SCHEMAS if _has_tools else None
+
                 if _b and _b._router:
                     result = ""
-                    async for chunk, _ in _b._router.chat_stream(messages, max_tokens=600):
-                        if chunk not in ("__SWITCH__", "__TOOL_CALLS__"):
+                    # 多步工具调用循环（和主聊天一样的架构）
+                    _loop_msgs = list(messages)
+                    native_tool_calls = None
+
+                    for _agent_round in range(5):  # Agent 最多 5 轮工具
+                        if _agent_round > 0 and not native_tool_calls:
+                            break
+
+                        if _agent_round > 0:
+                            # 处理上一轮的工具调用
+                            for tc in (native_tool_calls or []):
+                                tc_name = tc.get("name", "")
+                                try:
+                                    tc_args = json.loads(tc.get("arguments", "{}"))
+                                except json.JSONDecodeError:
+                                    tc_args = {}
+                                logger.info(f"[Agent:{self.role.name}] 🔧 工具调用: {tc_name}({tc_args})")
+                                tool_result = await call_tool(tc_name, tc_args)
+                                _loop_msgs.append({"role": "assistant", "content": None,
+                                    "tool_calls": [{"id": tc.get("id", f"acall_{_agent_round}"), "type": "function",
+                                    "function": {"name": tc_name, "arguments": json.dumps(tc_args, ensure_ascii=False)}}]})
+                                _loop_msgs.append({"role": "tool", "tool_call_id": tc.get("id", f"acall_{_agent_round}"), "content": tool_result})
+
+                        native_tool_calls = None
+                        async for chunk, pid in _b._router.chat_stream(_loop_msgs, max_tokens=4096, tools=_tools):
+                            if chunk == "__SWITCH__":
+                                continue
+                            if chunk == "__TOOL_CALLS__":
+                                native_tool_calls = json.loads(pid)
+                                continue
                             result += chunk
-                            task.partial_result = result  # 实时更新
+                            task.partial_result = result
+
+                    if not result and native_tool_calls:
+                        result = "(工具已执行)"
                 else:
                     result = await ai_call(messages, model=self.role.preferred_model)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"[Agent:{self.role.name}] AI调用异常: {e}")
                 result = await ai_call(messages, model=self.role.preferred_model)
 
             task.status = "done"
