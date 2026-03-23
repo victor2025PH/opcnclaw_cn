@@ -319,10 +319,9 @@ class AIBackend:
         if _skill_meta:
             yield "__SKILL__" + json.dumps(_skill_meta, ensure_ascii=False)
 
-        if not skill_context:
-            # 仅在无技能匹配时注入工具调用提示
-            if self.enable_tools:
-                system = system + "\n\n" + TOOLS_SYSTEM_ADDENDUM
+        # 工具提示始终注入（不管有没有技能命中，AI 都需要知道自己能用工具）
+        if self.enable_tools:
+            system = system + "\n\n" + TOOLS_SYSTEM_ADDENDUM
         if image_b64:
             system += "\n\n用户发送了摄像头画面。请结合图像内容来回答问题，说明你看到了什么。"
 
@@ -342,7 +341,7 @@ class AIBackend:
         if self._router:
             try:
                 # 原生 FC：传递工具定义（平台不支持时路由器会忽略）
-                _tools = TOOL_SCHEMAS if (self.enable_tools and not skill_context) else None
+                _tools = TOOL_SCHEMAS if self.enable_tools else None
 
                 last_provider = None
                 native_tool_calls = None

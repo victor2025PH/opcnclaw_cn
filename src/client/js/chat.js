@@ -316,10 +316,20 @@ async function sendTextMessage(text) {
 
 async function speakText(text) {
   try {
+    // 前端也清理一遍（移除 URL、TOOL_CALL、JSON 等）
+    let cleanText = text
+      .replace(/\[TOOL_CALL\][\s\S]*?\[\/TOOL_CALL\]/gi, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/www\.\S+/g, '')
+      .replace(/\{[^}]{20,}\}/g, '')
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/`[^`]+`/g, '')
+      .trim();
+    if (!cleanText) return;
     const resp = await fetch(`${getBaseUrl()}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text.slice(0, 500) }),
+      body: JSON.stringify({ text: cleanText.slice(0, 500) }),
     });
     if (!resp.ok) {
       petSetVisualState('idle');
