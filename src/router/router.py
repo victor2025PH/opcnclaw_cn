@@ -177,22 +177,35 @@ class AIRouter:
         else:  # speed_first
             return latency_score * 3 + tier_score * 0.3 + priority
 
+    _force_next: str = ""  # 外部指定下一次优先使用的平台
+
     def _pick_providers(self, mode: str, n: int = 2) -> List[ProviderState]:
         """返回按评分排序的可用平台列表（取前 n 个）"""
+        # 如果外部指定了优先平台，放到最前面
+        forced = None
+        if self._force_next:
+            forced = self._states.get(self._force_next)
+            self._force_next = ""  # 用完即清
+
         order = self.cfg.provider_order
-        # 先按用户配置顺序，再按评分
         all_states = []
         for pid in order:
             if pid in self._states:
                 all_states.append(self._states[pid])
-        # 补充未在 order 中的
         for pid, state in self._states.items():
             if pid not in order:
                 all_states.append(state)
 
         scored = [(self._score_provider(s, mode), s) for s in all_states]
         scored.sort(key=lambda x: x[0], reverse=True)
-        return [s for score, s in scored if score >= 0][:n]
+        result = [s for score, s in scored if score >= 0][:n]
+
+        # 强制平台插到最前面
+        if forced and forced.status == "ok":
+            result = [s for s in result if s.pid != forced.pid]
+            result.insert(0, forced)
+
+        return result
 
     # ──────────────────────────────────────────────────────
     # 对外接口（兼容 openai.AsyncOpenAI 风格）

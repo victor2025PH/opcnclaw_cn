@@ -340,8 +340,18 @@ class AIBackend:
         # ── 3a. 优先走路由器（多平台轮询）──────────────────────────
         if self._router:
             try:
-                # 原生 FC：传递工具定义（平台不支持时路由器会忽略）
+                # 原生 FC：传递工具定义
                 _tools = TOOL_SCHEMAS if self.enable_tools else None
+
+                # 操作类请求强制用 DeepSeek（FC 能力更强，支持多步链式调用）
+                _action_keywords = ["帮我打开", "帮我操作", "帮我点", "打开", "关闭", "运行", "启动",
+                                    "帮我写", "帮我做", "帮我分析", "写一个", "做一个",
+                                    "deploy_team", "发微信", "发朋友圈"]
+                _prefer_deepseek = any(kw in user_message for kw in _action_keywords)
+                if _prefer_deepseek and hasattr(self._router, '_states'):
+                    ds = self._router._states.get("deepseek")
+                    if ds and ds.status == "ok":
+                        self._router._force_next = "deepseek"
 
                 last_provider = None
                 native_tool_calls = None
@@ -358,30 +368,38 @@ class AIBackend:
                     yield chunk_text
                     last_provider = provider_id
 
-                # 处理原生 tool_calls（比 ReAct 更准确）
-                if native_tool_calls:
+                # 处理原生 tool_calls — 多步循环（最多 5 轮）
+                _loop_msgs = list(messages)
+                for _round in range(5):
+                    if not native_tool_calls:
+                        break
                     for tc in native_tool_calls:
                         tc_name = tc.get("name", "")
                         try:
                             tc_args = json.loads(tc.get("arguments", "{}"))
                         except json.JSONDecodeError:
                             tc_args = {}
-                        logger.info(f"🔧 原生FC: {tc_name}({tc_args})")
+                        logger.info(f"🔧 原生FC[{_round+1}]: {tc_name}({tc_args})")
                         tool_result = await call_tool(tc_name, tc_args)
-                        # 将工具结果发回模型生成自然语言回答
-                        followup_msgs = messages + [
+                        _loop_msgs.append(
                             {"role": "assistant", "content": None,
-                             "tool_calls": [{"id": tc.get("id", "call_1"), "type": "function",
-                                           "function": {"name": tc_name, "arguments": json.dumps(tc_args, ensure_ascii=False)}}]},
-                            {"role": "tool", "tool_call_id": tc.get("id", "call_1"), "content": tool_result},
-                        ]
-                        async for chunk_text2, _ in self._router.chat_stream(
-                            followup_msgs, max_tokens=400, temperature=0.7
-                        ):
-                            if chunk_text2 in ("__SWITCH__", "__TOOL_CALLS__"):
-                                continue
-                            full_response += chunk_text2
-                            yield chunk_text2
+                             "tool_calls": [{"id": tc.get("id", f"call_{_round}"), "type": "function",
+                                           "function": {"name": tc_name, "arguments": json.dumps(tc_args, ensure_ascii=False)}}]})
+                        _loop_msgs.append(
+                            {"role": "tool", "tool_call_id": tc.get("id", f"call_{_round}"), "content": tool_result})
+
+                    # 发回模型，看是否需要继续调用工具
+                    native_tool_calls = None
+                    async for chunk_text2, pid2 in self._router.chat_stream(
+                        _loop_msgs, max_tokens=800, temperature=0.7, tools=_tools,
+                    ):
+                        if chunk_text2 == "__SWITCH__":
+                            continue
+                        if chunk_text2 == "__TOOL_CALLS__":
+                            native_tool_calls = json.loads(pid2)
+                            continue
+                        full_response += chunk_text2
+                        yield chunk_text2
 
                 if last_provider:
                     logger.debug(f"路由器使用平台: {last_provider}")
