@@ -734,6 +734,7 @@ async function loadAIConfigTab() {
     const r = await fetch(`${_BASE()}/api/providers`);
     const d = await r.json();
     const providers = d.providers || [];
+    _providersCache = providers;  // 缓存供模型选择用
     const listEl = document.getElementById('ai-providers-list');
     if (listEl) {
       listEl.innerHTML = providers.map(p => {
@@ -746,7 +747,7 @@ async function loadAIConfigTab() {
             <span style="font-size:14px">${statusIcon}</span>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${p.name_short || p.name || p.id}${freeTag}</div>
-              <div style="font-size:10px;color:var(--text-muted)">${statusText} · ${p.key_env || ''}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${statusText}${p.current_model ? ' · 模型: ' + (p.model_info?.[p.current_model]?.label || p.current_model) : ''}</div>
             </div>
             <button onclick="window._configProvider('${p.id}','${p.key_env || ''}','${(p.name_short || '').replace(/'/g,'')}')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:inherit">${hasKey ? '修改' : '配置'}</button>
           </div>`;
@@ -845,6 +846,9 @@ async function loadAIConfigTab() {
   }
 }
 
+// 缓存 providers 数据（供模型选择用）
+let _providersCache = null;
+
 // 单个平台配置 — 内嵌对话框
 window._configProvider = function(providerId, envKey, name) {
   // 关闭已有的配置框
@@ -853,10 +857,34 @@ window._configProvider = function(providerId, envKey, name) {
   const dialog = document.createElement('div');
   dialog.id = 'ai-config-dialog';
   dialog.style.cssText = 'margin-top:12px;padding:14px;background:var(--bg-surface);border:1px solid var(--accent);border-radius:10px;animation:fadeIn .2s ease';
+  // 获取该平台的模型列表
+  const provider = _providersCache?.find(p => p.id === providerId);
+  const models = provider?.models || [];
+  const modelInfo = provider?.model_info || {};
+  const currentModel = provider?.current_model || provider?.default_model || '';
+  const hasKey = provider?.has_key;
+
+  let modelSelectHtml = '';
+  if (models.length > 1) {
+    const options = models.map(m => {
+      const info = modelInfo[m] || {};
+      const label = info.label || m;
+      const desc = info.desc ? ` — ${info.desc}` : '';
+      const selected = m === currentModel ? ' selected' : '';
+      return `<option value="${m}"${selected}>${label}${desc}</option>`;
+    }).join('');
+    modelSelectHtml = `
+      <div style="margin-bottom:8px">
+        <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">选择模型</label>
+        <select id="ai-config-model-select" style="width:100%;padding:8px 10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">${options}</select>
+      </div>`;
+  }
+
   dialog.innerHTML = `
     <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px">配置 ${name}</div>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">${envKey ? '环境变量: ' + envKey : '粘贴该平台的 API Key'}</p>
-    <input type="text" id="ai-config-key-input" placeholder="粘贴 API Key..." style="width:100%;padding:10px 12px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;margin-bottom:8px;box-sizing:border-box">
+    ${!hasKey ? `<p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">${envKey ? '环境变量: ' + envKey : '粘贴该平台的 API Key'}</p>
+    <input type="text" id="ai-config-key-input" placeholder="粘贴 API Key..." style="width:100%;padding:10px 12px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;margin-bottom:8px;box-sizing:border-box">` : '<p style="font-size:11px;color:var(--success);margin-bottom:8px">✅ API Key 已配置</p>'}
+    ${modelSelectHtml}
     <div style="display:flex;gap:8px">
       <button id="ai-config-save-btn" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:inherit">保存</button>
       <button onclick="document.getElementById('ai-config-dialog').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit">取消</button>
@@ -875,31 +903,47 @@ window._configProvider = function(providerId, envKey, name) {
   const msgEl = document.getElementById('ai-config-msg');
 
   const doSave = async () => {
-    const key = input.value.trim();
-    if (!key) { msgEl.textContent = '请输入 API Key'; msgEl.style.color = 'var(--error)'; return; }
+    const input = document.getElementById('ai-config-key-input');
+    const modelSelect = document.getElementById('ai-config-model-select');
+    const key = input ? input.value.trim() : '';
+
     saveBtn.disabled = true; saveBtn.textContent = '保存中...';
-    try {
-      const r = await fetch(`${_BASE()}/api/setup/save-key`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider_id: providerId, api_key: key }),
-      });
-      const d = await r.json();
-      if (d.ok) {
-        msgEl.textContent = '✅ 保存成功！';
-        msgEl.style.color = 'var(--success)';
-        setTimeout(() => { dialog.remove(); loadAIConfigTab(); }, 1000);
-      } else {
-        msgEl.textContent = '❌ ' + (d.error || '保存失败');
-        msgEl.style.color = 'var(--error)';
-        saveBtn.disabled = false; saveBtn.textContent = '保存';
-      }
-    } catch(e) {
-      msgEl.textContent = '网络错误'; msgEl.style.color = 'var(--error)';
+    let success = true;
+
+    // 保存 Key（如果有输入）
+    if (key) {
+      try {
+        const r = await fetch(`${_BASE()}/api/setup/save-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider_id: providerId, api_key: key }),
+        });
+        const d = await r.json();
+        if (!d.ok) { msgEl.textContent = '❌ Key 保存失败'; msgEl.style.color = 'var(--error)'; success = false; }
+      } catch(e) { msgEl.textContent = '网络错误'; msgEl.style.color = 'var(--error)'; success = false; }
+    }
+
+    // 保存模型选择
+    if (success && modelSelect) {
+      try {
+        await fetch(`${_BASE()}/api/setup/save-model`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider_id: providerId, model: modelSelect.value }),
+        });
+      } catch(e) {}
+    }
+
+    if (success) {
+      msgEl.textContent = '✅ 保存成功！';
+      msgEl.style.color = 'var(--success)';
+      setTimeout(() => { dialog.remove(); loadAIConfigTab(); }, 1000);
+    } else {
       saveBtn.disabled = false; saveBtn.textContent = '保存';
     }
   };
 
   saveBtn.addEventListener('click', doSave);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+  const keyInput = document.getElementById('ai-config-key-input');
+  if (keyInput) keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
 };

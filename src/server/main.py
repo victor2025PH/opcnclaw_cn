@@ -1452,12 +1452,13 @@ async def get_providers():
         try:
             from src.router.config import RouterConfig
             rc = RouterConfig()
-            for p in rc.all_providers_meta():
+            for p in data.get("providers", []):
                 pid = p["id"]
                 key = rc.get_provider_key(pid)
-                if key and len(key) > 5:
+                p["has_key"] = bool(key and len(key) > 5)
+                p["current_model"] = rc.get_provider_model(pid)
+                if p["has_key"] and not configured_provider:
                     configured_provider = p.get("name_short", p.get("name", pid))
-                    break
         except Exception:
             pass
         data["active_provider"] = configured_provider
@@ -1511,6 +1512,27 @@ async def setup_verify_key(request: Request):
         err = str(e)[:200]
         logger.warning(f"verify-key error: {e}")
         return {"ok": False, "error": err}
+
+
+@app.post("/api/setup/save-model")
+async def setup_save_model(request: Request):
+    """保存平台的模型选择"""
+    data = await request.json()
+    provider_id = data.get("provider_id")
+    model = data.get("model", "")
+    if not provider_id or not model:
+        return {"ok": False, "error": "参数不完整"}
+    try:
+        from src.router.config import RouterConfig
+        rc = RouterConfig()
+        rc.set_provider_model(provider_id, model)
+        rc.save()
+        # 热更新路由器
+        if _GLOBAL_ROUTER:
+            _GLOBAL_ROUTER.reload_states()
+        return {"ok": True, "provider": provider_id, "model": model}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 @app.post("/api/setup/save-key")

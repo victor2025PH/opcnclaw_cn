@@ -1,5 +1,5 @@
 {
-  "_comment": "OpenClaw AI 平台配置数据库 — 每个平台的连接参数、免费额度、注册引导",
+  "_comment": "OpenClaw AI 平台配置数据库 — 每个平台的连接参数、免费额度、注册引导。supports_vision 等字段供路由与 UI 使用；后续可扩展 capabilities: [chat|vision|video|reasoning|code] 做按任务分流（与 STT/TTS 独立管道配合）。",
   "providers": [
     {
       "id": "zhipu_flash",
@@ -11,6 +11,12 @@
       "base_url": "https://open.bigmodel.cn/api/paas/v4",
       "default_model": "glm-4-flash",
       "models": ["glm-4-flash", "glm-4-flash-250414", "glm-4-plus", "glm-4-long"],
+      "model_info": {
+        "glm-4-flash": {"label": "GLM-4-Flash", "desc": "免费，速度快，日常对话首选", "best_for": "chat"},
+        "glm-4-flash-250414": {"label": "GLM-4-Flash 最新", "desc": "免费，2025年4月更新版", "best_for": "chat"},
+        "glm-4-plus": {"label": "GLM-4-Plus", "desc": "付费，能力更强", "best_for": "reasoning"},
+        "glm-4-long": {"label": "GLM-4-Long", "desc": "付费，支持超长文本", "best_for": "data"}
+      },
       "key_prefix": "",
       "key_placeholder": "your_api_key.secret_key",
       "key_env": "ZHIPU_API_KEY",
@@ -97,6 +103,10 @@
       "base_url": "https://api.deepseek.com/v1",
       "default_model": "deepseek-chat",
       "models": ["deepseek-chat", "deepseek-reasoner"],
+      "model_info": {
+        "deepseek-chat": {"label": "DeepSeek V3", "desc": "通用对话，速度快，性价比高", "best_for": "chat"},
+        "deepseek-reasoner": {"label": "DeepSeek R1", "desc": "深度推理，数学/逻辑/代码最强", "best_for": "reasoning"}
+      },
       "key_prefix": "sk-",
       "key_placeholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
       "key_env": "DEEPSEEK_API_KEY",
@@ -126,6 +136,12 @@
       "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
       "default_model": "qwen-turbo",
       "models": ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
+      "model_info": {
+        "qwen-turbo": {"label": "Qwen Turbo", "desc": "速度最快，日常对话", "best_for": "chat"},
+        "qwen-plus": {"label": "Qwen Plus", "desc": "均衡，文案创作好", "best_for": "writing"},
+        "qwen-max": {"label": "Qwen Max", "desc": "最强，复杂推理", "best_for": "reasoning"},
+        "qwen-long": {"label": "Qwen Long", "desc": "超长文本，适合分析长文档", "best_for": "data"}
+      },
       "key_prefix": "sk-",
       "key_placeholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
       "key_env": "TONGYI_API_KEY",
@@ -155,6 +171,11 @@
       "base_url": "https://api.moonshot.cn/v1",
       "default_model": "moonshot-v1-8k",
       "models": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+      "model_info": {
+        "moonshot-v1-8k": {"label": "Kimi 8K", "desc": "速度快，短对话", "best_for": "chat"},
+        "moonshot-v1-32k": {"label": "Kimi 32K", "desc": "支持较长文本", "best_for": "writing"},
+        "moonshot-v1-128k": {"label": "Kimi 128K", "desc": "超长上下文，分析长文档", "best_for": "data"}
+      },
       "key_prefix": "sk-",
       "key_placeholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
       "key_env": "MOONSHOT_API_KEY",
