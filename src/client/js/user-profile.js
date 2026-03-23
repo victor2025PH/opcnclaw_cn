@@ -845,20 +845,61 @@ async function loadAIConfigTab() {
   }
 }
 
-// 单个平台配置
+// 单个平台配置 — 内嵌对话框
 window._configProvider = function(providerId, envKey, name) {
-  const key = prompt(`请输入 ${name} 的 API Key：\n\n环境变量: ${envKey}`);
-  if (!key || !key.trim()) return;
-  fetch(`${_BASE()}/api/setup/save-key`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider: providerId, key: key.trim() }),
-  }).then(r => r.json()).then(d => {
-    if (d.ok) {
-      alert('✅ 保存成功！');
-      loadAIConfigTab();
-    } else {
-      alert('❌ 保存失败: ' + (d.error || ''));
+  // 关闭已有的配置框
+  document.getElementById('ai-config-dialog')?.remove();
+
+  const dialog = document.createElement('div');
+  dialog.id = 'ai-config-dialog';
+  dialog.style.cssText = 'margin-top:12px;padding:14px;background:var(--bg-surface);border:1px solid var(--accent);border-radius:10px;animation:fadeIn .2s ease';
+  dialog.innerHTML = `
+    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px">配置 ${name}</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">${envKey ? '环境变量: ' + envKey : '粘贴该平台的 API Key'}</p>
+    <input type="text" id="ai-config-key-input" placeholder="粘贴 API Key..." style="width:100%;padding:10px 12px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace;margin-bottom:8px;box-sizing:border-box">
+    <div style="display:flex;gap:8px">
+      <button id="ai-config-save-btn" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:inherit">保存</button>
+      <button onclick="document.getElementById('ai-config-dialog').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:inherit">取消</button>
+    </div>
+    <div id="ai-config-msg" style="font-size:11px;min-height:16px;margin-top:6px"></div>
+  `;
+
+  // 插入到平台列表下方
+  const listEl = document.getElementById('ai-providers-list');
+  if (listEl) listEl.parentNode.insertBefore(dialog, listEl.nextSibling);
+
+  const input = document.getElementById('ai-config-key-input');
+  input.focus();
+
+  const saveBtn = document.getElementById('ai-config-save-btn');
+  const msgEl = document.getElementById('ai-config-msg');
+
+  const doSave = async () => {
+    const key = input.value.trim();
+    if (!key) { msgEl.textContent = '请输入 API Key'; msgEl.style.color = 'var(--error)'; return; }
+    saveBtn.disabled = true; saveBtn.textContent = '保存中...';
+    try {
+      const r = await fetch(`${_BASE()}/api/setup/save-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId, api_key: key }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        msgEl.textContent = '✅ 保存成功！';
+        msgEl.style.color = 'var(--success)';
+        setTimeout(() => { dialog.remove(); loadAIConfigTab(); }, 1000);
+      } else {
+        msgEl.textContent = '❌ ' + (d.error || '保存失败');
+        msgEl.style.color = 'var(--error)';
+        saveBtn.disabled = false; saveBtn.textContent = '保存';
+      }
+    } catch(e) {
+      msgEl.textContent = '网络错误'; msgEl.style.color = 'var(--error)';
+      saveBtn.disabled = false; saveBtn.textContent = '保存';
     }
-  }).catch(e => alert('网络错误'));
+  };
+
+  saveBtn.addEventListener('click', doSave);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
 };
