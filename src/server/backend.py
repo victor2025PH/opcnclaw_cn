@@ -370,6 +370,7 @@ class AIBackend:
 
                 # 处理原生 tool_calls — 多步循环（最多 5 轮）
                 _loop_msgs = list(messages)
+                _is_desktop_action = False
                 for _round in range(5):
                     if not native_tool_calls:
                         break
@@ -381,12 +382,27 @@ class AIBackend:
                             tc_args = {}
                         logger.info(f"🔧 原生FC[{_round+1}]: {tc_name}({tc_args})")
                         tool_result = await call_tool(tc_name, tc_args)
+                        # 跟踪是否是桌面操作
+                        if tc_name.startswith("desktop_") or tc_name == "open_application":
+                            _is_desktop_action = True
                         _loop_msgs.append(
                             {"role": "assistant", "content": None,
                              "tool_calls": [{"id": tc.get("id", f"call_{_round}"), "type": "function",
                                            "function": {"name": tc_name, "arguments": json.dumps(tc_args, ensure_ascii=False)}}]})
                         _loop_msgs.append(
                             {"role": "tool", "tool_call_id": tc.get("id", f"call_{_round}"), "content": tool_result})
+
+                    # 桌面操作后自动截屏，让 AI 看到当前屏幕状态
+                    if _is_desktop_action and _round < 4:
+                        try:
+                            import asyncio
+                            await asyncio.sleep(1)  # 等操作生效
+                            screen_result = await call_tool("desktop_screenshot", {})
+                            _loop_msgs.append({"role": "user", "content":
+                                f"[系统] 操作已执行。当前屏幕内容：{screen_result[:1500]}\n请根据屏幕内容决定下一步操作，继续完成用户的任务。如果已完成就告诉用户结果。"})
+                            logger.info(f"🖥️ 自动截屏[{_round+1}]: {len(screen_result)} chars")
+                        except Exception as e:
+                            logger.debug(f"自动截屏失败: {e}")
 
                     # 发回模型，看是否需要继续调用工具（保持用 DeepSeek）
                     if _prefer_deepseek and hasattr(self._router, '_force_next'):
