@@ -213,7 +213,7 @@ class AIRouter:
 
     # 首 chunk 超时：如果平台在此时间内没有返回任何内容，立即切换
     # 远低于 HTTP 超时（90s），实现快速故障转移
-    FIRST_CHUNK_TIMEOUT = 12.0
+    FIRST_CHUNK_TIMEOUT = 30.0  # GLM-5-Turbo 有 reasoning 思考过程，需要更长时间
 
     async def chat_stream(
         self,
