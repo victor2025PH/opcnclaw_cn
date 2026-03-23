@@ -571,6 +571,24 @@ async def list_history_sessions():
         return {"sessions": [], "error": str(e)}
 
 
+@router.post("/api/history/sessions")
+async def create_session():
+    """Create a new session."""
+    import uuid
+    session_id = f"session_{uuid.uuid4().hex[:8]}"
+    return {"ok": True, "id": session_id}
+
+
+@router.delete("/api/history/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a session and its messages."""
+    try:
+        mem_store.clear_history(session_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # ===== POST /api/stt-model, GET /api/stt-model =====
 
 class STTModelRequest(BaseModel):

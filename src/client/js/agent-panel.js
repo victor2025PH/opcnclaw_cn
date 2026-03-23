@@ -72,16 +72,12 @@ async function _checkForActiveTeam() {
     const d = await r.json();
     const teams = d.teams || [];
     const active = teams.find(t => t.status === 'executing' || t.status === 'planning');
-    const done = teams.find(t => t.status === 'done' && t.team_id !== _agentPanelTeamId);
-
+    // 只弹出正在执行的团队，done 的不自动弹（防反复弹出）
     if (active && active.team_id !== _agentPanelTeamId) {
       _agentPanelTeamId = active.team_id;
       _showPanel();
       _startPoll();
-    } else if (done && !_panelVisible) {
-      _agentPanelTeamId = done.team_id;
-      _showPanel();
-      _renderTeam(done);
+    // done 的团队不自动弹出（在聊天结果卡片中查看）
     }
   } catch (e) { /* silent */ }
 }
