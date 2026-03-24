@@ -204,13 +204,14 @@ function _switchTab(tab) {
     const port = info.http_port || location.port || '8766';
     // 优先选 192.168 开头的WiFi IP（手机能访问的）
     const wifiIp = ips.find(ip => ip.startsWith('192.168.')) || ips.find(ip => ip.startsWith('10.')) || ips[0];
-    const mainUrl = ips.length ? `http://${wifiIp}:${port}/app` : `${location.origin}/app`;
+    // 手机扫码用极简版(/m)，避免/app的SW/onboarding问题
+    const mainUrl = ips.length ? `http://${wifiIp}:${port}/m` : `${location.origin}/m`;
     const urlEl = document.getElementById('qr-url');
     urlEl.textContent = mainUrl;
     urlEl.dataset.url = mainUrl;
     document.getElementById('qr-img').src = `/api/qr?url=${encodeURIComponent(mainUrl)}&size=180`;
     if (ips.length > 1) {
-      document.getElementById('ip-list').innerHTML = ips.map(ip => `<div>http://${ip}:${port}/app</div>`).join('');
+      document.getElementById('ip-list').innerHTML = ips.map(ip => `<div>http://${ip}:${port}/m</div>`).join('');
     }
   } catch(e) {
     const u = `${location.origin}/app`;
