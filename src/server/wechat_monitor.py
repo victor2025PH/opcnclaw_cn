@@ -18,6 +18,7 @@
 """
 
 import hashlib
+import os
 import re
 import sys
 import time
@@ -83,6 +84,68 @@ WECHAT_CLASS = "WeChatMainWndForPC"       # 微信 3.x
 WECHAT_CLASS_V4 = "mmui::MainWindow"      # 微信 4.x
 WECHAT_CLASSES = [WECHAT_CLASS, WECHAT_CLASS_V4]
 WECHAT_TITLE_KEYWORD = "微信"
+
+
+def _extra_wechat_classes_from_env() -> List[str]:
+    """可选：OPENCLAW_WECHAT_WINDOW_CLASS=ClassA,ClassB 适配非标准安装/测试版。"""
+    raw = os.environ.get("OPENCLAW_WECHAT_WINDOW_CLASS", "").strip()
+    if not raw:
+        return []
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def find_wechat_main_window(max_wait: float = 1.5):
+    """
+    查找微信 PC 主窗口（类名 → 标题关键字 → 桌面顶层遍历）。
+    无窗口时常见原因：仅托盘驻留未点开主界面、不同微信分支类名不同、非同一桌面会话。
+    """
+    if not _uia_available:
+        return None
+    classes: List[str] = list(WECHAT_CLASSES) + _extra_wechat_classes_from_env()
+    seen: set = set()
+    for cls in classes:
+        if cls in seen:
+            continue
+        seen.add(cls)
+        for depth in (1, 2, 3):
+            try:
+                ctrl = auto.WindowControl(ClassName=cls, searchDepth=depth)
+                if ctrl.Exists(max_wait, 0.05):
+                    return ctrl
+            except Exception:
+                continue
+    for sub in ("微信", "WeChat"):
+        try:
+            w = auto.WindowControl(SubName=sub, searchDepth=3)
+            if w.Exists(max_wait, 0.05):
+                cn = (w.ClassName or "")
+                if "WeChat" in cn or "mmui" in cn or "Weixin" in cn:
+                    return w
+        except Exception:
+            continue
+    try:
+        root = auto.GetRootControl()
+        for ch in root.GetChildren():
+            try:
+                if getattr(ch, "ControlTypeName", "") != "WindowControl":
+                    continue
+                cn = ch.ClassName or ""
+                title = ch.Name or ""
+                if cn in classes:
+                    if ch.Exists(0):
+                        return ch
+                if any(x in cn for x in ("WeChatMainWnd", "mmui::MainWindow")):
+                    if ch.Exists(0):
+                        return ch
+                if WECHAT_TITLE_KEYWORD in title and ("WeChat" in cn or "mmui" in cn):
+                    if ch.Exists(0):
+                        return ch
+            except Exception:
+                continue
+    except Exception as e:
+        logger.debug(f"[Monitor] find_wechat root walk: {e}")
+    return None
+
 
 # 扫描间隔（秒）
 SCAN_INTERVAL_UIA = 1.5
@@ -153,44 +216,40 @@ class UIAReader:
 
         if not _uia_available:
             return None
-        # 兼容微信 3.x 和 4.x 窗口类名
-        for cls in WECHAT_CLASSES:
-            try:
-                ctrl = auto.WindowControl(
-                    ClassName=cls,
-                    searchDepth=1,
-                    timeout=1
-                )
-                if ctrl.Exists(0):
-                    self._wechat_ctrl = ctrl
-                    self._last_find = now
-                    return ctrl
-            except Exception as e:
-                logger.debug(f"UIA find wechat window ({cls}): {e}")
+        ctrl = find_wechat_main_window()
+        if ctrl:
+            self._wechat_ctrl = ctrl
+            self._last_find = now
+            return ctrl
         return None
 
     @staticmethod
-    def activate_wechat_window() -> bool:
+    def activate_wechat_window(silent: bool = False) -> bool:
         """
         自动查找并激活微信窗口（从最小化/托盘恢复到前台）。
         返回是否成功。
+
+        silent=True：后台保活轮询时调用，未找到窗口只打 DEBUG，避免日志刷屏。
         """
         if not _uia_available:
             return False
         import time as _time
-        for cls in WECHAT_CLASSES:
-            try:
-                wnd = auto.WindowControl(ClassName=cls, searchDepth=1)
-                if wnd.Exists(1, 0):
-                    wnd.ShowWindow(9)  # SW_RESTORE
-                    wnd.SetTopmost(True)
-                    _time.sleep(0.3)
-                    wnd.SetTopmost(False)
-                    logger.info(f"[Monitor] 微信窗口已激活 ({cls})")
-                    return True
-            except Exception:
-                continue
-        logger.warning("[Monitor] 未找到微信窗口，无法激活")
+        try:
+            wnd = find_wechat_main_window()
+            if wnd:
+                wnd.ShowWindow(9)  # SW_RESTORE
+                wnd.SetTopmost(True)
+                _time.sleep(0.3)
+                wnd.SetTopmost(False)
+                cn = getattr(wnd, "ClassName", "") or ""
+                logger.info(f"[Monitor] 微信窗口已激活 ({cn})")
+                return True
+        except Exception as e:
+            logger.debug(f"[Monitor] activate wechat: {e}")
+        if silent:
+            logger.debug("[Monitor] 未找到微信窗口（后台保活，已跳过）")
+        else:
+            logger.warning("[Monitor] 未找到微信窗口，无法激活")
         return False
 
     def send_message(self, text: str) -> bool:

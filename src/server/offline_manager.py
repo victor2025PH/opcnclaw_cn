@@ -3,7 +3,7 @@
 离线模式管理器 — 网络断开时自动切换到本地 AI
 
 策略：
-  - 每 30s 心跳检测网络连通性（ping AI 平台）
+  - 每 30s 心跳检测外网连通性（不请求需鉴权的 AI /models，避免无 Token 时固定 401 污染日志）
   - 有网 → 云端 AI（智谱/DeepSeek）
   - 断网 → 本地 Ollama（qwen2.5:7b）
   - 网络恢复 → 自动切回云端
@@ -36,10 +36,11 @@ class OfflineManager:
 
     CHECK_INTERVAL = 30.0       # 检测间隔（秒）
     PING_TIMEOUT = 5.0          # ping 超时
+    # 仅用「无需 Bearer 即可 2xx/3xx」的地址测公网；勿对智谱/DeepSeek 的 /models 发无鉴权请求（会 401，与 Key 是否正常无关）
     PING_URLS = [
-        "https://open.bigmodel.cn/api/paas/v4/models",  # 智谱
-        "https://api.deepseek.com/v1/models",            # DeepSeek
-        "https://www.baidu.com",                         # 通用
+        "https://www.baidu.com",
+        "https://www.qq.com",
+        "https://www.microsoft.com",
     ]
 
     def __init__(self):
@@ -125,19 +126,34 @@ class OfflineManager:
                 pass
 
     def _ping_network(self) -> bool:
-        """ping 任意一个 AI 平台检测网络"""
+        """检测本机是否能访问公网（HTTPS）。不调用智谱/DeepSeek API，以免无 Key 时误报 401。"""
         for url in self.PING_URLS:
             try:
-                with httpx.Client(timeout=self.PING_TIMEOUT) as client:
+                with httpx.Client(
+                    timeout=self.PING_TIMEOUT,
+                    follow_redirects=True,
+                ) as client:
                     r = client.head(url)
                     if r.status_code < 500:
                         return True
+                    # 部分站点对 HEAD 返回 405/404，再试 GET
+                    if r.status_code in (404, 405):
+                        r = client.get(url)
+                        if r.status_code < 500:
+                            return True
             except Exception:
                 continue
         return False
 
     def _check_ollama(self) -> bool:
         """检测本地 Ollama 是否可用"""
+        import os
+        if os.environ.get("OPENCLAW_OLLAMA_ENABLED", "false").lower() not in (
+            "1", "true", "yes", "on",
+        ):
+            self._ollama_available = False
+            self._local_model = ""
+            return False
         try:
             with httpx.Client(timeout=3.0) as client:
                 r = client.get("http://localhost:11434/api/tags")
@@ -165,6 +181,42 @@ class OfflineManager:
                 cb(old, new)
             except Exception:
                 pass
+
+        # 与路由器集成：断网时强制切到 Ollama
+        try:
+            from src.server.main import backend
+            if backend and backend._router:
+                if new == NetworkMode.LOCAL and self._local_model:
+                    # 强制路由器下次使用 Ollama
+                    if "ollama" in backend._router._states:
+                        backend._router._force_next = "ollama"
+                        logger.info(f"[Offline] 路由器已切换到 Ollama: {self._local_model}")
+                elif new == NetworkMode.ONLINE:
+                    # 恢复正常路由
+                    backend._router._force_next = ""
+                    logger.info("[Offline] 路由器恢复正常云端调度")
+        except Exception as e:
+            logger.debug(f"[Offline] Router integration: {e}")
+
+    def get_tts_provider(self) -> str:
+        """根据网络状态返回推荐的 TTS 引擎
+
+        降级链：配置的 TTS → Edge TTS → pyttsx3 → disabled
+        """
+        import os
+        if self.is_online:
+            return os.environ.get("TTS_PROVIDER", "edge_tts")
+        # 离线时 Edge TTS 不可用（需要网络），降级到 pyttsx3
+        try:
+            import pyttsx3
+            return "pyttsx3"
+        except ImportError:
+            logger.warning("[Offline] pyttsx3 未安装，离线 TTS 不可用")
+            return "disabled"
+
+    def should_force_ollama(self) -> bool:
+        """路由器辅助：当前是否应该强制 Ollama"""
+        return self._mode == NetworkMode.LOCAL and self._ollama_available
 
 
 # ── 全局单例 ──────────────────────────────────────────────────

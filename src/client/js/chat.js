@@ -1,4 +1,4 @@
-import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, setLang, currentLang } from '/js/state.js';
+import { S, fn, dom, t, $, $$, getBaseUrl, escapeHtml, setLang, currentLang, isLocalOrPrivateHost } from '/js/state.js';
 import { petSetVisualState, petSetSubtitle, petGetSkin } from '/js/pet-bridge.js';
 
 /** 与桌面指令 / 桌宠皮肤一致：默认 eve 用品牌 🦞，换皮后用机器人系区分 */
@@ -8,6 +8,72 @@ function assistantAvatarEmoji(isDesktop) {
   if (skin === 'walle') return '🦾';
   if (skin === 'orbit') return '🛰️';
   return '🦞';
+}
+
+/** P0: 助手气泡头像 — 优先消息内 avatar / 槽位元数据 */
+function resolveAssistantBubbleAvatar(msg) {
+  if (msg.role === 'user') return '👤';
+  if (msg.avatar) return msg.avatar;
+  if (msg.slot_id && window.__slotManager?.metaFromSlot && window.__slotManager?.getSlotById) {
+    const slot = window.__slotManager.getSlotById(msg.slot_id);
+    if (slot) {
+      const meta = window.__slotManager.metaFromSlot(slot);
+      if (meta?.avatar) return meta.avatar;
+    }
+  }
+  return assistantAvatarEmoji(!!msg.desktop);
+}
+
+// ═══════════════════════════════════════════════════
+// USAGE BADGE
+// ═══════════════════════════════════════════════════
+
+/** 查询用量并更新输入框旁的用量指示器 */
+async function refreshUsageBadge() {
+  const badge = document.getElementById('usage-badge');
+  if (!badge) return;
+  try {
+    const r = await fetch(getBaseUrl() + '/api/my-usage', {
+      headers: { 'X-API-Token': S.token || '' },
+    });
+    const d = await r.json();
+    // 本地模式（未连代理）不显示
+    if (!d.ok || d.tier === 'local') {
+      badge.style.display = 'none';
+      // 解除可能的禁用状态
+      if (dom.msgInput) dom.msgInput.disabled = false;
+      return;
+    }
+    const remaining = d.daily_remaining ?? -1;
+    const limit = d.daily_limit ?? -1;
+    if (limit < 0 || remaining < 0) {
+      // 无限制
+      badge.style.display = 'none';
+      return;
+    }
+    badge.style.display = '';
+    badge.className = 'usage-badge';
+    if (remaining <= 0) {
+      badge.textContent = '今日额度已用完';
+      badge.classList.add('danger');
+      badge.title = `今日已用 ${d.daily_used || 0}/${limit} 次`;
+      // 禁用输入
+      if (dom.msgInput) { dom.msgInput.disabled = true; dom.msgInput.placeholder = '今日额度已用完'; }
+      if (dom.sendBtn) dom.sendBtn.disabled = true;
+    } else if (remaining <= 10) {
+      badge.textContent = `剩余 ${remaining} 次`;
+      badge.classList.add('warn');
+      badge.title = `今日已用 ${d.daily_used || 0}/${limit} 次`;
+      if (dom.msgInput) { dom.msgInput.disabled = false; dom.msgInput.placeholder = '有什么需要帮忙的？'; }
+    } else {
+      badge.textContent = `剩余 ${remaining} 次`;
+      badge.title = `今日已用 ${d.daily_used || 0}/${limit} 次`;
+      if (dom.msgInput) { dom.msgInput.disabled = false; dom.msgInput.placeholder = '有什么需要帮忙的？'; }
+    }
+  } catch (e) {
+    // 查询失败不影响正常使用
+    badge.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -57,12 +123,40 @@ function showChat(info) {
   if (info?.ips) dom.infoIps.textContent = info.ips.join(', ');
   fn.connectVoiceWs();
   generateShareQr();
+
+  // AI 后端状态检测：连接成功后检查 AI 是否可用
+  fetch(S.serverUrl + '/api/ai/status', {headers: {'X-API-Token': S.token}})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var badge = document.getElementById('ws-latency-badge');
+      if (!badge) return;
+      if (d.available === false || d.providers_online === 0) {
+        dom.statusDot.className = 'status-dot warning';
+        badge.textContent = 'AI 离线';
+        badge.title = '所有 AI 平台不可用，请检查设置';
+        badge.style.color = 'var(--warning, #f59e0b)';
+      } else {
+        badge.style.color = '';
+      }
+    }).catch(function() {});
+
+  // 首次使用提示 Ctrl+K 快捷键（只显示一次）
+  if (!localStorage.getItem('oc_ctrlk_tip')) {
+    localStorage.setItem('oc_ctrlk_tip', '1');
+    setTimeout(function() {
+      if (window.ocToast) {
+        window.ocToast.info('按 Ctrl+K 可随时快速搜索所有功能', 5000);
+      }
+    }, 3000);
+  }
+
+  // 用量查询
+  refreshUsageBadge();
 }
 
 function showSetup() {
   // 局域网/本机访问不跳setup（直接留在聊天页）
-  var h = location.hostname;
-  if (h === 'localhost' || h === '127.0.0.1' || /^(192\.168\.|10\.|172\.)/.test(h)) {
+  if (isLocalOrPrivateHost(location.hostname)) {
     S.serverUrl = location.origin;
     localStorage.setItem('oc_server', S.serverUrl);
     return;
@@ -209,6 +303,21 @@ async function sendTextMessage(text) {
   if (fn.isDesktopActive?.() && text.trim() && S.attachments.length === 0) {
     return sendDesktopCommand(text);
   }
+
+  // ── 槽位分流：非 chat 槽走专用通道 ──
+  const activeSlot = window.__slotManager?.getActiveSlot?.();
+  if (activeSlot && text.trim() && S.attachments.length === 0) {
+    if (activeSlot.slot_type === 'agent' || activeSlot.slot_type === 'team') {
+      const t = text.trim();
+      dom.msgInput.value = '';
+      autoResize(dom.msgInput);
+      if (activeSlot.slot_type === 'agent') {
+        return window.__slotManager.sendAgentMessage(t);
+      }
+      return window.__slotManager.sendTeamMessage(t);
+    }
+  }
+
   S.isSending = true;
   dom.sendBtn.disabled = true;
   if (S.isPlayingAudio) fn.stopSpeaking();
@@ -250,25 +359,48 @@ async function sendTextMessage(text) {
   S.messages.push(aiMsg);
   const aiEl = appendMessage(aiMsg, true);
 
+  // 显示思考状态
+  _showAIStatus('thinking', 'AI 正在思考...');
+
   try {
-    const body = { messages: buildMessages(), stream: true };
+    const body = {
+      messages: buildMessages(),
+      stream: true,
+      model: window._currentModel || 'auto',  // 传给后端选择模型
+      session_id: window._currentSessionId || null,
+    };
+    // 附带用户身份（计费+多用户隔离）
+    const _chatHeaders = { 'Content-Type': 'application/json' };
+    const _billingPhone = localStorage.getItem('billing_phone');
+    if (_billingPhone) _chatHeaders['X-User-Phone'] = _billingPhone;
+
     const resp = await _fetchRetry(`${getBaseUrl()}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _chatHeaders,
       body: JSON.stringify(body),
     });
 
     if (!resp.ok) {
       if (resp.status === 429) throw new Error('AI 正在忙，请稍等几秒再试');
       if (resp.status === 401) throw new Error('需要配置 AI，请到设置中填写 API Key');
-      // 尝试读取服务端错误信息
+      // 尝试读取服务端错误信息，映射为友好中文
       let errMsg = '连接异常，请检查网络';
       try {
         const errBody = await resp.json();
-        if (errBody.error) errMsg = errBody.error;
-        else if (errBody.detail) errMsg = errBody.detail;
+        const raw = errBody.error || errBody.detail || '';
+        // 映射常见技术错误为友好提示
+        if (raw.includes('API') || raw.includes('key') || raw.includes('auth'))
+          errMsg = '需要配置 AI 服务，请到设置中填写';
+        else if (raw.includes('timeout') || raw.includes('connect'))
+          errMsg = '网络连接超时，请稍后重试';
+        else if (raw.includes('繁忙') || raw.includes('busy') || raw.includes('rate'))
+          errMsg = 'AI 正在忙，请稍等几秒再试';
+        else if (raw.includes('启动') || raw.includes('starting'))
+          errMsg = '服务正在启动，请稍后再试';
+        else if (raw)
+          errMsg = raw;  // 如果已是中文友好消息则保留
       } catch (_) {}
-      if (resp.status === 503) errMsg = errMsg === '连接异常，请检查网络' ? '服务正在启动，请稍后再试' : errMsg;
+      if (resp.status === 503 && errMsg === '连接异常，请检查网络') errMsg = '服务正在启动，请稍后再试';
       throw new Error(errMsg);
     }
 
@@ -276,6 +408,9 @@ async function sendTextMessage(text) {
     const decoder = new TextDecoder();
     let fullText = '';
     let buffer = '';
+    let _firstChunk = true;
+    let _desktopMode = false;
+    let _toolStep = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -293,15 +428,101 @@ async function sendTextMessage(text) {
 
         try {
           const parsed = JSON.parse(data);
+          // ── SSE 流中的错误消息：转为友好提示 ──
+          if (parsed.error) {
+            _hideAIStatus();
+            const friendlyErr = '<div class="ai-error-card">'
+              + '<div class="ai-error-icon">&#x26A0;&#xFE0F;</div>'
+              + '<div class="ai-error-title">AI 暂时不可用</div>'
+              + '<div class="ai-error-desc">请稍后重试，或检查网络连接</div>'
+              + '<button class="ai-error-btn" onclick="sendQuick(window._lastUserMsg||\'你好\')">重新发送</button>'
+              + '</div>';
+            fullText += friendlyErr;
+            updateStreamingEl(aiEl, fullText);
+            continue;
+          }
           const delta = parsed.choices?.[0]?.delta?.content;
           if (delta != null && delta !== '') {
+            // 首个 chunk：从"思考"切换到"回复"
+            if (_firstChunk) {
+              _firstChunk = false;
+              _hideAIStatus();
+            }
+
+            // ── 结构化错误处理：后端 __ERROR__xxx 转为友好引导卡片 ──
+            if (delta.startsWith('__ERROR__')) {
+              const errCode = delta.replace('__ERROR__', '').trim();
+              let errHtml = '';
+              if (errCode === 'no_api_key') {
+                errHtml = '<div class="ai-error-card">'
+                  + '<div class="ai-error-icon">&#x2699;&#xFE0F;</div>'
+                  + '<div class="ai-error-title">AI 服务未配置</div>'
+                  + '<div class="ai-error-desc">首次使用需要配置 AI 服务，只需 30 秒即可完成</div>'
+                  + '<button class="ai-error-btn" onclick="document.querySelector(\'[data-page=settings]\')?.click();window._openSettingsTab?.(\'ai\')">打开设置</button>'
+                  + '</div>';
+              } else if (errCode === 'ai_unavailable') {
+                errHtml = '<div class="ai-error-card">'
+                  + '<div class="ai-error-icon">&#x26A0;&#xFE0F;</div>'
+                  + '<div class="ai-error-title">AI 暂时不可用</div>'
+                  + '<div class="ai-error-desc">所有 AI 平台暂时无法连接，请检查网络或稍后重试</div>'
+                  + '<button class="ai-error-btn" onclick="location.reload()">重新连接</button>'
+                  + '</div>';
+              } else if (errCode === 'rate_limited') {
+                errHtml = '<div class="ai-error-card">'
+                  + '<div class="ai-error-icon">&#x23F3;</div>'
+                  + '<div class="ai-error-title">请求过于频繁</div>'
+                  + '<div class="ai-error-desc">AI 正在处理其他请求，请稍等几秒后重试</div>'
+                  + '<button class="ai-error-btn" onclick="this.closest(\'.ai-error-card\').remove()">知道了</button>'
+                  + '</div>';
+              } else {
+                errHtml = '<div class="ai-error-card">'
+                  + '<div class="ai-error-icon">&#x274C;</div>'
+                  + '<div class="ai-error-title">出现问题</div>'
+                  + '<div class="ai-error-desc">' + errCode + '</div>'
+                  + '</div>';
+              }
+              // 在错误卡片下方添加快捷重试入口
+              errHtml += '<div class="ai-error-actions" style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">'
+                + '<button class="ai-error-btn" style="background:transparent;border:1px solid var(--border);font-size:12px;padding:6px 14px" onclick="sendQuick(\'你好\')">&#x1F4AC; 试试对话</button>'
+                + '<button class="ai-error-btn" style="background:transparent;border:1px solid var(--border);font-size:12px;padding:6px 14px" onclick="sendQuick(\'现在几点了\')">&#x23F0; 查时间</button>'
+                + '<button class="ai-error-btn" style="background:transparent;border:1px solid var(--border);font-size:12px;padding:6px 14px" onclick="sendQuick(\'今天天气\')">&#x1F324; 查天气</button>'
+                + '</div>';
+              fullText += errHtml;
+              updateStreamingEl(aiEl, fullText);
+              _hideAIStatus();
+              continue;
+            }
+
             fullText += delta;
+
+            // 检测工具执行状态（后端注入的提示）
+            if (delta.includes('秒后操控桌面')) {
+              // 3秒倒计时警告 — 醒目提示
+              const sec = delta.match(/(\d)/);
+              _showAIStatus('countdown', '⏳ AI 将在 ' + (sec ? sec[1] : '?') + ' 秒后操控桌面，请勿触碰鼠标键盘');
+            } else if (delta.includes('正在打开') || delta.includes('正在按键') || delta.includes('正在输入') || delta.includes('正在点击') || delta.includes('正在截屏')) {
+              _toolStep++;
+              _showAIStatus('desktop', '⚠️ ' + delta.trim() + ' (第' + _toolStep + '步)');
+            } else if (delta.includes('正在搜索') || delta.includes('正在执行 web_open')) {
+              _showAIStatus('executing', '🌐 ' + delta.trim());
+            } else if (delta.includes('正在查天气') || delta.includes('正在查时间')) {
+              _showAIStatus('executing', delta.trim());
+            } else if (delta.includes('正在组建团队')) {
+              _showAIStatus('executing', '👥 ' + delta.trim());
+            } else if (delta.includes('正在执行 create_excel') || delta.includes('正在执行 create_document')) {
+              _showAIStatus('executing', '📄 ' + delta.trim());
+            }
+
             updateStreamingEl(aiEl, fullText);
             petSetSubtitle(fullText.slice(0, 160));
           }
         } catch {}
       }
     }
+
+    // 清除所有状态
+    _hideAIStatus();
+    _hideDesktopOverlay();
 
     aiMsg.content = fullText;
     finalizeStreamingEl(aiEl, fullText);
@@ -312,6 +533,8 @@ async function sendTextMessage(text) {
       petSetSubtitle('');
     }
   } catch (e) {
+    _hideAIStatus();
+    _hideDesktopOverlay();
     console.error('Chat error:', e);
     aiMsg.content = '⚠️ ' + (e.message || '出了点问题，请稍后再试');
     finalizeStreamingEl(aiEl, aiMsg.content);
@@ -321,36 +544,67 @@ async function sendTextMessage(text) {
 
   S.isSending = false;
   updateSendBtn();
+  refreshUsageBadge();
 }
 
-async function speakText(text) {
+async function speakText(text, forcePlay) {
+  // 全局语音开关：关闭时不自动播报（手动点击 forcePlay=true 时仍播放）
+  if (!forcePlay && localStorage.getItem('oc_tts_muted') === '1') return;
   try {
-    // 前端也清理一遍（移除 URL、TOOL_CALL、JSON 等）
+    // 前端彻底清理（v6.1：和后端 clean_for_speech 同步，白名单策略）
     let cleanText = text
+      // 结构化垃圾
       .replace(/\[TOOL_CALL\][\s\S]*?\[\/TOOL_CALL\]/gi, '')
-      .replace(/https?:\/\/\S+/g, '')
-      .replace(/www\.\S+/g, '')
-      .replace(/\S+\.(com|cn|io|org|net|html|php)\S*/g, '')
-      .replace(/\/\/\S+/g, '')
-      .replace(/\S*%[0-9A-Fa-f]{2}\S*/g, '')
-      .replace(/\S+\/\S+\/\S+/g, '')
-      .replace(/[a-zA-Z0-9_\-]{20,}/g, '')
-      .replace(/\{[^}]{10,}\}/g, '')
-      .replace(/\[[^\]]{20,}\]/g, '')
       .replace(/```[\s\S]*?```/g, '')
       .replace(/`[^`]+`/g, '')
-      .replace(/[*#_~|>]+/g, '')
-      .replace(/desktop_\w+\([^)]*\)/g, '')
-      .replace(/open_application\([^)]*\)/g, '')
-      .replace(/web_search\([^)]*\)/g, '')
+      // URL 全部变体
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\/\/\S+/g, '')
+      .replace(/www\.\S+/g, '')
+      .replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?/g, '')  // IP
+      .replace(/\S*%[0-9A-Fa-f]{2}\S*/g, '')
+      .replace(/\S+\.(com|cn|io|org|net|ai|app|html|php|asp|xyz|dev|tech)\S*/g, '')
+      .replace(/\S+\/\S+\/\S+/g, '')
+      // JSON / 字典
+      .replace(/\{[^}]*\}/g, '')
+      .replace(/\[[^\]]{15,}\]/g, '')
+      // Markdown
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[*#_~`|>]+/g, '')
+      // 英文技术内容（核心！）
+      .replace(/[a-zA-Z_]\w*\s*=\s*\S+/g, '')             // key=value
+      .replace(/[a-zA-Z_]\w*\([^)]*\)/g, '')               // func(args)
+      .replace(/[a-zA-Z_]\w*\.[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*/g, '')  // module.method
+      .replace(/[a-zA-Z_][a-zA-Z0-9_]{3,}/g, '')              // 4+字母英文词（不用\b，中英交界不生效）
+      .replace(/\b[a-zA-Z]{2,3}\b/g, function(m) {          // 2-3字母词白名单
+        var ok = 'AI,OK,IT,VS,IP,km,mm,cm,kg,GB,MB,KB,CEO,CTO,CFO,COO,CMO,VIP,App,API,KOL,ROI,SEM,SEO,KPI,PPT,PDF,TOP,DIY,GPS,USB,LED,Pro,Max';
+        return ok.indexOf(m) >= 0 || ok.indexOf(m.toUpperCase()) >= 0 ? m : '';
+      })
+      // 孤立符号
+      .replace(/(?<![<>!])=(?!=)/g, '')
+      .replace(/&\S+/g, '')
+      .replace(/\(\s*\)/g, '')
+      .replace(/\[\s*\]/g, '')
+      // Emoji
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1FA00}-\u{1FAFF}]/gu, '')
+      // 单位转换
+      .replace(/(\d+)\s*km\/h/g, '$1公里每小时')
+      // 格式清理
       .replace(/\n+/g, '。')
       .replace(/\s{2,}/g, ' ')
+      .replace(/[。，、；：]{2,}/g, '。')
       .trim();
-    if (!cleanText) return;
+    // 如果清理后只剩标点或极短，不读
+    var meaningfulChars = cleanText.replace(/[。，、；：！？,.;:!?\s\d]+/g, '');
+    if (meaningfulChars.length < 2) return;
+    // AbortController: 静音按钮可中止此请求
+    const _ttsAc = new AbortController();
+    window.__ttsAbort = _ttsAc;
     const resp = await fetch(`${getBaseUrl()}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: cleanText.slice(0, 500) }),
+      signal: _ttsAc.signal,
     });
     if (!resp.ok) {
       petSetVisualState('idle');
@@ -376,7 +630,11 @@ async function speakText(text) {
         try {
           const parsed = JSON.parse(data);
           if (parsed.audio) {
-            fn.queueVoiceAudio(parsed.audio, 24000, parsed.format || 'pcm');
+            fn.queueVoiceAudio(
+              parsed.audio,
+              parsed.sample_rate || 24000,
+              parsed.format || 'pcm',
+            );
           }
         } catch {}
       }
@@ -668,6 +926,182 @@ function renderMarkdown(text) {
   return html;
 }
 
+/** 团队完成卡片：DOM 构建，避免 innerHTML + 内联 onclick 导致脚本片段泄露到正文 */
+function _mountTeamResultCard({ tid, teamName, result, files, projectId, downloadUrl }) {
+  const card = document.createElement('div');
+  card.className = 'msg ai';
+
+  const av = document.createElement('div');
+  av.className = 'msg-avatar';
+  av.textContent = assistantAvatarEmoji(false);
+
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+
+  const trc = document.createElement('div');
+  trc.className = 'team-result-card';
+
+  const header = document.createElement('div');
+  header.className = 'trc-header';
+  header.textContent = `✅ ${teamName}完成！`;
+
+  const sumEl = document.createElement('div');
+  sumEl.className = 'trc-summary';
+  sumEl.id = 'trc-sum-' + tid;
+  const shortHtml = renderMarkdown(result.substring(0, 600));
+  const fullHtml = renderMarkdown(result);
+  sumEl.innerHTML = shortHtml;
+
+  trc.appendChild(header);
+  trc.appendChild(sumEl);
+
+  if (result.length > 600) {
+    const exp = document.createElement('button');
+    exp.type = 'button';
+    exp.className = 'trc-expand';
+    let expanded = false;
+    exp.textContent = `展开全文 ↓ (${result.length}字)`;
+    exp.addEventListener('click', () => {
+      expanded = !expanded;
+      sumEl.innerHTML = expanded ? fullHtml : shortHtml;
+      sumEl.classList.toggle('expanded', expanded);
+      exp.textContent = expanded ? '收起 ↑' : `展开全文 ↓ (${result.length}字)`;
+    });
+    trc.appendChild(exp);
+  }
+
+  if (files && files.length) {
+    const filesWrap = document.createElement('div');
+    filesWrap.className = 'trc-files';
+    files.slice(0, 8).forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'trc-file';
+      row.textContent = '📄 ' + (f.filename || '');
+      filesWrap.appendChild(row);
+    });
+    if (files.length > 8) {
+      const row = document.createElement('div');
+      row.className = 'trc-file';
+      row.textContent = '... 共' + files.length + '个文件';
+      filesWrap.appendChild(row);
+    }
+    trc.appendChild(filesWrap);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'trc-actions';
+
+  if (downloadUrl) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '📥 下载 ZIP';
+    b.addEventListener('click', () => { window.location.href = downloadUrl; });
+    actions.appendChild(b);
+  }
+  if (projectId) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '🔗 分享报告';
+    b.addEventListener('click', () =>
+      window.open('/report/' + encodeURIComponent(projectId), '_blank'));
+    actions.appendChild(b);
+  }
+
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.textContent = '📋 复制';
+  copyBtn.addEventListener('click', async () => {
+    const text = result.substring(0, 2000);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        window._fallbackCopy(text);
+      }
+      copyBtn.textContent = '已复制!';
+    } catch (e) {
+      window._fallbackCopy(text);
+      copyBtn.textContent = '已复制!';
+    }
+  });
+  actions.appendChild(copyBtn);
+
+  if (projectId) {
+    const linkBtn = document.createElement('button');
+    linkBtn.type = 'button';
+    linkBtn.textContent = '📤 复制链接';
+    linkBtn.addEventListener('click', async () => {
+      const url = location.origin + '/report/' + encodeURIComponent(projectId);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          window._fallbackCopy(url);
+        }
+        linkBtn.textContent = '已复制链接!';
+      } catch (e) {
+        window._fallbackCopy(url);
+        linkBtn.textContent = '已复制链接!';
+      }
+    });
+    actions.appendChild(linkBtn);
+  }
+
+  const wxBtn = document.createElement('button');
+  wxBtn.type = 'button';
+  wxBtn.textContent = '💬 发微信';
+  wxBtn.title = '发送摘要到微信';
+  const preview = result.substring(0, 200);
+  wxBtn.addEventListener('click', () => window._shareToWechat(tid, preview));
+  actions.appendChild(wxBtn);
+
+  trc.appendChild(actions);
+
+  const fb = document.createElement('div');
+  fb.className = 'trc-feedback';
+  fb.id = 'trc-fb-' + tid;
+
+  const hint = document.createElement('span');
+  hint.style.fontSize = '11px';
+  hint.style.color = 'var(--text-muted)';
+  hint.textContent = '这次结果怎么样？';
+
+  const good = document.createElement('button');
+  good.className = 'trc-fb-btn trc-fb-good';
+  good.type = 'button';
+  good.textContent = '👍 满意';
+  good.addEventListener('click', () => window._submitTeamFeedback(tid, 'good', good));
+
+  const bad = document.createElement('button');
+  bad.className = 'trc-fb-btn trc-fb-bad';
+  bad.type = 'button';
+  bad.textContent = '👎 不满意';
+  bad.addEventListener('click', () => window._submitTeamFeedback(tid, 'bad', bad));
+
+  const detail = document.createElement('button');
+  detail.className = 'trc-fb-btn';
+  detail.type = 'button';
+  detail.textContent = '💬 具体意见';
+  detail.addEventListener('click', () => window._submitTeamFeedbackDetail(tid, detail));
+
+  fb.appendChild(hint);
+  fb.appendChild(good);
+  fb.appendChild(bad);
+  fb.appendChild(detail);
+
+  trc.appendChild(fb);
+
+  body.appendChild(trc);
+  card.appendChild(av);
+  card.appendChild(body);
+  dom.messages.appendChild(card);
+  // 主对话里 /api/agents/teams 轮询到的完成结果：走槽位同款分段 TTS（需已 initSlotManager 注册 fn.speakTeamTts）
+  const plain = typeof result === 'string' ? result.trim() : '';
+  if (plain.length >= 2 && fn.speakTeamTts) {
+    fn.speakTeamTts(plain, '');
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // UI HELPERS
 // ═══════════════════════════════════════════════════
@@ -730,7 +1164,7 @@ function appendMessage(msg, streaming = false) {
   div.className = `msg ${msg.role === 'user' ? 'user' : 'ai'}`;
 
   const safe = _safeContent(msg.content);
-  const avatar = msg.role === 'user' ? '👤' : assistantAvatarEmoji(!!msg.desktop);
+  const avatar = msg.role === 'user' ? '👤' : resolveAssistantBubbleAvatar(msg);
   let attachHtml = '';
   if (msg.imageData) {
     attachHtml = '<div class="msg-attachments">' +
@@ -747,17 +1181,56 @@ function appendMessage(msg, streaming = false) {
   const voiceBadge = msg.voice ? ' <span style="font-size:11px;opacity:.5">🎙</span>' : '';
   const textHtml = streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : renderMarkdown(safe.text);
 
+  // 时间戳
+  const now = new Date();
+  const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
   div.innerHTML = `
     <div class="msg-avatar">${avatar}</div>
     <div class="msg-body">
       ${attachHtml}
       <div class="msg-text">${textHtml}${voiceBadge}</div>
+      <div class="msg-meta">
+        <span class="msg-time">${timeStr}</span>
+        ${msg.role === 'assistant' && !streaming ? '<button class="msg-action-btn msg-regen-btn" title="重新生成">🔄</button>' : ''}
+      </div>
     </div>`;
 
   dom.messages.appendChild(div);
+
+  // 重新生成按钮事件
+  const regenBtn = div.querySelector('.msg-regen-btn');
+  if (regenBtn) {
+    regenBtn.addEventListener('click', () => {
+      // 找到这条 AI 消息之前的最后一条用户消息
+      const idx = S.messages.indexOf(msg);
+      const prevUser = idx > 0 ? S.messages[idx - 1] : null;
+      if (prevUser && prevUser.role === 'user' && prevUser.content) {
+        // 删除当前 AI 回复
+        S.messages.splice(idx, 1);
+        div.remove();
+        // 重新发送
+        sendTextMessage(prevUser.content);
+      }
+    });
+  }
+
   if (!streaming) setupLongMessageCollapse(div);
   scrollToBottom();
   return div;
+}
+
+/** P0/P1: 语音流式中途由服务端下发槽位头像时更新 DOM 与消息对象 */
+function applyVoiceMessageIdentity(msgEl, payload, msgRef) {
+  if (!msgEl || !payload) return;
+  const av = payload.avatar;
+  if (av) {
+    const holder = msgEl.querySelector('.msg-avatar');
+    if (holder) holder.textContent = av;
+  }
+  if (msgRef && payload.slot_id) msgRef.slot_id = payload.slot_id;
+  if (msgRef && payload.avatar) msgRef.avatar = payload.avatar;
+  if (msgRef && payload.display_name) msgRef.display_name = payload.display_name;
 }
 
 function updateStreamingEl(el, text) {
@@ -769,7 +1242,56 @@ function updateStreamingEl(el, text) {
 function finalizeStreamingEl(el, text) {
   const textEl = el.querySelector('.msg-text');
   if (textEl) textEl.innerHTML = renderMarkdown(text);
+  // 错误消息视觉区分：含错误卡片或错误关键词的消息添加红色边框
+  if (text.includes('ai-error-card') || text.includes('__ERROR__') ||
+      (text.startsWith('⚠️') && text.length < 200)) {
+    el.classList.add('msg-error');
+  }
   setupLongMessageCollapse(el);
+  // 流式消息结束后补充 meta 区域（时间戳 + 播放 + 重新生成）
+  if (el.classList.contains('ai')) {
+    let meta = el.querySelector('.msg-meta');
+    if (!meta) {
+      meta = document.createElement('div');
+      meta.className = 'msg-meta';
+      const now = new Date();
+      meta.innerHTML = `<span class="msg-time">${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}</span>`;
+      const body = el.querySelector('.msg-body');
+      if (body) body.appendChild(meta);
+    }
+    // 播放按钮
+    if (text && text.trim().length > 5) {
+      const playBtn = document.createElement('button');
+      playBtn.className = 'msg-action-btn';
+      playBtn.title = '朗读';
+      playBtn.textContent = '🔊';
+      playBtn.onclick = function() { speakText(text, true); };
+      meta.appendChild(playBtn);
+    }
+    // 重新生成按钮
+    const regenBtn = document.createElement('button');
+    regenBtn.className = 'msg-action-btn msg-regen-btn';
+    regenBtn.title = '重新生成';
+    regenBtn.textContent = '🔄';
+    regenBtn.addEventListener('click', () => {
+      const msgs = S.messages;
+      // 找最后一条用户消息
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'user' && msgs[i].content) {
+          const userText = typeof msgs[i].content === 'string' ? msgs[i].content : '';
+          if (userText) {
+            // 删除当前 AI 回复
+            const aiIdx = msgs.indexOf(msgs.find((m, j) => j > i && m.role === 'assistant'));
+            if (aiIdx >= 0) msgs.splice(aiIdx, 1);
+            el.remove();
+            sendTextMessage(userText);
+            break;
+          }
+        }
+      }
+    });
+    meta.appendChild(regenBtn);
+  }
 }
 
 function scrollToBottom() {
@@ -916,8 +1438,15 @@ async function prewarmMic() {
 // ═══════════════════════════════════════════════════
 
 export function init() {
+  // 浏览器标签标题固定为品牌（避免地址栏/书签里 IP 抢认知）
+  try {
+    document.title = '52AI 工作队';
+  } catch (_) {}
+
   // 1. Register public functions on fn
   fn.appendMessage = appendMessage;
+  window.appendMessage = appendMessage;  // 暴露给 profile.js (会话切换时加载历史消息)
+  fn.applyVoiceMessageIdentity = applyVoiceMessageIdentity;
   fn.updateStreamingEl = updateStreamingEl;
   fn.finalizeStreamingEl = finalizeStreamingEl;
   fn.scrollToBottom = scrollToBottom;
@@ -1019,8 +1548,10 @@ export function init() {
       }
       if (_holdFired) return;
       if (!dom.voiceOverlay.classList.contains('hidden')) {
+        S.continuousMode = false;
         fn.closeVoiceOverlay();
       } else {
+        S.continuousMode = true;
         fn.startVoiceRecording();
       }
     }
@@ -1422,26 +1953,26 @@ export function init() {
   // ── Main init logic ──
   (async () => {
     if (window.location.protocol === 'http:') {
-      const isLocal = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
-      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = '/chat';
-        return;
-      }
-      if (!isLocal) {
-        const banner = document.createElement('div');
-        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;padding:12px 20px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center';
-        banner.innerHTML = '⚠️ 当前为 HTTP 模式，语音功能受限。'
-          + '<a href="/chat" style="color:#fbbf24;font-weight:600;text-decoration:underline">文字聊天版</a>'
-          + '<span style="color:#cbd5e1">|</span>'
-          + '<a href="/setup" style="color:#fbbf24;font-weight:600;text-decoration:underline">安装证书启用完整版</a>'
-          + '<button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:4px;padding:2px 10px;cursor:pointer;margin-left:8px">✕</button>';
-        document.body.prepend(banner);
+      // 仅对公网 HTTP 尝试升级 HTTPS；局域网/VPN 扫码走 HTTP，避免自签 https 白屏
+      if (!isLocalOrPrivateHost(window.location.hostname)) {
+        const httpsPort = '9765';
+        const httpsUrl = `https://${window.location.hostname}:${httpsPort}${window.location.pathname}`;
+        try {
+          const ctrl = new AbortController();
+          setTimeout(() => ctrl.abort(), 3000);
+          const r = await fetch(httpsUrl.replace(/\/[^/]*$/, '/api/bootstrap/status'), {
+            signal: ctrl.signal, mode: 'no-cors',
+          });
+          window.location.href = httpsUrl;
+          return;
+        } catch (_) {
+          console.log('HTTPS not available, staying on HTTP (voice disabled)');
+        }
       }
     }
 
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.origin);
-    const isLan = /^https?:\/\/(192\.168\.|10\.|172\.\d)/.test(window.location.origin);
+    const isLan = isLocalOrPrivateHost(window.location.hostname);
     const maxRetries = (isLocalhost || isLan) ? 8 : 2;  // 本机和局域网都多试
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -1582,42 +2113,15 @@ export function init() {
           const projectId = rd.project_id || '';
           const downloadUrl = rd.download_url || '';
 
-          // 构建文件列表 HTML
-          let filesHtml = '';
-          if (files.length) {
-            filesHtml = '<div class="trc-files">' +
-              files.slice(0, 8).map(f => `<div class="trc-file">📄 ${f.filename}</div>`).join('') +
-              (files.length > 8 ? `<div class="trc-file">... 共${files.length}个文件</div>` : '') +
-              '</div>';
-          }
-
           hideWelcome();
-          const card = document.createElement('div');
-          card.className = 'msg ai';
-          card.innerHTML = `
-            <div class="msg-avatar">${assistantAvatarEmoji(false)}</div>
-            <div class="msg-body">
-              <div class="team-result-card">
-                <div class="trc-header">✅ ${team.name}完成！</div>
-                <div class="trc-summary" id="trc-sum-${tid}">${renderMarkdown(result.substring(0, 600))}</div>
-                ${result.length > 600 ? `<button class="trc-expand" onclick="var el=document.getElementById('trc-sum-${tid}');if(!el.classList.contains('expanded')){el.innerHTML=this.dataset.full;el.classList.add('expanded');this.textContent='收起 ↑'}else{el.innerHTML=this.dataset.short;el.classList.remove('expanded');this.textContent='展开全文 ↓'}" data-short="${renderMarkdown(result.substring(0,600)).replace(/"/g,'&quot;')}" data-full="${renderMarkdown(result).replace(/"/g,'&quot;')}">展开全文 ↓ (${result.length}字)</button>` : ''}
-                ${filesHtml}
-                <div class="trc-actions">
-                  ${downloadUrl ? `<button onclick="window.location.href='${downloadUrl}'">📥 下载 ZIP</button>` : ''}
-                  ${projectId ? `<button onclick="window.open('/report/${projectId}','_blank')">🔗 分享报告</button>` : ''}
-                  <button onclick="navigator.clipboard.writeText(${JSON.stringify(result.substring(0, 2000))})">📋 复制</button>
-                  ${projectId ? `<button onclick="navigator.clipboard.writeText(location.origin+'/report/${projectId}').then(()=>this.textContent='已复制链接!')">📤 复制链接</button>` : ''}
-                  <button onclick="window._shareToWechat('${tid}',${JSON.stringify(result.substring(0,200))})" title="发送摘要到微信">💬 发微信</button>
-                </div>
-                <div class="trc-feedback" id="trc-fb-${tid}">
-                  <span style="font-size:11px;color:var(--text-muted)">这次结果怎么样？</span>
-                  <button class="trc-fb-btn trc-fb-good" onclick="window._submitTeamFeedback('${tid}','good',this)">👍 满意</button>
-                  <button class="trc-fb-btn trc-fb-bad" onclick="window._submitTeamFeedback('${tid}','bad',this)">👎 不满意</button>
-                  <button class="trc-fb-btn" onclick="window._submitTeamFeedbackDetail('${tid}',this)">💬 具体意见</button>
-                </div>
-              </div>
-            </div>`;
-          dom.messages.appendChild(card);
+          _mountTeamResultCard({
+            tid,
+            teamName: team.name || '',
+            result,
+            files,
+            projectId,
+            downloadUrl,
+          });
           scrollToBottom();
         }
       }
@@ -1718,23 +2222,142 @@ window._sendFeedbackComment = async function(teamId) {
 };
 
 // ── 微信分享 ──
+// Clipboard fallback（Tauri/非 HTTPS 环境）
+window._fallbackCopy = function(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch(e) { console.warn('Copy failed:', e); }
+};
+
+/** 移动端/WebView 常禁用 prompt()，用自定义层替代 */
+window._promptWechatContact = function() {
+  return new Promise((resolve) => {
+    const old = document.getElementById('wechat-send-dialog');
+    if (old) old.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'wechat-send-dialog';
+    overlay.setAttribute('role', 'dialog');
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10050;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+    const box = document.createElement('div');
+    box.style.cssText =
+      'background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#333);border-radius:12px;padding:16px;max-width:360px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.45)';
+    box.innerHTML =
+      '<div style="font-weight:600;margin-bottom:10px;color:var(--text-primary,#eee)">发送到微信</div>' +
+      '<label style="font-size:12px;color:var(--text-muted,#888)">联系人名称</label>' +
+      '<input type="text" id="wx-send-contact-inp" autocomplete="off" placeholder="输入微信联系人名称" ' +
+      'style="width:100%;box-sizing:border-box;margin:6px 0 14px;padding:10px;border-radius:8px;border:1px solid var(--border,#333);background:var(--bg-surface,#252542);color:var(--text-primary,#eee);font-size:14px" />' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+      '<button type="button" id="wx-send-cancel" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border,#333);background:transparent;color:var(--text-secondary,#aaa)">取消</button>' +
+      '<button type="button" id="wx-send-ok" style="padding:8px 16px;border-radius:8px;border:none;background:var(--accent,#6c63ff);color:#fff">发送</button></div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    const inp = box.querySelector('#wx-send-contact-inp');
+    const done = (val) => {
+      overlay.remove();
+      resolve(val);
+    };
+    box.querySelector('#wx-send-cancel').addEventListener('click', () => done(null));
+    box.querySelector('#wx-send-ok').addEventListener('click', () => {
+      const v = (inp && inp.value) || '';
+      done(v.trim() || null);
+    });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const v = (inp.value || '').trim();
+        done(v || null);
+      }
+      if (e.key === 'Escape') done(null);
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) done(null);
+    });
+    setTimeout(() => inp && inp.focus(), 50);
+  });
+};
+
+window._trcToast = function(msg, isErr) {
+  const t = document.createElement('div');
+  t.style.cssText =
+    'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10060;max-width:90%;padding:10px 16px;border-radius:10px;font-size:13px;color:#fff;background:' +
+    (isErr ? 'rgba(220,50,50,.95)' : 'rgba(30,30,40,.95)') +
+    ';box-shadow:0 4px 16px rgba(0,0,0,.3);pointer-events:none';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+};
+
 window._shareToWechat = async function(teamId, summary) {
-  const contact = prompt('发送给谁？（输入微信联系人名称）');
-  if (!contact || !contact.trim()) return;
-  const text = (summary || '').substring(0, 200) + '\n\n-- 十三香小龙虾AI工作队';
+  const contact = await window._promptWechatContact();
+  if (!contact || !String(contact).trim()) return;
+  const c = String(contact).trim();
+  const text = (summary || '').substring(0, 200) + '\n\n-- 52AI工作队';
   try {
     const r = await fetch(getBaseUrl() + '/api/wechat/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contact: contact.trim(), message: text }),
+      body: JSON.stringify({ contact: c, message: text }),
     });
     const d = await r.json();
     if (d.ok || d.success) {
-      alert('已发送给 ' + contact);
+      window._trcToast('已发送给 ' + c);
     } else {
-      alert('发送失败：' + (d.error || '微信未连接'));
+      const err = d.error || '微信未连接';
+      window._trcToast('发送失败：' + err, true);
     }
   } catch (e) {
-    alert('发送失败，请检查微信连接');
+    window._trcToast('发送失败，请检查微信连接', true);
   }
+};
+
+// ═══════════════════════════════════════════════════
+// AI 状态提示 + 桌面操作遮罩
+// ═══════════════════════════════════════════════════
+
+function _showAIStatus(type, text) {
+  const bar = document.getElementById('ai-status-bar');
+  if (!bar) return;
+  bar.className = 'ai-status-bar ' + type;
+  const inner = bar.querySelector('.ai-status-spinner');
+  if (type === 'desktop') {
+    inner.className = 'ai-status-pulse';
+  } else {
+    inner.className = 'ai-status-spinner';
+  }
+  const txt = document.getElementById('ai-status-text');
+  if (txt) txt.textContent = text;
+}
+
+function _hideAIStatus() {
+  const bar = document.getElementById('ai-status-bar');
+  if (bar) bar.className = 'ai-status-bar';
+}
+
+function _showDesktopOverlay(actionText) {
+  // 不再显示全屏遮罩（会抢焦点导致AI操作发到聊天窗口而非目标窗口）
+  // 只在底部状态条提示
+  _showAIStatus('desktop', '⚠️ AI 正在操控电脑，请勿触碰鼠标键盘');
+}
+
+function _updateDesktopOverlay(actionText, stepNum) {
+  _showAIStatus('desktop', '⚠️ ' + actionText.replace(/\.\.\.\n\n$/, '...') + ' (第' + stepNum + '步)');
+}
+
+function _hideDesktopOverlay() {
+  const overlay = document.getElementById('desktop-overlay');
+  if (overlay) overlay.classList.remove('show');
+}
+
+// 中断桌面操作
+window._cancelDesktopOp = function() {
+  _hideDesktopOverlay();
+  _hideAIStatus();
+  // 如果有正在播放的音频也停止
+  if (window.__stopSpeaking) window.__stopSpeaking();
 };

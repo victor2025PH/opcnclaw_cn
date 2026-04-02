@@ -5,17 +5,25 @@
 #
 # 使用方式：在项目根目录执行
 #   .\打包发布.ps1
-# 输出：OpenClaw-Voice-v1.x.x-win64.zip（放到桌面）
+#   .\打包发布.ps1 -NoPause          # CI/自动化：不等待 Enter
+# 输出：OpenClaw-Voice-v{version}-win64.zip（放到桌面）
+# 版本：优先读取项目根目录 version.txt，与 Inno Setup / 后端一致
+
+param(
+    [switch]$NoPause
+)
 
 $ProjectDir = $PSScriptRoot
-$Version    = "1.0.0"
+$VerFile    = Join-Path $ProjectDir "version.txt"
+$Version    = if (Test-Path $VerFile) { (Get-Content $VerFile -Raw).Trim() } else { "1.0.0" }
+if ([string]::IsNullOrWhiteSpace($Version)) { $Version = "1.0.0" }
 $OutName    = "OpenClaw-Voice-v$Version-win64"
 $OutDir     = "$env:USERPROFILE\Desktop\$OutName"
 $OutZip     = "$env:USERPROFILE\Desktop\$OutName.zip"
 
 # ── 排除不打包的内容 ──────────────────────────────────────────
 $ExcludeDirs = @(
-    "venv", ".venv", "__pycache__", ".git", ".pytest_cache",
+    "venv", ".venv", ".venv310", "__pycache__", ".git", ".pytest_cache",
     ".mypy_cache", "*.egg-info", "dist", "build", "logs",
     "certs",       # 每台机器重新生成
     "node_modules"
@@ -51,6 +59,10 @@ function Copy-Filtered {
         $skip = $false
         foreach ($pat in ($ExcludeDirs + $ExcludeFiles)) {
             if ($item.Name -like $pat) { $skip = $true; break }
+        }
+        # Rust/Tauri 构建目录（仅按名称 `target` 会误伤，故用完整路径判断）
+        if (-not $skip -and $item.PSIsContainer -and $item.Name -eq 'target' -and $item.FullName -like '*\src-tauri\target') {
+            $skip = $true
         }
         if ($skip) { continue }
         if ($item.PSIsContainer) {
@@ -136,7 +148,8 @@ Write-Host "  5. 完成，开机自动启动" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  ⚠️  提醒：分发前确认 .env 文件未包含在 ZIP 中！" -ForegroundColor Yellow
 
-# 打开桌面
-explorer.exe $env:USERPROFILE\Desktop
-
-Read-Host "`n按 Enter 退出"
+# 打开桌面（自动化模式下跳过，避免阻塞 headless）
+if (-not $NoPause) {
+  explorer.exe $env:USERPROFILE\Desktop
+  Read-Host "`n按 Enter 退出"
+}

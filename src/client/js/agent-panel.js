@@ -47,23 +47,97 @@ async function _loadProjectTimeline() {
 function _renderTimeline(projects) {
   const el = document.getElementById('asp-timeline');
   if (!el) return;
+  el.innerHTML = '';
   if (!projects.length) {
     el.innerHTML = '<div class="asp-empty" style="padding:12px">暂无项目记录</div>';
     return;
   }
-  el.innerHTML = projects.slice(0, 8).map(p => {
-    const date = p.created_at ? new Date(p.created_at * 1000).toLocaleDateString('zh-CN', {month:'short', day:'numeric'}) : '';
-    const files = (p.artifacts || []).length;
+  projects.slice(0, 8).forEach(p => {
+    const pid = p.project_id || '';
+    const row = document.createElement('div');
+    row.className = 'asp-project';
+    row.title = '点击查看报告';
+
+    const date = p.created_at
+      ? new Date(p.created_at * 1000).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+      : '';
+    const files = p.file_count != null ? p.file_count : (p.artifacts || []).length;
     const agents = p.agent_count || 0;
-    return `
-      <div class="asp-project" onclick="window.open('/report/${p.project_id}','_blank')" title="点击查看报告">
-        <div class="asp-proj-header">
-          <span class="asp-proj-name">${(p.name || '').substring(0, 18)}</span>
-          <span class="asp-proj-date">${date}</span>
-        </div>
-        <div class="asp-proj-meta">${agents}人 · ${files}个文件</div>
-      </div>`;
-  }).join('');
+
+    const head = document.createElement('div');
+    head.className = 'asp-proj-header';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'asp-proj-name';
+    nameSpan.textContent = (p.name || '').substring(0, 22);
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'asp-proj-date';
+    dateSpan.textContent = date;
+    head.appendChild(nameSpan);
+    head.appendChild(dateSpan);
+
+    const meta = document.createElement('div');
+    meta.className = 'asp-proj-meta';
+    meta.textContent = `${agents}人 · ${files}个文件`;
+
+    const actions = document.createElement('div');
+    actions.className = 'asp-proj-actions';
+
+    const openReport = () => window.open('/report/' + encodeURIComponent(pid), '_blank');
+
+    const btnOpen = document.createElement('button');
+    btnOpen.type = 'button';
+    btnOpen.className = 'asp-proj-btn';
+    btnOpen.textContent = '打开';
+    btnOpen.addEventListener('click', e => {
+      e.stopPropagation();
+      openReport();
+    });
+
+    const btnRen = document.createElement('button');
+    btnRen.type = 'button';
+    btnRen.className = 'asp-proj-btn';
+    btnRen.textContent = '改名';
+    btnRen.addEventListener('click', async e => {
+      e.stopPropagation();
+      const cur = p.name || '';
+      const nn = window.prompt('项目名称', cur);
+      if (nn == null || !String(nn).trim()) return;
+      try {
+        const r = await fetch(`${BASE}/api/projects/${encodeURIComponent(pid)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: String(nn).trim() }),
+        });
+        const d = await r.json();
+        if (d.ok) await _loadProjectTimeline();
+      } catch (err) { /* silent */ }
+    });
+
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'asp-proj-btn asp-proj-btn--danger';
+    btnDel.textContent = '删除';
+    btnDel.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!window.confirm('确定删除此项目？本地项目文件夹将一并删除。')) return;
+      try {
+        const r = await fetch(`${BASE}/api/projects/${encodeURIComponent(pid)}`, { method: 'DELETE' });
+        const d = await r.json();
+        if (d.ok) await _loadProjectTimeline();
+      } catch (err) { /* silent */ }
+    });
+
+    actions.appendChild(btnOpen);
+    actions.appendChild(btnRen);
+    actions.appendChild(btnDel);
+
+    row.appendChild(head);
+    row.appendChild(meta);
+    row.appendChild(actions);
+    row.addEventListener('click', openReport);
+
+    el.appendChild(row);
+  });
 }
 
 async function _checkForActiveTeam() {
@@ -85,12 +159,24 @@ async function _checkForActiveTeam() {
 function _showPanel() {
   const panel = document.getElementById('agent-side-panel');
   if (panel) { panel.classList.add('open'); _panelVisible = true; }
+  // 推开主内容区，避免遮挡
+  const mainCol = document.querySelector('.chat-main-col');
+  if (mainCol) mainCol.style.marginRight = '280px';
+  // 隐藏 header 中的"团队"按钮
+  const btn = document.getElementById('team-panel-toggle');
+  if (btn) btn.style.display = 'none';
 }
 
 function _hidePanel() {
   const panel = document.getElementById('agent-side-panel');
   if (panel) { panel.classList.remove('open'); _panelVisible = false; }
   if (_agentPollTimer) { clearInterval(_agentPollTimer); _agentPollTimer = null; }
+  // 恢复主内容区宽度
+  const mainCol = document.querySelector('.chat-main-col');
+  if (mainCol) mainCol.style.marginRight = '';
+  // 显示 header 中的"团队"按钮
+  const btn = document.getElementById('team-panel-toggle');
+  if (btn) btn.style.display = '';
 }
 
 function _startPoll() {
@@ -133,8 +219,13 @@ function _renderTeam(data) {
     const a = agents[aid];
     const task = tasks.find(t => t.agent_id === aid);
     const taskStatus = task ? task.status : (a.status || 'idle');
-    const icon = taskStatus === 'done' ? '✅' : taskStatus === 'working' ? '🔄' : '⏳';
-    const cssClass = taskStatus === 'done' ? 'done' : taskStatus === 'working' ? 'working' : '';
+    const teamDone = data.status === 'done';
+    const icon = taskStatus === 'done' ? '✅'
+      : taskStatus === 'working' ? '🔄'
+      : taskStatus === 'pending' ? '⏳'
+      : teamDone ? '✅' : '💤';  // idle 且团队已完成=✅，否则=💤待命
+    const cssClass = taskStatus === 'done' || (teamDone && !task) ? 'done'
+      : taskStatus === 'working' ? 'working' : '';
     const taskDesc = task ? (task.description || '').substring(0, 30) : '';
     const preview = task?.result || task?.partial_result || '';
     const previewText = preview.substring(0, 80).replace(/[#*\n]/g, ' ');
@@ -354,6 +445,10 @@ function _injectStyles() {
     .asp-proj-name{font-size:11px;color:var(--text-primary,#eee);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
     .asp-proj-date{font-size:9px;color:var(--text-muted,#666)}
     .asp-proj-meta{font-size:9px;color:var(--text-secondary,#888);margin-top:2px}
+    .asp-proj-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:flex-end}
+    .asp-proj-btn{font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg-surface,#252542);color:var(--text-secondary,#aaa);cursor:pointer}
+    .asp-proj-btn:hover{border-color:var(--accent,#6c63ff);color:var(--text-primary,#eee)}
+    .asp-proj-btn--danger:hover{border-color:#ef4444;color:#f87171}
   `;
   document.head.appendChild(style);
 }

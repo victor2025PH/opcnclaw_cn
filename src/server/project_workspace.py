@@ -105,6 +105,10 @@ class Project:
 
     def save_summary(self, content: str):
         """CEO 保存汇总报告"""
+        # 同时保存 txt 和 md 两种格式，确保任何编辑器都能打开
+        (self.dir / "汇总报告.txt").write_text(
+            f"{self.name}\n{'='*40}\n\n{content}", encoding="utf-8"
+        )
         (self.dir / "README.md").write_text(
             f"# {self.name}\n\n{content}", encoding="utf-8"
         )
@@ -196,3 +200,44 @@ def list_projects() -> List[dict]:
         key=lambda x: x["created_at"],
         reverse=True,
     )[:20]
+
+
+def delete_project(project_id: str) -> bool:
+    """删除项目目录并从缓存移除。"""
+    if not project_id or ".." in project_id or "/" in project_id or "\\" in project_id:
+        return False
+    d = PROJECTS_DIR / project_id
+    if not d.is_dir():
+        return False
+    try:
+        shutil.rmtree(d, ignore_errors=True)
+    except Exception as ex:
+        logger.warning("[Workspace] 删除项目目录失败: {} {}", project_id, ex)
+        return False
+    _projects.pop(project_id, None)
+    return True
+
+
+def rename_project(project_id: str, new_name: str) -> bool:
+    """更新项目名称（project.json + 内存缓存）。"""
+    new_name = (new_name or "").strip()
+    if not new_name or len(new_name) > 200:
+        return False
+    if not project_id or ".." in project_id or "/" in project_id or "\\" in project_id:
+        return False
+    meta_file = PROJECTS_DIR / project_id / "project.json"
+    if not meta_file.exists():
+        return False
+    try:
+        meta = json.loads(meta_file.read_text(encoding="utf-8"))
+        meta["name"] = new_name
+        meta_file.write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        p = _projects.get(project_id)
+        if p:
+            p.name = new_name
+        return True
+    except Exception as ex:
+        logger.warning("[Workspace] 重命名失败: {} {}", project_id, ex)
+        return False
